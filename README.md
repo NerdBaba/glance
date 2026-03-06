@@ -20,6 +20,8 @@
   <img src="resources/Liquid%20Glass.png" width="100%" alt="Glance with Liquid Glass preset" />
 </p>
 
+https://github.com/user-attachments/assets/7a3114a6-12dc-42a6-87f0-127b7f67dc6d
+
 ## What is this
 
 Glance is a status bar replacement for macOS. It sits at the top of your screen and shows you the stuff you actually care about: workspaces, current track, volume, Wi-Fi, battery, time. Everything is configurable through a simple TOML file or a Settings GUI.
@@ -92,6 +94,14 @@ No need to edit files if you don't want to. The Settings GUI covers presets, app
 <td><img src="resources/Widgets%20Settings.png" alt="Widgets Settings" /></td>
 </tr>
 </table>
+
+### Settings in action
+
+https://github.com/user-attachments/assets/66156dbe-6521-41b0-a465-234e8558d4c6
+
+### Switching presets
+
+https://github.com/user-attachments/assets/bedb799d-f3ae-43ee-a64c-5f3034a5b422
 
 ## Installation
 
