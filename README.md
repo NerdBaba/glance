@@ -34,6 +34,10 @@ Built with native Swift and SwiftUI. No Electron, no web views, no bloat.
 - **11 built-in presets** so you can match your setup
 - **Native macOS Spaces** out of the box (yabai and AeroSpace also supported)
 - **Rich popups** for every widget: calendar with events, network speed, battery health, now playing with progress bar
+- **Weather** with 5-day forecast (OpenMeteo, no API key needed)
+- **CPU & RAM monitor** with usage bars and memory pressure
+- **Custom script widgets** — run any shell command and display its output in the bar
+- **Auto-updates** via Sparkle — get notified when new versions are available
 - **TOML config** with live reload. Edit, save, see changes instantly
 - **Settings GUI** if you don't want to touch config files
 - **Window gap management** so maximized windows don't hide behind the bar
@@ -50,6 +54,9 @@ Built with native Swift and SwiftUI. No Electron, no web views, no bloat.
 | **Network** | Wi-Fi/Ethernet status. Popup: signal, speed, IP, Tx Rate |
 | **Battery** | Charge level. Popup: health %, cycles, temperature |
 | **Time** | Customizable date/time. Popup: calendar grid + upcoming events |
+| **Weather** | Temperature + condition. Popup: humidity, wind, feels like, 5-day forecast |
+| **System Monitor** | CPU % + RAM usage. Popup: usage bars, memory pressure |
+| **Script** | Run any shell command on an interval. Display output as text |
 
 Plus `spacer` and `divider` for layout.
 
@@ -105,6 +112,13 @@ https://github.com/user-attachments/assets/66156dbe-6521-41b0-a465-234e8558d4c6
 
 ## Installation
 
+### Homebrew
+
+```bash
+brew tap azixxxxx/tap
+brew install --cask glance
+```
+
 ### Download
 
 Grab the latest `.dmg` from [Releases](https://github.com/azixxxxx/glance/releases), open it, drag **Glance.app** to `/Applications`. Done.
@@ -150,11 +164,18 @@ displayed = [
     "default.activeapp",
     "default.nowplaying",
     "spacer",
+    "default.weather",
+    "default.systemmonitor",
     "default.volume",
     "default.network",
     "divider",
     "default.time",
 ]
+
+# Custom script widget — run any command, show output in bar
+# [widgets.script.vpn]
+# command = "scutil --ncs | grep -q Connected && echo '🟢 VPN' || echo '🔴 VPN'"
+# interval = 10
 
 [widgets.default.time]
 format = "E d MMM, H:mm"
@@ -193,7 +214,7 @@ Glance asks for a few permissions on first launch:
 | **Accessibility** | So maximized windows leave a gap for the bar instead of hiding behind it |
 | **Automation (Apple Events)** | To control Music and Spotify for the Now Playing widget |
 | **Calendar** | To show upcoming events in the calendar popup |
-| **Location** | To display Wi-Fi network name (macOS requires this for Wi-Fi info) |
+| **Location** | To display Wi-Fi network name and local weather (falls back to IP geolocation if denied) |
 
 All permissions are optional. The app works without them, you just lose the specific features.
 

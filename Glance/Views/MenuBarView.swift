@@ -67,6 +67,12 @@ struct MenuBarView: View {
         case "default.activeapp":
             ActiveAppWidget().environmentObject(config)
 
+        case "default.weather":
+            WeatherWidget().environmentObject(config)
+
+        case "default.systemmonitor":
+            SystemMonitorWidget().environmentObject(config)
+
         case "spacer":
             Spacer().frame(minWidth: 50, maxWidth: .infinity)
 
@@ -80,7 +86,13 @@ struct MenuBarView: View {
             SystemBannerWidget()
 
         default:
-            Text("?\(item.id)?").foregroundColor(.red)
+            if item.id.hasPrefix("script.") {
+                let command = config.config["command"]?.stringValue ?? ""
+                let interval = config.config["interval"]?.intValue ?? 10
+                ScriptWidget(command: command, interval: TimeInterval(interval))
+            } else {
+                Text("?\(item.id)?").foregroundColor(.red)
+            }
         }
     }
 }

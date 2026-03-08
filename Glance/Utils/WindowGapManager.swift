@@ -33,6 +33,13 @@ final class WindowGapManager {
                            name: NSWorkspace.didLaunchApplicationNotification, object: nil)
         center.addObserver(self, selector: #selector(appTerminated(_:)),
                            name: NSWorkspace.didTerminateApplicationNotification, object: nil)
+
+        // Delayed sweep: on reboot, macOS state restoration may reposition windows
+        // after they are created. A second pass catches windows that were moved back
+        // to their saved (overlapping) position after the initial scan.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            self?.adjustAllRunningApps()
+        }
     }
 
     // MARK: - App Lifecycle
@@ -72,11 +79,37 @@ final class WindowGapManager {
 
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
         observers[pid] = observer
+
+        // Scan existing windows that may already overlap the bar.
+        // On reboot, windows are restored to saved positions before observers fire.
+        adjustAllWindows(of: appElement)
     }
 
     private func unregisterObserver(for pid: pid_t) {
         guard let obs = observers.removeValue(forKey: pid) else { return }
         CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .defaultMode)
+    }
+
+    // MARK: - Initial Window Scan
+
+    /// Iterates all windows of a given application element and pushes down any that overlap the bar.
+    private func adjustAllWindows(of appElement: AXUIElement) {
+        var windowsRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let windows = windowsRef as? [AXUIElement] else { return }
+        for window in windows {
+            adjustIfOverlapping(window)
+        }
+    }
+
+    /// Sweeps all running apps and adjusts overlapping windows.
+    /// Used as a delayed pass on boot to catch state-restored positions.
+    private func adjustAllRunningApps() {
+        for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular {
+            guard app.processIdentifier != myPID else { continue }
+            let appElement = AXUIElementCreateApplication(app.processIdentifier)
+            adjustAllWindows(of: appElement)
+        }
     }
 
     // MARK: - Event Handling

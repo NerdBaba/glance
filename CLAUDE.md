@@ -4,6 +4,7 @@ Modern macOS status bar replacement with liquid glass UI, native Spaces support,
 
 **Version:** 1.0.0
 **Author:** azixxxxx (Azim Sukhanov)
+**GitHub:** https://github.com/azixxxxx/glance
 
 ## System Context
 
@@ -70,7 +71,8 @@ Glance/
 ├── Utils/
 │   ├── ExperimentalConfigurationModifier.swift  # Widget backgrounds (reads appearance)
 │   ├── ImageCache.swift                # Async image caching
-│   └── VersionChecker.swift            # Version tracking for "What's New"
+│   ├── VersionChecker.swift            # Version tracking for "What's New"
+│   └── WindowGapManager.swift          # AX-based window gap enforcement
 ├── Views/
 │   ├── MenuBarView.swift               # Widget registry — routes widget IDs to views
 │   ├── BackgroundView.swift            # Bar background
@@ -102,15 +104,26 @@ Glance/
     │   │   └── NativeSpacesProvider.swift  # CGS private API
     │   ├── Aerospace/
     │   └── Yabai/
+    ├── Script/
+    │   ├── ScriptViewModel.swift       # Shell command execution at interval
+    │   └── ScriptWidget.swift          # Display script output as text
     ├── SystemBanner/                   # System banner + changelog
+    ├── SystemMonitor/
+    │   ├── SystemMonitorViewModel.swift # CPU (host_statistics) + RAM (vm_statistics64)
+    │   ├── SystemMonitorWidget.swift    # CPU% + RAM usage in bar
+    │   └── SystemMonitorPopup.swift     # Usage bars + memory details
     ├── Time+Calendar/
     │   ├── TimeWidget.swift
     │   ├── CalendarManager.swift
     │   └── CalendarPopup.swift         # Calendar grid + events, luminance-based contrast
-    └── Volume/
-        ├── VolumeWidget.swift          # Icon + scroll overlay
-        ├── VolumeViewModel.swift       # CoreAudio volume + output device name
-        └── VolumePopup.swift           # Slider + mute + output device info
+    ├── Volume/
+    │   ├── VolumeWidget.swift          # Icon + scroll overlay
+    │   ├── VolumeViewModel.swift       # CoreAudio volume + output device name
+    │   └── VolumePopup.swift           # Slider + mute + output device info
+    └── Weather/
+        ├── WeatherViewModel.swift      # OpenMeteo API + CoreLocation
+        ├── WeatherWidget.swift         # Temp + weather icon in bar
+        └── WeatherPopup.swift          # Current conditions + 5-day forecast
 ```
 
 ## Preset System
@@ -221,6 +234,37 @@ Popups add a dark tint between blur and highlight for text readability.
 - Native macOS spaces (CGS private API), yabai, or AeroSpace
 - App icons per space, click to switch
 
+### Weather Widget (`Widgets/Weather/`)
+- **Widget ID:** `default.weather`
+- Temperature + weather condition icon (SF Symbols) in bar
+- Click opens popup: current conditions (temp, feels like, humidity, wind), location name, 5-day forecast
+- OpenMeteo API (free, no API key required)
+- CoreLocation for automatic coordinates, reverse geocoding for city name
+- Auto-refreshes every 10 minutes
+- WMO weather codes mapped to SF Symbols and descriptions
+
+### System Monitor Widget (`Widgets/SystemMonitor/`)
+- **Widget ID:** `default.systemmonitor`
+- CPU usage % and RAM usage (GB) in bar
+- Click opens popup: CPU/RAM usage bars with color thresholds, memory details (used/total/pressure)
+- CPU via `host_statistics` (HOST_CPU_LOAD_INFO) — delta between ticks
+- Memory via `host_statistics64` (VM_INFO64) — active + wired + compressed
+- Polls every 2 seconds
+- Color thresholds: green < 50/70%, yellow < 80/85%, red above
+
+### Script Widget (`Widgets/Script/`)
+- **Widget ID:** `script.<name>` (e.g. `script.vpn-status`)
+- Runs arbitrary shell command at configurable interval
+- Displays stdout as text in bar (trimmed, single line)
+- Config: `command` (string, required), `interval` (int seconds, default 10)
+- Executes via `/bin/sh -c`, inherits environment
+- Example config:
+  ```toml
+  [widgets.script.vpn-status]
+  command = "scutil --ncs | grep -q Connected && echo '🟢 VPN' || echo '🔴 VPN'"
+  interval = 10
+  ```
+
 ## App Features
 
 ### Tray Icon (AppDelegate)
@@ -313,11 +357,16 @@ displayed = [
     "default.activeapp",
     "default.nowplaying",
     "spacer",
+    "default.weather",
+    "default.systemmonitor",
     "default.volume",
     "default.network",
     "divider",
     "default.time",
 ]
+
+# Script widgets (user-defined shell commands):
+# "script.my-widget"  — any name after "script."
 
 [widgets.default.spaces]
 space.show-key = true
@@ -337,6 +386,11 @@ calendar.show-events = true
 [popup.default.time]
 view-variant = "box"
 
+# Script widget example:
+# [widgets.script.vpn-status]
+# command = "scutil --ncs | grep -q Connected && echo '🟢' || echo '🔴'"
+# interval = 10
+
 [background]
 enabled = true
 
@@ -355,6 +409,24 @@ height = "default"
 blur = 4
 ```
 
+## Release Status
+
+- **v1.0.0 released** on 2026-03-06
+- **GitHub:** https://github.com/azixxxxx/glance
+- **Release:** https://github.com/azixxxxx/glance/releases/tag/v1.0.0
+- **Posted:** r/unixporn, r/opensource
+- **Pending:** r/macapps (need 10 comment karma in their subreddit first), r/mac
+- **Future:** Product Hunt, Hacker News
+
+## Window Gap Manager (`Utils/WindowGapManager.swift`)
+
+- Uses Accessibility API to monitor all app windows via `AXObserver`
+- Listens for `kAXWindowResizedNotification`, `kAXWindowMovedNotification`, `kAXWindowCreatedNotification`, `kAXFocusedWindowChangedNotification`
+- Pushes windows below `barHeight + 6px` gap if they overlap the bar
+- Skips full-screen windows (`AXFullScreen` attribute) and Glance's own PID
+- Requires Accessibility permission; prompts on first launch, polls until granted
+- **Important:** macOS may revoke Accessibility after app rebuild (new binary hash). User needs to re-enable and restart the app.
+
 ## TODO: Next Version (v1.0.1+)
 
 ### Sparkle Auto-Updates (priority)
@@ -371,13 +443,15 @@ blur = 4
 - TODO: wrap CGS calls in error handling so widget shows "Spaces unavailable" instead of crashing if API breaks
 - `CGWindowListCopyWindowInfo` (public API) is already used for windows — won't break
 
+### Completed Features (v1.1.0-dev)
+- ~~Homebrew cask~~ — Done: `brew tap azixxxxx/tap && brew install --cask glance`
+- ~~Custom script widgets~~ — Done: `script.<name>` with `command` + `interval` config
+- ~~Weather widget~~ — Done: OpenMeteo API, CoreLocation, 5-day forecast popup
+- ~~CPU/RAM monitor widget~~ — Done: host_statistics + vm_statistics64, usage bars popup
+
 ### Other Planned Features
-- Homebrew cask submission (after 30+ stars)
 - Keyboard shortcut for show/hide bar (global hotkey)
 - Drag & drop widget reordering in Settings GUI
-- Custom script widgets (shell/python output as widget)
-- Weather widget (WeatherKit or OpenMeteo API)
-- CPU/RAM monitor widget
 - Multi-monitor support
 - Localization (Russian, Chinese)
 

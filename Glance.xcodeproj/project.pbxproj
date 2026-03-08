@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		F66C98C52D60E35600C3C53C /* TOMLDecoder in Frameworks */ = {isa = PBXBuildFile; productRef = F66C98C42D60E35600C3C53C /* TOMLDecoder */; };
 		F6B514042D6C5F3400DFEB43 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = F6B514032D6C5F3400DFEB43 /* MarkdownUI */; };
+		F6A100032D7B000100A10001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = F6A100022D7B000100A10001 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +44,7 @@
 			files = (
 				F66C98C52D60E35600C3C53C /* TOMLDecoder in Frameworks */,
 				F6B514042D6C5F3400DFEB43 /* MarkdownUI in Frameworks */,
+				F6A100032D7B000100A10001 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,6 +89,7 @@
 			packageProductDependencies = (
 				F66C98C42D60E35600C3C53C /* TOMLDecoder */,
 				F6B514032D6C5F3400DFEB43 /* MarkdownUI */,
+				F6A100022D7B000100A10001 /* Sparkle */,
 			);
 			productName = Glance;
 			productReference = C10E2F8A2D41235900AC957C /* Glance.app */;
@@ -137,6 +140,7 @@
 			packageReferences = (
 				F66C98C32D60E35600C3C53C /* XCRemoteSwiftPackageReference "TOMLDecoder" */,
 				F6B514022D6C5F3400DFEB43 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				F6A100012D7B000100A10001 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C10E2F8B2D41235900AC957C /* Products */;
@@ -397,6 +401,14 @@
 				minimumVersion = 2.4.1;
 			};
 		};
+		F6A100012D7B000100A10001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.4;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -409,6 +421,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F6B514022D6C5F3400DFEB43 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
+		};
+		F6A100022D7B000100A10001 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F6A100012D7B000100A10001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
