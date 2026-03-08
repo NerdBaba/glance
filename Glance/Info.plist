@@ -9,9 +9,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Glance uses your location to show local weather in the status bar.</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>SUPublicEDKey</key>
 	<string>xana+i2P74Z6YWL8lqsY23+g7Y3lT4BqWVCV8gS4jd4=</string>
 	<key>SUFeedURL</key>
