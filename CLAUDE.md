@@ -2,7 +2,7 @@
 
 Modern macOS status bar replacement with liquid glass UI, native Spaces support, and custom widgets. Originally forked from Barik, now a standalone project.
 
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Author:** azixxxxx (Azim Sukhanov)
 **GitHub:** https://github.com/azixxxxx/glance
 
@@ -420,10 +420,11 @@ blur = 4
 
 ## Release Status
 
+- **v1.1.1 released** on 2026-03-09
 - **v1.1.0 released** on 2026-03-08
 - **v1.0.0 released** on 2026-03-06
 - **GitHub:** https://github.com/azixxxxx/glance
-- **Latest Release:** https://github.com/azixxxxx/glance/releases/tag/v1.1.0
+- **Latest Release:** https://github.com/azixxxxx/glance/releases/tag/v1.1.1
 - **Homebrew:** `brew tap azixxxxx/tap && brew install --cask glance`
 - **Posted:** r/unixporn, r/opensource
 - **Pending:** r/macapps (need 10 comment karma in their subreddit first), r/mac
