@@ -5,5 +5,17 @@
         <link>https://github.com/azixxxxx/glance</link>
         <description>Glance update feed</description>
         <language>en</language>
+        <item>
+            <title>Version 1.1.1</title>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
+            <pubDate>Mon, 09 Mar 2026 11:55:47 +0300</pubDate>
+            <enclosure
+                url="https://github.com/azixxxxx/glance/releases/download/v1.1.1/Glance-1.1.1.zip"
+                type="application/octet-stream"
+                sparkle:edSignature="AawcRta+2CcTXEkTJfMbwVP0ja7aVvYgRzmEXZDAwZ7w0MAtyzD0+FtkPh8JmME5jqgClWCBr/18Mp20K/5BAg=="
+                length="6378980"
+            />
+        </item>
     </channel>
 </rss>

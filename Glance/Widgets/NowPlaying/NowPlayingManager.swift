@@ -202,6 +202,9 @@ final class NowPlayingManager: ObservableObject {
 
     @Published private(set) var nowPlaying: NowPlayingSong?
     private var cancellable: AnyCancellable?
+    private var consecutiveNilCount = 0
+    /// Number of consecutive nil responses before clearing the widget.
+    private let nilThreshold = 10
 
     private init() {
         cancellable = Timer.publish(every: 0.3, on: .main, in: .common)
@@ -216,7 +219,16 @@ final class NowPlayingManager: ObservableObject {
         DispatchQueue.global(qos: .background).async {
             let song = NowPlayingProvider.fetchNowPlaying()
             DispatchQueue.main.async { [weak self] in
-                self?.nowPlaying = song
+                guard let self = self else { return }
+                if let song = song {
+                    self.consecutiveNilCount = 0
+                    self.nowPlaying = song
+                } else {
+                    self.consecutiveNilCount += 1
+                    if self.consecutiveNilCount >= self.nilThreshold {
+                        self.nowPlaying = nil
+                    }
+                }
             }
         }
     }

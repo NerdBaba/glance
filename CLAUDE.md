@@ -2,7 +2,7 @@
 
 Modern macOS status bar replacement with liquid glass UI, native Spaces support, and custom widgets. Originally forked from Barik, now a standalone project.
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Author:** azixxxxx (Azim Sukhanov)
 **GitHub:** https://github.com/azixxxxx/glance
 
@@ -33,7 +33,7 @@ open /Applications/Glance.app
 
 # Build DMG + ZIP for distribution
 ./scripts/build-dmg.sh
-# Output: release/Glance-1.0.0.dmg + release/Glance-1.0.0.zip
+# Output: release/Glance-X.Y.Z.dmg + release/Glance-X.Y.Z.zip
 ```
 
 **Important:** Always `rm -rf` before `cp -R`. Otherwise the old binary may persist even after rebuilding.
@@ -42,8 +42,8 @@ open /Applications/Glance.app
 
 ```
 Glance/
-├── Info.plist                          # LSUIElement=true, v1.0.0
-├── AppDelegate.swift                   # App lifecycle, tray icon, login item
+├── Info.plist                          # LSUIElement=true, Sparkle keys, Location keys
+├── AppDelegate.swift                   # App lifecycle, tray icon, login item, Sparkle updater
 ├── GlanceApp.swift                     # SwiftUI app entry (@main)
 ├── Constants.swift                     # App constants
 ├── Config/
@@ -269,8 +269,9 @@ Popups add a dark tint between blur and highlight for text readability.
 
 ### Tray Icon (AppDelegate)
 - `NSStatusItem` with SF Symbol `eye` (template image)
-- Menu: Settings... (Cmd+,), Launch at Login toggle, Quit (Cmd+Q)
+- Menu: Settings... (Cmd+,), Check for Updates... (Sparkle), Launch at Login toggle, Quit (Cmd+Q)
 - Login item via `SMAppService.mainApp` (macOS 13+)
+- `SPUStandardUpdaterController` for Sparkle auto-updates
 
 ### Onboarding
 - `OnboardingWindowController` shows on first launch
@@ -330,6 +331,14 @@ withUnsafeMutablePointer(to: &name) { ptr in
 }
 if let cfName = name?.takeUnretainedValue() { ... }
 ```
+
+### CLAuthorizationStatus on macOS
+
+On macOS, `CLAuthorizationStatus` uses `.authorized` (not `.authorizedWhenInUse` which is iOS-only). `requestWhenInUseAuthorization()` doesn't exist on macOS — `startUpdatingLocation()` triggers the system permission prompt automatically. The Weather widget handles this with an IP geolocation fallback via `ipapi.co/json/` when Location is denied.
+
+### Xcode Auto-Discovery of Swift Files
+
+Xcode with `PBXFileSystemSynchronizedRootGroup` (used in this project) automatically compiles ALL `.swift` files in the `Glance/` directory tree. Files that aren't in `project.pbxproj` explicitly are still compiled. This means unfinished/WIP `.swift` files will cause build errors. **Workaround:** move them out of the directory before building (see Release Process step 2).
 
 ### Calendar Today Contrast
 
@@ -411,9 +420,11 @@ blur = 4
 
 ## Release Status
 
+- **v1.1.0 released** on 2026-03-08
 - **v1.0.0 released** on 2026-03-06
 - **GitHub:** https://github.com/azixxxxx/glance
-- **Release:** https://github.com/azixxxxx/glance/releases/tag/v1.0.0
+- **Latest Release:** https://github.com/azixxxxx/glance/releases/tag/v1.1.0
+- **Homebrew:** `brew tap azixxxxx/tap && brew install --cask glance`
 - **Posted:** r/unixporn, r/opensource
 - **Pending:** r/macapps (need 10 comment karma in their subreddit first), r/mac
 - **Future:** Product Hunt, Hacker News
@@ -425,16 +436,140 @@ blur = 4
 - Pushes windows below `barHeight + 6px` gap if they overlap the bar
 - Skips full-screen windows (`AXFullScreen` attribute) and Glance's own PID
 - Requires Accessibility permission; prompts on first launch, polls until granted
+- **Initial scan on startup:** After registering AX observers, scans all existing windows of each app via `kAXWindowsAttribute` and adjusts overlapping ones. Without this, windows restored from previous session (e.g. after reboot) stay behind the bar because no AX event fires for them.
+- **Delayed sweep (2s):** A second pass runs 2 seconds after startup to catch windows that macOS state restoration repositioned after the initial scan.
 - **Important:** macOS may revoke Accessibility after app rebuild (new binary hash). User needs to re-enable and restart the app.
 
-## TODO: Next Version (v1.0.1+)
+## Release Process
 
-### Sparkle Auto-Updates (priority)
-- Add Sparkle via SPM: `https://github.com/sparkle-project/Sparkle`
-- Does NOT require Apple Developer account — use Sparkle's own EdDSA signing
-- Steps: generate EdDSA key (`generate_keys`), create appcast.xml, host on GitHub Pages or in repo
-- Add "Check for Updates" to tray menu
-- Sign builds with `sign_update` tool from Sparkle before publishing
+When making a new release, follow ALL steps. This is the complete procedure.
+
+### 1. Bump version
+
+Update version in TWO places (both required — Xcode uses `MARKETING_VERSION`, not Info.plist):
+
+- `Glance/Info.plist` → `CFBundleShortVersionString` and `CFBundleVersion`
+- `Glance.xcodeproj/project.pbxproj` → `MARKETING_VERSION` (replace_all, appears in Debug + Release configs) and `CURRENT_PROJECT_VERSION`
+
+### 2. Move unfinished Style files before build
+
+Xcode auto-discovers `.swift` files. Unfinished Style files in `Glance/Styles/` (GlassStyle.swift, MinimalStyle.swift, SolidStyle.swift, SystemStyle.swift) will cause build errors. Move them before building:
+
+```bash
+mkdir -p /tmp/glance-styles-backup
+mv Glance/Styles/GlassStyle.swift Glance/Styles/MinimalStyle.swift \
+   Glance/Styles/SolidStyle.swift Glance/Styles/SystemStyle.swift \
+   /tmp/glance-styles-backup/
+```
+
+Restore after build:
+```bash
+cp /tmp/glance-styles-backup/*.swift Glance/Styles/
+```
+
+### 3. Build DMG + ZIP
+
+```bash
+./scripts/build-dmg.sh
+# Output: release/Glance-X.Y.Z.dmg + release/Glance-X.Y.Z.zip
+```
+
+Verify the version in the output matches what you set in step 1.
+
+### 4. Sign ZIP for Sparkle
+
+```bash
+./build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update release/Glance-X.Y.Z.zip
+```
+
+**Note:** This triggers a macOS Keychain access popup. The user MUST approve it in the GUI. It will NOT work in a headless/CLI-only environment. The output looks like:
+
+```
+sparkle:edSignature="<base64>" length="<bytes>"
+```
+
+Save this output for step 5.
+
+**If the tool hangs:** it's waiting for Keychain approval. Tell the user to approve it.
+
+### 5. Update appcast.xml
+
+Add a new `<item>` inside `<channel>` with the signature from step 4:
+
+```xml
+<item>
+    <title>Version X.Y.Z</title>
+    <sparkle:version>BUILD_NUMBER</sparkle:version>
+    <sparkle:shortVersionString>X.Y.Z</sparkle:shortVersionString>
+    <pubDate>DATE_RFC2822</pubDate>
+    <enclosure
+        url="https://github.com/azixxxxx/glance/releases/download/vX.Y.Z/Glance-X.Y.Z.zip"
+        type="application/octet-stream"
+        sparkle:edSignature="SIGNATURE_FROM_STEP_4"
+        length="FILE_SIZE_BYTES"
+    />
+</item>
+```
+
+Get the RFC 2822 date: `date -R`
+Get file size: `stat -f%z release/Glance-X.Y.Z.zip` (macOS) or `wc -c < release/Glance-X.Y.Z.zip`
+
+### 6. Commit and push
+
+```bash
+git add -A  # or specific files
+git commit -m "chore: bump version to X.Y.Z"
+git push origin main
+```
+
+### 7. Create GitHub Release
+
+```bash
+gh release create vX.Y.Z \
+  release/Glance-X.Y.Z.dmg \
+  release/Glance-X.Y.Z.zip \
+  --repo azixxxxx/glance \
+  --title "Glance vX.Y.Z" \
+  --notes "Release notes here"
+```
+
+### 8. Update Homebrew cask
+
+```bash
+# Get SHA256 of the new ZIP
+shasum -a 256 release/Glance-X.Y.Z.zip
+
+# Clone and update the tap
+gh repo clone azixxxxx/homebrew-tap /tmp/homebrew-tap
+# Edit /tmp/homebrew-tap/Casks/glance.rb — update version and sha256
+cd /tmp/homebrew-tap && git add -A && git commit -m "chore: bump Glance cask to vX.Y.Z" && git push origin main
+```
+
+### 9. Deploy locally
+
+```bash
+pkill -x Glance; sleep 2
+rm -rf /Applications/Glance.app
+cp -R build/Build/Products/Release/Glance.app /Applications/Glance.app
+open /Applications/Glance.app
+```
+
+### 10. Update CLAUDE.md
+
+Update the "Release Status" section with the new version and date.
+
+## Sparkle Auto-Updates
+
+- **Sparkle 2.9.0** integrated via SPM
+- EdDSA signing key stored in macOS Keychain (generated via `generate_keys`)
+- Public key in Info.plist: `SUPublicEDKey`
+- Feed URL: `https://raw.githubusercontent.com/azixxxxx/glance/main/appcast.xml`
+- `SUEnableAutomaticChecks = true` — checks on app launch
+- "Check for Updates..." menu item in tray via `SPUStandardUpdaterController`
+- `sign_update` tool at: `build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update`
+- `generate_keys` tool at: `build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys`
+
+## TODO: Next Version
 
 ### Graceful Degradation for CGS APIs
 - All CGS calls are isolated in `NativeSpacesProvider.swift`
@@ -443,13 +578,7 @@ blur = 4
 - TODO: wrap CGS calls in error handling so widget shows "Spaces unavailable" instead of crashing if API breaks
 - `CGWindowListCopyWindowInfo` (public API) is already used for windows — won't break
 
-### Completed Features (v1.1.0-dev)
-- ~~Homebrew cask~~ — Done: `brew tap azixxxxx/tap && brew install --cask glance`
-- ~~Custom script widgets~~ — Done: `script.<name>` with `command` + `interval` config
-- ~~Weather widget~~ — Done: OpenMeteo API, CoreLocation, 5-day forecast popup
-- ~~CPU/RAM monitor widget~~ — Done: host_statistics + vm_statistics64, usage bars popup
-
-### Other Planned Features
+### Planned Features
 - Keyboard shortcut for show/hide bar (global hotkey)
 - Drag & drop widget reordering in Settings GUI
 - Multi-monitor support
@@ -467,3 +596,9 @@ blur = 4
 - **Crash on boot (data race)?** `NativeSpacesProvider` uses `NSLock` to prevent concurrent Dictionary mutation.
 - **Icon not showing?** Use `NSApp.applicationIconImage`, not `NSImage(named: "AppIcon")`.
 - **Onboarding not showing?** Check `defaults read com.azimsukhanov.glance hasSeenOnboarding`. Reset with `defaults delete`.
+- **Weather widget not showing?** Check Info.plist has `NSLocationUsageDescription` and `NSLocationWhenInUseUsageDescription`. Without these, CoreLocation silently denies, coordinates are never fetched, and the widget renders nothing. If Location is denied, the IP fallback (`ipapi.co`) should kick in.
+- **Build fails with BarStyleProvider errors?** Unfinished Style files (GlassStyle.swift, etc.) are being auto-discovered by Xcode. Move them out before building (see Release Process step 2).
+- **`sign_update` hangs?** It's waiting for macOS Keychain access popup. User must approve in GUI. Won't work in headless environments.
+- **Windows overlap bar after reboot?** WindowGapManager initial scan should handle this. If it doesn't, check that Accessibility permission is still granted (macOS revokes after binary hash change).
+- **Sparkle "Check for Updates" shows error?** Verify `appcast.xml` is pushed to `main` branch and accessible at `https://raw.githubusercontent.com/azixxxxx/glance/main/appcast.xml`.
+- **Version not bumped in build?** Xcode uses `MARKETING_VERSION` from `project.pbxproj`, not from `Info.plist`. Must update BOTH.
