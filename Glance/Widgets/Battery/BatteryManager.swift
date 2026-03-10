@@ -25,10 +25,11 @@ class BatteryManager: ObservableObject {
     }
 
     private func startMonitoring() {
-        // Update every 1 second.
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
+        // Update every 30 seconds — battery level changes roughly once per minute.
+        timer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) {
             [weak self] _ in
             self?.updateBatteryStatus()
+            self?.updateBatteryHealth()
         }
         updateBatteryStatus()
         updateBatteryHealth()
@@ -116,11 +117,6 @@ class BatteryManager: ObservableObject {
                 // Temperature is in 1/100 degree Celsius
                 self.temperature = Double(temp) / 100.0
             }
-        }
-
-        // Refresh health every 30 seconds (separate timer not needed, called once)
-        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 30) { [weak self] in
-            self?.updateBatteryHealth()
         }
     }
 

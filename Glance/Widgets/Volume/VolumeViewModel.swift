@@ -1,30 +1,130 @@
 import AudioToolbox
 import Foundation
 
+/// C callback for CoreAudio property changes — forwards to VolumeViewModel.
+private func audioPropertyListener(
+    _ objectID: AudioObjectID,
+    _ numberAddresses: UInt32,
+    _ addresses: UnsafePointer<AudioObjectPropertyAddress>,
+    _ clientData: UnsafeMutableRawPointer?
+) -> OSStatus {
+    guard let clientData = clientData else { return noErr }
+    let vm = Unmanaged<VolumeViewModel>.fromOpaque(clientData).takeUnretainedValue()
+    for i in 0..<Int(numberAddresses) {
+        let selector = addresses[i].mSelector
+        if selector == kAudioHardwareServiceDeviceProperty_VirtualMainVolume
+            || selector == kAudioDevicePropertyMute
+        {
+            DispatchQueue.main.async { vm.updateVolume() }
+        } else if selector == kAudioHardwarePropertyDefaultOutputDevice {
+            DispatchQueue.main.async {
+                // Device changed — re-register listeners on new device
+                vm.reregisterDeviceListeners()
+                vm.updateVolume()
+                vm.updateOutputDeviceName()
+            }
+        }
+    }
+    return noErr
+}
+
 final class VolumeViewModel: ObservableObject {
     @Published var volume: Float = 0.0
     @Published var isMuted: Bool = false
     @Published var outputDeviceName: String = ""
 
-    private var timer: Timer?
+    private var currentListeningDevice: AudioObjectID = 0
+    private var refcon: UnsafeMutableRawPointer?
 
     init() {
+        refcon = Unmanaged.passUnretained(self).toOpaque()
         updateVolume()
         updateOutputDeviceName()
-        startMonitoring()
+        addDefaultDeviceListener()
+        if let deviceID = getDefaultOutputDevice() {
+            addDeviceListeners(deviceID)
+        }
     }
 
     deinit {
-        timer?.invalidate()
+        removeDefaultDeviceListener()
+        removeDeviceListeners()
     }
 
-    private func startMonitoring() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) {
-            [weak self] _ in
-            self?.updateVolume()
-            self?.updateOutputDeviceName()
+    // MARK: - CoreAudio Listeners (event-driven, no polling)
+
+    private func addDefaultDeviceListener() {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectAddPropertyListener(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address, audioPropertyListener, refcon
+        )
+    }
+
+    private func removeDefaultDeviceListener() {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectRemovePropertyListener(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address, audioPropertyListener, refcon
+        )
+    }
+
+    private func addDeviceListeners(_ deviceID: AudioObjectID) {
+        currentListeningDevice = deviceID
+
+        var volumeAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectAddPropertyListener(deviceID, &volumeAddr, audioPropertyListener, refcon)
+
+        var muteAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyMute,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectAddPropertyListener(deviceID, &muteAddr, audioPropertyListener, refcon)
+    }
+
+    private func removeDeviceListeners() {
+        guard currentListeningDevice != 0 else { return }
+        let deviceID = currentListeningDevice
+
+        var volumeAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectRemovePropertyListener(deviceID, &volumeAddr, audioPropertyListener, refcon)
+
+        var muteAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyMute,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectRemovePropertyListener(deviceID, &muteAddr, audioPropertyListener, refcon)
+
+        currentListeningDevice = 0
+    }
+
+    /// Called when default output device changes — re-register volume/mute listeners on new device.
+    func reregisterDeviceListeners() {
+        removeDeviceListeners()
+        if let deviceID = getDefaultOutputDevice() {
+            addDeviceListeners(deviceID)
         }
     }
+
+    // MARK: - Read State
 
     func updateVolume() {
         guard let deviceID = getDefaultOutputDevice() else { return }
@@ -39,10 +139,8 @@ final class VolumeViewModel: ObservableObject {
 
         let status = AudioObjectGetPropertyData(
             deviceID, &address, 0, nil, &size, &volume)
-        if status == noErr {
-            DispatchQueue.main.async {
-                self.volume = volume
-            }
+        if status == noErr, self.volume != volume {
+            self.volume = volume
         }
 
         var mute: UInt32 = 0
@@ -56,11 +154,14 @@ final class VolumeViewModel: ObservableObject {
         let muteStatus = AudioObjectGetPropertyData(
             deviceID, &muteAddress, 0, nil, &muteSize, &mute)
         if muteStatus == noErr {
-            DispatchQueue.main.async {
-                self.isMuted = mute != 0
+            let newMuted = mute != 0
+            if self.isMuted != newMuted {
+                self.isMuted = newMuted
             }
         }
     }
+
+    // MARK: - Set State
 
     func setVolume(_ newVolume: Float) {
         guard let deviceID = getDefaultOutputDevice() else { return }
@@ -74,9 +175,7 @@ final class VolumeViewModel: ObservableObject {
         )
 
         AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &vol)
-        DispatchQueue.main.async {
-            self.volume = vol
-        }
+        self.volume = vol
     }
 
     func toggleMute() {
@@ -91,14 +190,14 @@ final class VolumeViewModel: ObservableObject {
         )
 
         AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &mute)
-        DispatchQueue.main.async {
-            self.isMuted = !self.isMuted
-        }
+        self.isMuted = !self.isMuted
     }
 
     func adjustVolume(by delta: Float) {
         setVolume(volume + delta)
     }
+
+    // MARK: - Device Info
 
     private func getDefaultOutputDevice() -> AudioObjectID? {
         var deviceID = AudioObjectID(0)
@@ -151,7 +250,7 @@ final class VolumeViewModel: ObservableObject {
         }
         if status == noErr, let cfName = name?.takeUnretainedValue() {
             let deviceName = cfName as String
-            DispatchQueue.main.async {
+            if self.outputDeviceName != deviceName {
                 self.outputDeviceName = deviceName
             }
         }

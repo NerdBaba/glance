@@ -138,10 +138,14 @@ enum MusicApp: String, CaseIterable {
 
 /// Provides functionality to fetch the now playing song and execute playback commands.
 final class NowPlayingProvider {
+    /// Cache of compiled AppleScripts — compilation is expensive, execution is cheap.
+    private static var compiledScripts: [String: NSAppleScript] = [:]
 
     /// Returns the current playing song from any supported music application.
+    /// Only queries apps that are actually running.
     static func fetchNowPlaying() -> NowPlayingSong? {
         for app in MusicApp.allCases {
+            guard isAppRunning(app) else { continue }
             if let song = fetchNowPlaying(from: app) {
                 return song
             }
@@ -151,7 +155,7 @@ final class NowPlayingProvider {
 
     /// Returns the now playing song for a specific music application.
     private static func fetchNowPlaying(from app: MusicApp) -> NowPlayingSong? {
-        guard let output = runAppleScript(app.nowPlayingScript),
+        guard let output = runCompiledAppleScript(app.nowPlayingScript),
             output != "stopped"
         else {
             return nil
@@ -166,20 +170,31 @@ final class NowPlayingProvider {
         }
     }
 
-    /// Executes the provided AppleScript and returns the trimmed result.
+    /// Executes a pre-compiled AppleScript. Compiles on first use, caches for reuse.
     @discardableResult
-    static func runAppleScript(_ script: String) -> String? {
-        guard let appleScript = NSAppleScript(source: script) else {
-            return nil
+    private static func runCompiledAppleScript(_ script: String) -> String? {
+        let compiled: NSAppleScript
+        if let cached = compiledScripts[script] {
+            compiled = cached
+        } else {
+            guard let newScript = NSAppleScript(source: script) else { return nil }
+            var compileError: NSDictionary?
+            newScript.compileAndReturnError(&compileError)
+            if compileError != nil { return nil }
+            compiledScripts[script] = newScript
+            compiled = newScript
         }
         var error: NSDictionary?
-        let outputDescriptor = appleScript.executeAndReturnError(&error)
-        if let error = error {
-            print("AppleScript Error: \(error)")
-            return nil
-        }
+        let outputDescriptor = compiled.executeAndReturnError(&error)
+        if error != nil { return nil }
         return outputDescriptor.stringValue?.trimmingCharacters(
             in: .whitespacesAndNewlines)
+    }
+
+    /// Executes an ad-hoc AppleScript (for one-off commands like play/pause).
+    @discardableResult
+    static func runAppleScript(_ script: String) -> String? {
+        runCompiledAppleScript(script)
     }
 
     /// Returns the first running music application.
@@ -201,32 +216,81 @@ final class NowPlayingManager: ObservableObject {
     static let shared = NowPlayingManager()
 
     @Published private(set) var nowPlaying: NowPlayingSong?
-    private var cancellable: AnyCancellable?
+    private var timer: Timer?
     private var consecutiveNilCount = 0
     /// Number of consecutive nil responses before clearing the widget.
     private let nilThreshold = 10
+    /// Consecutive idle polls (no music app running) before slowing down.
+    private var consecutiveIdleCount = 0
+
+    /// Polling interval: 1s when playing, 3s when paused/stopped, 5s when no music app running.
+    private var currentInterval: TimeInterval = 1.0
 
     private init() {
-        cancellable = Timer.publish(every: 0.3, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                self?.updateNowPlaying()
-            }
+        scheduleTimer(interval: 1.0)
+    }
+
+    deinit {
+        timer?.invalidate()
+    }
+
+    private func scheduleTimer(interval: TimeInterval) {
+        timer?.invalidate()
+        currentInterval = interval
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            self?.updateNowPlaying()
+        }
+        // Fire immediately on first schedule
+        updateNowPlaying()
     }
 
     /// Updates the now playing song asynchronously.
     private func updateNowPlaying() {
-        DispatchQueue.global(qos: .background).async {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+
+            // Fast check: is any music app even running?
+            let anyMusicAppRunning = MusicApp.allCases.contains { NowPlayingProvider.isAppRunning($0) }
+
+            if !anyMusicAppRunning {
+                DispatchQueue.main.async {
+                    self.consecutiveIdleCount += 1
+                    self.consecutiveNilCount += 1
+                    if self.consecutiveNilCount >= self.nilThreshold {
+                        self.nowPlaying = nil
+                    }
+                    // Slow down to 5s when no music app is running
+                    let desiredInterval: TimeInterval = 5.0
+                    if self.currentInterval != desiredInterval {
+                        self.scheduleTimer(interval: desiredInterval)
+                    }
+                }
+                return
+            }
+
             let song = NowPlayingProvider.fetchNowPlaying()
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
+            DispatchQueue.main.async {
+                self.consecutiveIdleCount = 0
                 if let song = song {
                     self.consecutiveNilCount = 0
-                    self.nowPlaying = song
+                    // Only publish if song data actually changed
+                    if self.nowPlaying != song {
+                        self.nowPlaying = song
+                    }
+                    // 3s when playing, 5s when paused — AppleScript IPC is expensive
+                    let desiredInterval: TimeInterval = song.state == .playing ? 3.0 : 5.0
+                    if self.currentInterval != desiredInterval {
+                        self.scheduleTimer(interval: desiredInterval)
+                    }
                 } else {
                     self.consecutiveNilCount += 1
                     if self.consecutiveNilCount >= self.nilThreshold {
                         self.nowPlaying = nil
+                    }
+                    // Music app running but nothing playing — 5s
+                    let desiredInterval: TimeInterval = 5.0
+                    if self.currentInterval != desiredInterval {
+                        self.scheduleTimer(interval: desiredInterval)
                     }
                 }
             }

@@ -35,7 +35,8 @@ class CalendarManager: ObservableObject {
     }
 
     private func startMonitoring() {
-        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) {
+        // Calendar events don't change every 5 seconds — 60s is plenty
+        timer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) {
             [weak self] _ in
             self?.fetchTodaysEvents()
             self?.fetchTomorrowsEvents()

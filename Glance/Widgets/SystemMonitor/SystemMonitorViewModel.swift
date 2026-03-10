@@ -21,7 +21,7 @@ final class SystemMonitorViewModel: ObservableObject {
     init() {
         prevCPUInfo = readCPUTicks()
         update()
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             self?.update()
         }
     }

@@ -126,6 +126,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Configures and displays the background and menu bar panels.
     private func setupPanels() {
         guard let screenFrame = NSScreen.main?.frame else { return }
+        let barHeight = ConfigManager.shared.config.experimental.foreground.resolveHeight()
+        // Menu bar panel: only covers the bar area at the top of the screen
+        let menuBarFrame = NSRect(
+            x: screenFrame.origin.x,
+            y: screenFrame.origin.y + screenFrame.size.height - barHeight,
+            width: screenFrame.size.width,
+            height: barHeight
+        )
         setupPanel(
             &backgroundPanel,
             frame: screenFrame,
@@ -133,7 +141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hostingRootView: AnyView(BackgroundView()))
         setupPanel(
             &menuBarPanel,
-            frame: screenFrame,
+            frame: menuBarFrame,
             level: Int(CGWindowLevelForKey(.backstopMenu)),
             hostingRootView: AnyView(MenuBarView()))
     }

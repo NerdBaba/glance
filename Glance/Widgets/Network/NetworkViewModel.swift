@@ -158,7 +158,8 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
     // MARK: — Updating Wi‑Fi information via CoreWLAN.
 
     private func startWiFiMonitoring() {
-        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) {
+        // SSID/RSSI/channel don't change rapidly — 10s is enough
+        timer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) {
             [weak self] _ in
             self?.updateWiFiInfo()
         }
@@ -216,7 +217,7 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
         previousBytesIn = bytesIn
         previousBytesOut = bytesOut
 
-        speedTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) {
+        speedTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) {
             [weak self] _ in
             self?.updateNetworkSpeed()
         }
@@ -224,7 +225,7 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
 
     private func updateNetworkSpeed() {
         let (bytesIn, bytesOut) = getNetworkBytes()
-        let interval: Double = 2.0
+        let interval: Double = 3.0
 
         let deltaIn = bytesIn >= previousBytesIn ? bytesIn - previousBytesIn : 0
         let deltaOut = bytesOut >= previousBytesOut ? bytesOut - previousBytesOut : 0

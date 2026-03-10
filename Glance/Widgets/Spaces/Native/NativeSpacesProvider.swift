@@ -26,13 +26,39 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     /// Serializes access to windowCache — called from concurrent GCD threads.
     private let lock = NSLock()
 
-    /// Set of regular (foreground) app names, rebuilt on each poll.
-    private func regularAppNames() -> Set<String> {
-        Set(
+    /// Cached set of regular app names — refreshed on app launch/terminate.
+    private var cachedRegularAppNames: Set<String> = []
+    private var appObservers: [NSObjectProtocol] = []
+
+    init() {
+        refreshRegularAppNames()
+        let center = NSWorkspace.shared.notificationCenter
+        appObservers.append(center.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification,
+            object: nil, queue: nil
+        ) { [weak self] _ in self?.refreshRegularAppNames() })
+        appObservers.append(center.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil, queue: nil
+        ) { [weak self] _ in self?.refreshRegularAppNames() })
+    }
+
+    deinit {
+        let center = NSWorkspace.shared.notificationCenter
+        for obs in appObservers { center.removeObserver(obs) }
+    }
+
+    private func refreshRegularAppNames() {
+        cachedRegularAppNames = Set(
             NSWorkspace.shared.runningApplications
                 .filter { $0.activationPolicy == .regular }
                 .compactMap { $0.localizedName }
         )
+    }
+
+    /// Set of regular (foreground) app names — uses cache, refreshed on app events.
+    private func regularAppNames() -> Set<String> {
+        cachedRegularAppNames
     }
 
     func getSpacesWithWindows() -> [NativeSpace]? {

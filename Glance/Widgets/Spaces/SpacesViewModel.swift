@@ -6,6 +6,9 @@ class SpacesViewModel: ObservableObject {
     @Published var spaces: [AnySpace] = []
     private var timer: Timer?
     private var provider: AnySpacesProvider?
+    private var appLaunchObserver: NSObjectProtocol?
+    private var appTerminateObserver: NSObjectProtocol?
+    private var activateObserver: NSObjectProtocol?
 
     init() {
         let runningApps = NSWorkspace.shared.runningApplications.compactMap {
@@ -26,31 +29,62 @@ class SpacesViewModel: ObservableObject {
     }
 
     private func startMonitoring() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) {
+        // Poll at 1s — spaces don't change that fast; event-driven refresh handles responsiveness
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
             [weak self] _ in
             self?.loadSpaces()
         }
+
+        // Immediately refresh on app activation (space switch) for responsiveness
+        let center = NSWorkspace.shared.notificationCenter
+        activateObserver = center.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.loadSpaces()
+        }
+        appLaunchObserver = center.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.loadSpaces()
+        }
+        appTerminateObserver = center.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.loadSpaces()
+        }
+
         loadSpaces()
     }
 
     private func stopMonitoring() {
         timer?.invalidate()
         timer = nil
+        let center = NSWorkspace.shared.notificationCenter
+        if let obs = activateObserver { center.removeObserver(obs) }
+        if let obs = appLaunchObserver { center.removeObserver(obs) }
+        if let obs = appTerminateObserver { center.removeObserver(obs) }
     }
 
     private func loadSpaces() {
-        DispatchQueue.global(qos: .background).async {
-            guard let provider = self.provider,
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self,
+                let provider = self.provider,
                 let spaces = provider.getSpacesWithWindows()
             else {
                 DispatchQueue.main.async {
-                    self.spaces = []
+                    self?.spaces = []
                 }
                 return
             }
             let sortedSpaces = spaces.sorted { $0.id < $1.id }
             DispatchQueue.main.async {
-                self.spaces = sortedSpaces
+                // Only publish if spaces actually changed — avoids unnecessary SwiftUI re-renders
+                if self.spaces != sortedSpaces {
+                    self.spaces = sortedSpaces
+                }
             }
         }
     }

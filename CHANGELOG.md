@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.2
+
+### Performance
+- Reduced idle CPU usage from ~20% to under 1% (without music playing) and ~2.6% average (with Spotify)
+- **Spaces widget**: polling reduced from 100ms to 1s with event-driven refresh on app switch/launch/terminate; cached app name lookups instead of rebuilding every poll
+- **Now Playing widget**: adaptive polling (3s playing, 5s paused/idle) instead of constant 300ms; compiled AppleScript caching eliminates repeated script compilation; skips AppleScript entirely when no music app is running
+- **Volume widget**: replaced 500ms polling timer with zero-cost CoreAudio property listeners (event-driven)
+- **Battery widget**: polling reduced from 1s to 30s; removed redundant recursive scheduling
+- **Calendar**: polling reduced from 5s to 60s
+- **Network**: WiFi info polling reduced from 5s to 10s; speed monitoring from 2s to 3s
+- **System Monitor**: polling reduced from 2s to 3s
+- **Menu bar panel**: constrained from full-screen to bar-height only, reducing SwiftUI layout area by ~20x
+- All view models now diff-check data before publishing to avoid unnecessary SwiftUI re-renders
+
 ## 1.1.1
 
 ### Fixes

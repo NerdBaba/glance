@@ -6,6 +6,18 @@
         <description>Glance update feed</description>
         <language>en</language>
         <item>
+            <title>Version 1.1.2</title>
+            <sparkle:version>10</sparkle:version>
+            <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
+            <pubDate>Tue, 10 Mar 2026 18:52:03 +0300</pubDate>
+            <enclosure
+                url="https://github.com/azixxxxx/glance/releases/download/v1.1.2/Glance-1.1.2.zip"
+                type="application/octet-stream"
+                sparkle:edSignature="/GaB6AofaihAdCUT+/3yYUPKZGDQeIgYwqrqC9nrmAX6nMBrjFs9jefMlLRVf8BvimFLt1VvD2T/HV8T7O3oAw=="
+                length="6383569"
+            />
+        </item>
+        <item>
             <title>Version 1.1.1</title>
             <sparkle:version>3</sparkle:version>
             <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>

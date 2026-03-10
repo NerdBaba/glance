@@ -2,7 +2,7 @@
 
 Modern macOS status bar replacement with liquid glass UI, native Spaces support, and custom widgets. Originally forked from Barik, now a standalone project.
 
-**Version:** 1.1.1
+**Version:** 1.1.2
 **Author:** azixxxxx (Azim Sukhanov)
 **GitHub:** https://github.com/azixxxxx/glance
 
@@ -194,13 +194,13 @@ Popups add a dark tint between blur and highlight for text readability.
 - Click opens popup with slider + mute toggle + output device info
 - CoreAudio `AudioToolbox` API for volume get/set/mute
 - Output device name via `AudioObjectGetPropertyData` + `Unmanaged<CFString>`
-- Polls volume every 0.5s via Timer
+- **Event-driven** via `AudioObjectAddPropertyListener` — zero polling, updates only on volume/mute/device changes
 
 ### Network Widget (`Widgets/Network/`)
 - **Widget ID:** `default.network`
 - Wi-Fi + Ethernet status icons with color states
 - Popup: signal bars, RSSI, quality, band badge, live upload/download speed, local IP, channel, Tx Rate, noise
-- Speed tracking via `getifaddrs` + `if_data` byte counters (2s interval)
+- Speed tracking via `getifaddrs` + `if_data` byte counters (3s interval)
 - Local IP via `getifaddrs` scanning `en0`/`en1` for `AF_INET`
 - Tx Rate via CoreWLAN `transmitRate()`
 
@@ -217,6 +217,8 @@ Popups add a dark tint between blur and highlight for text readability.
 - Current track with album art thumbnail
 - Popup: large album art (220x220), title/artist/album, smooth progress bar with knob + glow, playback controls
 - AppleScript bridge for Music + Spotify (7 pipe-separated fields: state|title|artist|album|artworkURL|position|duration)
+- **Adaptive polling:** 3s when playing, 5s when paused, 5s when no music app running. Skips AppleScript entirely if no music app is running. Compiled AppleScript caching eliminates repeated script compilation
+- **Resilience:** `NowPlayingManager` uses a grace period — 10 consecutive nil responses before clearing `nowPlaying`. Prevents widget from disappearing due to transient AppleScript failures (Mac sleep, Spotify restart, temporary Automation permission issues)
 
 ### Active App Widget (`Widgets/ActiveApp/`)
 - **Widget ID:** `default.activeapp`
@@ -249,7 +251,7 @@ Popups add a dark tint between blur and highlight for text readability.
 - Click opens popup: CPU/RAM usage bars with color thresholds, memory details (used/total/pressure)
 - CPU via `host_statistics` (HOST_CPU_LOAD_INFO) — delta between ticks
 - Memory via `host_statistics64` (VM_INFO64) — active + wired + compressed
-- Polls every 2 seconds
+- Polls every 3 seconds
 - Color thresholds: green < 50/70%, yellow < 80/85%, red above
 
 ### Script Widget (`Widgets/Script/`)
@@ -284,6 +286,19 @@ Popups add a dark tint between blur and highlight for text readability.
 - Tabs: General (preset picker, appearance), Widgets, Spaces, Time, About
 - About tab: version, "Made by azixxxxx", GitHub link
 
+### What's New / Changelog System
+- `VersionChecker` tracks installed version in `~/Library/Application Support/glance/current_glance_version`
+- On launch, `AppDelegate` compares current vs saved version. If different → posts `ShowWhatsNewBanner` notification
+- `SystemBannerWidget` shows green "What's New" button in bar → opens `ChangelogPopup`
+- `ChangelogPopup` fetches `CHANGELOG.md` from `https://raw.githubusercontent.com/azixxxxx/glance/main/CHANGELOG.md`
+- Extracts section for current version (matches `## X.Y.Z` header), displays as Markdown
+- **Important:** When releasing a new version, ALWAYS update `CHANGELOG.md` with the new version's entry BEFORE creating the release. Otherwise the popup shows "Changelog for vX.Y.Z not found"
+
+### Dual Update System
+- **Sparkle** (primary): Checks `appcast.xml` on GitHub for EdDSA-signed updates. Handles download + install via native macOS update flow. Triggered by "Check for Updates..." menu item and automatic checks on launch
+- **AppUpdater** (fallback): Polls GitHub API (`/repos/azixxxxx/glance/releases/latest`) every 30 minutes. Shows "Update" button in bar if newer version exists. Downloads ZIP, unzips, replaces `/Applications/Glance.app` via shell script
+- Both systems coexist — Sparkle is preferred for signed updates, AppUpdater catches cases where Sparkle fails
+
 ### Distribution
 - `scripts/build-dmg.sh` — builds Release, creates DMG + ZIP in `release/`
 - DMG includes Applications symlink for drag-and-drop install
@@ -311,7 +326,7 @@ private func CGSCopySpacesForWindows(_ conn: Int, _ mask: Int, _ windowIDs: CFAr
 
 ### Thread Safety (NativeSpacesProvider)
 
-`SpacesViewModel` polls every 100ms on `DispatchQueue.global(.background)`. Multiple calls can overlap. `NativeSpacesProvider.getSpacesWithWindows()` uses `NSLock` to serialize access to `windowCache` dictionary (Swift Dictionary is not thread-safe).
+`SpacesViewModel` polls every 1s on `DispatchQueue.global(.userInitiated)` with additional event-driven refresh via `NSWorkspace` notifications (app activate/launch/terminate). `NativeSpacesProvider.getSpacesWithWindows()` uses `NSLock` to serialize access to `windowCache` dictionary (Swift Dictionary is not thread-safe). Regular app names are cached and refreshed only on app launch/terminate events.
 
 ### Race Condition During Space Transitions
 
@@ -339,6 +354,10 @@ On macOS, `CLAuthorizationStatus` uses `.authorized` (not `.authorizedWhenInUse`
 ### Xcode Auto-Discovery of Swift Files
 
 Xcode with `PBXFileSystemSynchronizedRootGroup` (used in this project) automatically compiles ALL `.swift` files in the `Glance/` directory tree. Files that aren't in `project.pbxproj` explicitly are still compiled. This means unfinished/WIP `.swift` files will cause build errors. **Workaround:** move them out of the directory before building (see Release Process step 2).
+
+### AppleScript Transient Failures
+
+AppleScript calls to Spotify/Music can return nil temporarily after Mac sleep/wake, app restart, or Automation permission re-prompts. The `NowPlayingManager` handles this with a grace period (`consecutiveNilCount` / `nilThreshold = 10`). Only after 10 consecutive nil responses (~3 seconds) does it clear `nowPlaying`. This prevents the widget from flickering or disappearing during brief interruptions. TCC permissions can be checked at `~/Library/Application Support/com.apple.TCC/TCC.db` — `auth_value=2` means granted for `kTCCServiceAppleEvents`.
 
 ### Calendar Today Contrast
 
@@ -420,11 +439,12 @@ blur = 4
 
 ## Release Status
 
+- **v1.1.2 released** on 2026-03-10
 - **v1.1.1 released** on 2026-03-09
 - **v1.1.0 released** on 2026-03-08
 - **v1.0.0 released** on 2026-03-06
 - **GitHub:** https://github.com/azixxxxx/glance
-- **Latest Release:** https://github.com/azixxxxx/glance/releases/tag/v1.1.1
+- **Latest Release:** https://github.com/azixxxxx/glance/releases/tag/v1.1.2
 - **Homebrew:** `brew tap azixxxxx/tap && brew install --cask glance`
 - **Posted:** r/unixporn, r/opensource
 - **Pending:** r/macapps (need 10 comment karma in their subreddit first), r/mac
@@ -452,7 +472,11 @@ Update version in TWO places (both required — Xcode uses `MARKETING_VERSION`, 
 - `Glance/Info.plist` → `CFBundleShortVersionString` and `CFBundleVersion`
 - `Glance.xcodeproj/project.pbxproj` → `MARKETING_VERSION` (replace_all, appears in Debug + Release configs) and `CURRENT_PROJECT_VERSION`
 
-### 2. Move unfinished Style files before build
+### 2. Update CHANGELOG.md
+
+Add a new `## X.Y.Z` section at the top of `CHANGELOG.md` with the changes for this release. This is required for the "What's New" popup to show content after users update.
+
+### 3. Move unfinished Style files before build
 
 Xcode auto-discovers `.swift` files. Unfinished Style files in `Glance/Styles/` (GlassStyle.swift, MinimalStyle.swift, SolidStyle.swift, SystemStyle.swift) will cause build errors. Move them before building:
 
@@ -468,7 +492,7 @@ Restore after build:
 cp /tmp/glance-styles-backup/*.swift Glance/Styles/
 ```
 
-### 3. Build DMG + ZIP
+### 4. Build DMG + ZIP
 
 ```bash
 ./scripts/build-dmg.sh
@@ -477,7 +501,7 @@ cp /tmp/glance-styles-backup/*.swift Glance/Styles/
 
 Verify the version in the output matches what you set in step 1.
 
-### 4. Sign ZIP for Sparkle
+### 5. Sign ZIP for Sparkle
 
 ```bash
 ./build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update release/Glance-X.Y.Z.zip
@@ -493,7 +517,7 @@ Save this output for step 5.
 
 **If the tool hangs:** it's waiting for Keychain approval. Tell the user to approve it.
 
-### 5. Update appcast.xml
+### 6. Update appcast.xml
 
 Add a new `<item>` inside `<channel>` with the signature from step 4:
 
@@ -515,7 +539,7 @@ Add a new `<item>` inside `<channel>` with the signature from step 4:
 Get the RFC 2822 date: `date -R`
 Get file size: `stat -f%z release/Glance-X.Y.Z.zip` (macOS) or `wc -c < release/Glance-X.Y.Z.zip`
 
-### 6. Commit and push
+### 7. Commit and push
 
 ```bash
 git add -A  # or specific files
@@ -523,7 +547,7 @@ git commit -m "chore: bump version to X.Y.Z"
 git push origin main
 ```
 
-### 7. Create GitHub Release
+### 8. Create GitHub Release
 
 ```bash
 gh release create vX.Y.Z \
@@ -534,7 +558,7 @@ gh release create vX.Y.Z \
   --notes "Release notes here"
 ```
 
-### 8. Update Homebrew cask
+### 9. Update Homebrew cask
 
 ```bash
 # Get SHA256 of the new ZIP
@@ -546,7 +570,7 @@ gh repo clone azixxxxx/homebrew-tap /tmp/homebrew-tap
 cd /tmp/homebrew-tap && git add -A && git commit -m "chore: bump Glance cask to vX.Y.Z" && git push origin main
 ```
 
-### 9. Deploy locally
+### 10. Deploy locally
 
 ```bash
 pkill -x Glance; sleep 2
@@ -555,7 +579,7 @@ cp -R build/Build/Products/Release/Glance.app /Applications/Glance.app
 open /Applications/Glance.app
 ```
 
-### 10. Update CLAUDE.md
+### 11. Update CLAUDE.md
 
 Update the "Release Status" section with the new version and date.
 
@@ -569,21 +593,40 @@ Update the "Release Status" section with the new version and date.
 - "Check for Updates..." menu item in tray via `SPUStandardUpdaterController`
 - `sign_update` tool at: `build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update`
 - `generate_keys` tool at: `build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys`
+- **Critical:** `appcast.xml` MUST contain `<item>` entries for Sparkle to find updates. An empty `<channel>` means Sparkle never detects any available version. Always add a new `<item>` during the release process (step 5)
 
-## TODO: Next Version
+## TODO / Roadmap
 
-### Graceful Degradation for CGS APIs
-- All CGS calls are isolated in `NativeSpacesProvider.swift`
-- No public Apple API exists for Spaces — CGS is industry standard (SketchyBar, yabai, AeroSpace all use it)
-- CGS API has been stable since macOS Catalina — low risk but not zero
-- TODO: wrap CGS calls in error handling so widget shows "Spaces unavailable" instead of crashing if API breaks
-- `CGWindowListCopyWindowInfo` (public API) is already used for windows — won't break
+### Stability & Polish
 
-### Planned Features
-- Keyboard shortcut for show/hide bar (global hotkey)
-- Drag & drop widget reordering in Settings GUI
-- Multi-monitor support
-- Localization (Russian, Chinese)
+- **CGS graceful degradation** — wrap all CGS calls in `NativeSpacesProvider.swift` in error handling so widget shows "Spaces unavailable" instead of crashing if Apple breaks the API. `CGWindowListCopyWindowInfo` (public API) is already safe
+- **NowPlaying → MediaRemote.framework** — replace AppleScript bridge with private `MRMediaRemoteGetNowPlayingInfo` API. Benefits: instant (vs 100-500ms AppleScript), supports ALL media apps (Safari, Chrome, VLC, etc.), no Automation permission needed. Used by SketchyBar, Stats, and other bar utilities. Risk: private API, may break between macOS versions
+- **Simplify update system** — currently two parallel mechanisms (Sparkle + AppUpdater). Consider removing AppUpdater and relying on Sparkle only, or making AppUpdater a fallback-only path
+- ~~**SpacesViewModel polling tuning**~~ — DONE in v1.1.2: reduced to 1s + event-driven refresh
+
+### UX Improvements
+
+- **Keyboard shortcut show/hide bar** — global hotkey to toggle bar visibility (useful for fullscreen or presentations)
+- **Drag & drop widget reordering** in Settings GUI — remove need to edit TOML manually for widget order
+- **Auto-hide bar** when fullscreen apps are active — detect `NSApplication.presentationOptions` or fullscreen window state
+- **Widget appear/disappear animations** — smooth transitions when NowPlaying or other conditional widgets show/hide (currently abrupt)
+
+### New Widgets
+
+- **Bluetooth** — connected devices list, AirPods battery level (IOBluetooth framework). Popup: device list with battery indicators
+- **Brightness** — screen brightness icon + scroll-to-adjust (like Volume widget). CoreDisplay or IOKit for brightness control
+- **Focus/DND** — indicator showing current Focus mode status. `NSDoNotDisturbEnabled` or `DNDDStatus` private framework
+- **Pomodoro** — built-in timer with work/break intervals. Click to start/pause, popup for settings
+- **Disk** — free space indicator for main volume. `FileManager.attributesOfFileSystem` or `statfs`
+- **Clipboard** — clipboard history viewer. `NSPasteboard.general` monitoring with popup showing recent items
+- **Shortcuts** — quick-launch buttons for Shortcuts.app automations or custom actions
+
+### Ecosystem & Architecture
+
+- **Plugin API / Widget SDK** — allow users to create custom widgets beyond Script. Options: SwiftUI-based plugin bundles, JSON-declarative widget definitions, or WebView-based widgets
+- **Community presets / theme sharing** — export/import preset configs as files. GitHub repo with community-contributed themes. Potential CLI: `glance theme install <url>`
+- **Multi-monitor support** — separate bar window per display, synchronized state. Requires significant refactoring of window management
+- **Localization** — i18n system for UI strings (Russian, Chinese as first targets). Currently all strings are hardcoded
 
 ## Debugging Tips
 
@@ -603,3 +646,6 @@ Update the "Release Status" section with the new version and date.
 - **Windows overlap bar after reboot?** WindowGapManager initial scan should handle this. If it doesn't, check that Accessibility permission is still granted (macOS revokes after binary hash change).
 - **Sparkle "Check for Updates" shows error?** Verify `appcast.xml` is pushed to `main` branch and accessible at `https://raw.githubusercontent.com/azixxxxx/glance/main/appcast.xml`.
 - **Version not bumped in build?** Xcode uses `MARKETING_VERSION` from `project.pbxproj`, not from `Info.plist`. Must update BOTH.
+- **Now Playing widget disappeared?** Likely transient AppleScript failure. App restart usually restores it. The grace period (10 consecutive nil = ~3s) prevents most temporary disappearances. If persistent, check Automation permissions in System Settings > Privacy > Automation for Glance → Spotify/Music.
+- **"What's New" popup is empty?** Check that `CHANGELOG.md` exists in the repo root AND has a `## X.Y.Z` section matching the current `CFBundleShortVersionString`. The popup fetches from `https://raw.githubusercontent.com/azixxxxx/glance/main/CHANGELOG.md`.
+- **Sparkle finds no updates?** Verify `appcast.xml` has at least one `<item>` entry. An empty `<channel>` means Sparkle sees no versions available.
