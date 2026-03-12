@@ -57,12 +57,16 @@ struct NowPlayingContent: View {
     var foregroundHeight: CGFloat { configManager.config.experimental.foreground.resolveHeight() }
 
     var body: some View {
+        let formation = configManager.config.experimental.foreground.formation
+        let useOwnBackground = formation == .islands
+
         Group {
-            if foregroundHeight < 38 {
+            if foregroundHeight < 38 || !useOwnBackground {
                 HStack(spacing: 8) {
                     AlbumArtView(song: song)
                     SongTextView(song: song)
                 }
+                .padding(.horizontal, 4)
             } else {
                 let h: CGFloat = foregroundHeight < 45 ? 30 : 38
                 HStack(spacing: 8) {
@@ -74,7 +78,6 @@ struct NowPlayingContent: View {
                 .widgetStyle(appearance, heightOverride: h)
             }
         }
-        // Inherits foregroundColor from parent MenuBarView
     }
 }
 
@@ -107,10 +110,12 @@ struct MeasurableNowPlayingContent: View {
 struct VisibleNowPlayingContent: View {
     let song: NowPlayingSong
     let width: CGFloat
+    @ObservedObject var configManager = ConfigManager.shared
 
     var body: some View {
+        let formation = configManager.config.experimental.foreground.formation
         NowPlayingContent(song: song)
-            .frame(width: width, height: 38)
+            .frame(width: width, height: formation == .islands ? 38 : nil)
             .animation(.smooth(duration: 0.1), value: song)
             .transition(.blurReplace)
     }

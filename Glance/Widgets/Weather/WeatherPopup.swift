@@ -7,44 +7,32 @@ struct WeatherPopup: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            // Current conditions
             if let temp = viewModel.temperature {
-                VStack(spacing: 6) {
-                    Image(systemName: WeatherViewModel.sfSymbol(for: viewModel.weatherCode))
-                        .font(.system(size: 32))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(appearance.accentColor)
+                currentConditions(temp: temp)
+            } else if viewModel.isLoading {
+                loadingState
+            } else {
+                emptyState
+            }
 
-                    Text(String(format: "%.0f°C", temp))
-                        .font(.system(size: 24, weight: .semibold))
-                        .monospacedDigit()
+            if viewModel.temperature != nil {
+                Divider().opacity(0.15)
 
-                    Text(WeatherViewModel.description(for: viewModel.weatherCode))
-                        .font(.system(size: 12))
-                        .opacity(0.6)
-
-                    if !viewModel.locationName.isEmpty {
-                        Text(viewModel.locationName)
-                            .font(.system(size: 11))
-                            .opacity(0.4)
+                VStack(alignment: .leading, spacing: 5) {
+                    if let feels = viewModel.apparentTemperature {
+                        detailRow("Feels like", String(format: "%.0f°C", feels))
+                    }
+                    detailRow("Humidity", "\(viewModel.humidity)%")
+                    detailRow("Wind", String(format: "%.0f km/h", viewModel.windSpeed))
+                    detailRow("Source", viewModel.providerDisplayName)
+                    if let updatedAt = viewModel.lastUpdatedAt {
+                        detailRow("Updated", relativeTime(updatedAt))
                     }
                 }
+                .font(.system(size: 12))
+                .opacity(0.7)
             }
 
-            Divider().opacity(0.15)
-
-            // Details
-            VStack(alignment: .leading, spacing: 5) {
-                if let feels = viewModel.apparentTemperature {
-                    detailRow("Feels like", String(format: "%.0f°C", feels))
-                }
-                detailRow("Humidity", "\(viewModel.humidity)%")
-                detailRow("Wind", String(format: "%.0f km/h", viewModel.windSpeed))
-            }
-            .font(.system(size: 12))
-            .opacity(0.7)
-
-            // 5-day forecast
             if !viewModel.forecast.isEmpty {
                 Divider().opacity(0.15)
 
@@ -55,9 +43,69 @@ struct WeatherPopup: View {
                 }
                 .font(.system(size: 12))
             }
+
+            if viewModel.isUsingApproximateLocation {
+                Divider().opacity(0.15)
+                Text("Approximate location via network")
+                    .font(.system(size: 11))
+                    .opacity(0.4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .frame(width: 180)
+        .frame(width: 200)
         .padding(22)
+    }
+
+    @ViewBuilder
+    private func currentConditions(temp: Double) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: viewModel.currentCondition.symbolName)
+                .font(.system(size: 32))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(appearance.accentColor)
+
+            Text(String(format: "%.0f°C", temp))
+                .font(.system(size: 24, weight: .semibold))
+                .monospacedDigit()
+
+            Text(viewModel.currentCondition.description)
+                .font(.system(size: 12))
+                .opacity(0.6)
+
+            if !viewModel.locationName.isEmpty {
+                Text(viewModel.locationName)
+                    .font(.system(size: 11))
+                    .opacity(0.4)
+            }
+        }
+    }
+
+    private var loadingState: some View {
+        VStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+            Text("Loading weather…")
+                .font(.system(size: 12))
+                .opacity(0.5)
+        }
+        .padding(.vertical, 8)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "cloud.slash")
+                .font(.system(size: 24))
+                .foregroundStyle(appearance.accentColor.opacity(0.7))
+            Text("Weather unavailable")
+                .font(.system(size: 13, weight: .semibold))
+            if let message = viewModel.lastErrorMessage {
+                Text(message)
+                    .font(.system(size: 11))
+                    .opacity(0.5)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder
@@ -77,7 +125,7 @@ struct WeatherPopup: View {
                 .frame(width: 36, alignment: .leading)
                 .opacity(0.5)
 
-            Image(systemName: WeatherViewModel.sfSymbol(for: day.weatherCode))
+            Image(systemName: day.condition.symbolName)
                 .font(.system(size: 12))
                 .symbolRenderingMode(.hierarchical)
                 .frame(width: 20)
@@ -99,5 +147,12 @@ struct WeatherPopup: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE"
         return formatter.string(from: date)
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let seconds = Int(-date.timeIntervalSinceNow)
+        if seconds < 60 { return "Just now" }
+        if seconds < 3600 { return "\(seconds / 60)m ago" }
+        return "\(seconds / 3600)h ago"
     }
 }

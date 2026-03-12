@@ -26,6 +26,10 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     /// Serializes access to windowCache — called from concurrent GCD threads.
     private let lock = NSLock()
 
+    /// Tracks whether CGS private APIs are functional.
+    /// Set to false on first failure; prevents repeated crashes.
+    private(set) var cgsAvailable = true
+
     /// Cached set of regular app names — refreshed on app launch/terminate.
     private var cachedRegularAppNames: Set<String> = []
     private var appObservers: [NSObjectProtocol] = []
@@ -62,15 +66,23 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     }
 
     func getSpacesWithWindows() -> [NativeSpace]? {
+        guard cgsAvailable else { return nil }
+
         lock.lock()
         defer { lock.unlock() }
 
         let conn = CGSMainConnectionID()
+        guard conn != 0 else {
+            cgsAvailable = false
+            return nil
+        }
+
         guard
             let displaySpaces = CGSCopyManagedDisplaySpaces(conn)
                 as? [[String: Any]],
             let mainDisplay = displaySpaces.first
         else {
+            cgsAvailable = false
             return nil
         }
 
@@ -153,6 +165,7 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     }
 
     func focusSpace(spaceId: String, needWindowFocus: Bool) {
+        guard cgsAvailable else { return }
         guard let spaceNumber = Int(spaceId), spaceNumber >= 1 else { return }
 
         let conn = CGSMainConnectionID()
@@ -206,7 +219,7 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
             {
                 let app = NSRunningApplication(
                     processIdentifier: pid_t(pid))
-                app?.activate(options: [.activateIgnoringOtherApps])
+                app?.activate(options: [])
                 return
             }
         }
@@ -230,7 +243,7 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
 
             let app = NSRunningApplication(
                 processIdentifier: pid_t(pid))
-            app?.activate(options: [.activateIgnoringOtherApps])
+            app?.activate(options: [])
             return
         }
     }

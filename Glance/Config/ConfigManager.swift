@@ -10,7 +10,8 @@ final class ConfigManager: ObservableObject {
     
     private var fileWatchSource: DispatchSourceFileSystemObject?
     private var fileDescriptor: CInt = -1
-    private var configFilePath: String?
+    private(set) var configFilePath: String?
+    private let logger = AppLogger.shared
 
     private init() {
         loadOrCreateConfigIfNeeded()
@@ -32,13 +33,14 @@ final class ConfigManager: ObservableObject {
                 chosenPath = path1
             } catch {
                 initError = "Error creating default config: \(error.localizedDescription)"
-                print("Error when creating default config:", error)
+                logger.error("Error creating default config: \(error.localizedDescription)", category: .config)
                 return
             }
         }
 
         if let path = chosenPath {
             configFilePath = path
+            logger.info("Using config file at \(path)", category: .config)
             parseConfigFile(at: path)
             startWatchingFile(at: path)
         }
@@ -54,7 +56,7 @@ final class ConfigManager: ObservableObject {
             }
         } catch {
             initError = "Error parsing TOML file: \(error.localizedDescription)"
-            print("Error when parsing TOML file:", error)
+            logger.error("Error parsing TOML file at \(path): \(error.localizedDescription)", category: .config)
         }
     }
 
@@ -103,6 +105,14 @@ final class ConfigManager: ObservableObject {
             warning-level = 30
             critical-level = 10
 
+            # [widgets.default.volume]
+            # show-percentage = false
+            # scroll-step = 3
+
+            # [widgets.default.brightness]
+            # show-percentage = false
+            # scroll-step = 3
+
             [widgets.default.time]
             format = "E d, J:mm"
             calendar.format = "J:mm"
@@ -110,6 +120,16 @@ final class ConfigManager: ObservableObject {
             calendar.show-events = true
             # calendar.allow-list = ["Home", "Personal"] # show only these calendars
             # calendar.deny-list = ["Work", "Boss"] # show all calendars except these
+
+            # Weather widget options:
+            # [widgets.default.weather]
+            # provider = "met-no" # met-no (default) or open-meteo
+            # use-ip-fallback = true
+            #
+            # [widgets.default.weather.location]
+            # latitude = 55.7558
+            # longitude = 37.6173
+            # name = "Moscow"
 
             [popup.default.time]
             view-variant = "box"
@@ -121,13 +141,30 @@ final class ConfigManager: ObservableObject {
     }
 
     private func startWatchingFile(at path: String) {
+        stopWatchingFile()
         fileDescriptor = open(path, O_EVTONLY)
-        if fileDescriptor == -1 { return }
+        if fileDescriptor == -1 {
+            let message = String(cString: strerror(errno))
+            logger.error("Failed to watch config file at \(path): \(message)", category: .config)
+            return
+        }
         fileWatchSource = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: fileDescriptor, eventMask: .write,
+            fileDescriptor: fileDescriptor,
+            eventMask: [.write, .delete, .rename, .revoke],
             queue: DispatchQueue.global())
         fileWatchSource?.setEventHandler { [weak self] in
             guard let self = self, let path = self.configFilePath else {
+                return
+            }
+            let data = self.fileWatchSource?.data ?? []
+            // File was replaced (vim, sed -i, atomic write) — re-establish watcher
+            if data.contains(.delete) || data.contains(.rename) || data.contains(.revoke) {
+                self.stopWatchingFile()
+                // Brief delay for the new file to settle
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) {
+                    self.parseConfigFile(at: path)
+                    self.startWatchingFile(at: path)
+                }
                 return
             }
             self.parseConfigFile(at: path)
@@ -135,14 +172,20 @@ final class ConfigManager: ObservableObject {
         fileWatchSource?.setCancelHandler { [weak self] in
             if let fd = self?.fileDescriptor, fd != -1 {
                 close(fd)
+                self?.fileDescriptor = -1
             }
         }
         fileWatchSource?.resume()
     }
 
+    private func stopWatchingFile() {
+        fileWatchSource?.cancel()
+        fileWatchSource = nil
+    }
+
     func updateConfigValue(key: String, newValue: String) {
         guard let path = configFilePath else {
-            print("Config file path is not set")
+            logger.warning("Config file path is not set while updating \(key)", category: .config)
             return
         }
         do {
@@ -153,14 +196,14 @@ final class ConfigManager: ObservableObject {
                 toFile: path, atomically: false, encoding: .utf8)
             // File watcher will trigger parseConfigFile automatically
         } catch {
-            print("Error updating config:", error)
+            logger.error("Error updating config key \(key): \(error.localizedDescription)", category: .config)
         }
     }
 
     /// Batch-update multiple config keys in a single file write.
     func updateConfigValues(pairs: [(key: String, value: String)]) {
         guard let path = configFilePath else {
-            print("Config file path is not set")
+            logger.warning("Config file path is not set while batch updating config", category: .config)
             return
         }
         do {
@@ -170,7 +213,30 @@ final class ConfigManager: ObservableObject {
             }
             try text.write(toFile: path, atomically: false, encoding: .utf8)
         } catch {
-            print("Error batch-updating config:", error)
+            let updatedKeys = pairs.map(\.key).joined(separator: ", ")
+            logger.error("Error batch-updating config keys [\(updatedKeys)]: \(error.localizedDescription)", category: .config)
+        }
+    }
+
+    func removeConfigValue(key: String) {
+        removeConfigValues(keys: [key])
+    }
+
+    func removeConfigValues(keys: [String]) {
+        guard let path = configFilePath else {
+            logger.warning("Config file path is not set while removing config", category: .config)
+            return
+        }
+
+        do {
+            var text = try String(contentsOfFile: path, encoding: .utf8)
+            for key in keys {
+                text = removedConfigValue(from: text, key: key)
+            }
+            try text.write(toFile: path, atomically: false, encoding: .utf8)
+        } catch {
+            let removedKeys = keys.joined(separator: ", ")
+            logger.error("Error removing config keys [\(removedKeys)]: \(error.localizedDescription)", category: .config)
         }
     }
 
@@ -318,6 +384,66 @@ final class ConfigManager: ObservableObject {
             }
             return newLines.joined(separator: "\n")
         }
+    }
+
+    private func removedConfigValue(from original: String, key: String) -> String {
+        let lines = original.components(separatedBy: "\n")
+        var newLines: [String] = []
+        var skipBracketDepth = 0
+
+        if key.contains(".") {
+            let components = key.split(separator: ".").map(String.init)
+            guard components.count >= 2 else { return original }
+
+            let tablePath = components.dropLast().joined(separator: ".")
+            let actualKey = components.last!
+            let tableHeader = "[\(tablePath)]"
+            let keyPattern = "^\(NSRegularExpression.escapedPattern(for: actualKey))\\s*="
+
+            var insideTargetTable = false
+
+            for line in lines {
+                if skipBracketDepth > 0 {
+                    skipBracketDepth += unclosedBracketDepth(line)
+                    continue
+                }
+
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("[") && !trimmed.hasPrefix("[[") && trimmed.hasSuffix("]") && !trimmed.hasSuffix("]]") {
+                    insideTargetTable = trimmed == tableHeader
+                    newLines.append(line)
+                    continue
+                }
+
+                if insideTargetTable && line.range(of: keyPattern, options: .regularExpression) != nil {
+                    let depth = unclosedBracketDepth(line)
+                    if depth > 0 { skipBracketDepth = depth }
+                    continue
+                }
+
+                newLines.append(line)
+            }
+        } else {
+            let keyPattern = "^\(NSRegularExpression.escapedPattern(for: key))\\s*="
+
+            for line in lines {
+                if skipBracketDepth > 0 {
+                    skipBracketDepth += unclosedBracketDepth(line)
+                    continue
+                }
+
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if !trimmed.hasPrefix("#") && line.range(of: keyPattern, options: .regularExpression) != nil {
+                    let depth = unclosedBracketDepth(line)
+                    if depth > 0 { skipBracketDepth = depth }
+                    continue
+                }
+
+                newLines.append(line)
+            }
+        }
+
+        return newLines.joined(separator: "\n")
     }
 
     func globalWidgetConfig(for widgetId: String) -> ConfigData {

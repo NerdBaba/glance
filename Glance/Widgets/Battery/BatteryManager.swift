@@ -1,9 +1,12 @@
 import Combine
 import Foundation
 import IOKit.ps
+import AppKit
 
 /// This class monitors the battery status.
-class BatteryManager: ObservableObject {
+final class BatteryManager: ObservableObject {
+    static let shared = BatteryManager()
+
     @Published var batteryLevel: Int = 0
     @Published var isCharging: Bool = false
     @Published var isPluggedIn: Bool = false
@@ -15,6 +18,10 @@ class BatteryManager: ObservableObject {
     @Published var maxCapacity: Int = 0
     @Published var designCapacity: Int = 0
     private var timer: Timer?
+    private var wakeObserver: NSObjectProtocol?
+    private let logger = AppLogger.shared
+    private var hasLoggedMissingPowerSnapshot = false
+    private var hasLoggedMissingSmartBattery = false
 
     init() {
         startMonitoring()
@@ -22,22 +29,38 @@ class BatteryManager: ObservableObject {
 
     deinit {
         stopMonitoring()
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        }
     }
 
     private func startMonitoring() {
         // Update every 30 seconds — battery level changes roughly once per minute.
         timer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) {
             [weak self] _ in
-            self?.updateBatteryStatus()
-            self?.updateBatteryHealth()
+            self?.refresh()
         }
-        updateBatteryStatus()
-        updateBatteryHealth()
+        timer?.tolerance = 5
+
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.refresh()
+        }
+
+        refresh()
     }
 
     private func stopMonitoring() {
         timer?.invalidate()
         timer = nil
+    }
+
+    private func refresh() {
+        updateBatteryStatus()
+        updateBatteryHealth()
     }
 
     /// This method updates the battery level and charging state.
@@ -46,8 +69,13 @@ class BatteryManager: ObservableObject {
             let sources = IOPSCopyPowerSourcesList(snapshot)?
                 .takeRetainedValue() as? [CFTypeRef]
         else {
+            if !hasLoggedMissingPowerSnapshot {
+                logger.warning("Failed to read power source snapshot", category: .battery)
+                hasLoggedMissingPowerSnapshot = true
+            }
             return
         }
+        hasLoggedMissingPowerSnapshot = false
 
         for source in sources {
             if let description = IOPSGetPowerSourceDescription(
@@ -91,13 +119,23 @@ class BatteryManager: ObservableObject {
             kIOMainPortDefault,
             IOServiceMatching("AppleSmartBattery")
         )
-        guard service != IO_OBJECT_NULL else { return }
+        guard service != IO_OBJECT_NULL else {
+            if !hasLoggedMissingSmartBattery {
+                logger.warning("AppleSmartBattery service unavailable", category: .battery)
+                hasLoggedMissingSmartBattery = true
+            }
+            return
+        }
+        hasLoggedMissingSmartBattery = false
         defer { IOObjectRelease(service) }
 
         var props: Unmanaged<CFMutableDictionary>?
         guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
               let dict = props?.takeRetainedValue() as? [String: Any]
-        else { return }
+        else {
+            logger.warning("Failed to read battery health properties", category: .battery)
+            return
+        }
 
         DispatchQueue.main.async {
             if let cycles = dict["CycleCount"] as? Int {

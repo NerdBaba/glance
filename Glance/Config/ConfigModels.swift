@@ -5,6 +5,7 @@ struct RootToml: Decodable {
     var theme: String?
     var style: String?
     var preset: String?
+    var hotkey: String?
     var appearanceOverrides: AppearanceOverrides?
     var yabai: YabaiConfig?
     var aerospace: AerospaceConfig?
@@ -12,7 +13,7 @@ struct RootToml: Decodable {
     var widgets: WidgetsSection
 
     enum CodingKeys: String, CodingKey {
-        case theme, style, preset, yabai, aerospace, experimental, widgets
+        case theme, style, preset, hotkey, yabai, aerospace, experimental, widgets
         case appearanceOverrides = "appearance"
     }
 
@@ -20,6 +21,7 @@ struct RootToml: Decodable {
         self.theme = nil
         self.style = nil
         self.preset = nil
+        self.hotkey = nil
         self.appearanceOverrides = nil
         self.yabai = nil
         self.aerospace = nil
@@ -31,6 +33,7 @@ struct RootToml: Decodable {
         theme = try container.decodeIfPresent(String.self, forKey: .theme)
         style = try container.decodeIfPresent(String.self, forKey: .style)
         preset = try container.decodeIfPresent(String.self, forKey: .preset)
+        hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey)
         appearanceOverrides = try container.decodeIfPresent(AppearanceOverrides.self, forKey: .appearanceOverrides)
         yabai = try container.decodeIfPresent(YabaiConfig.self, forKey: .yabai)
         aerospace = try container.decodeIfPresent(AerospaceConfig.self, forKey: .aerospace)
@@ -176,7 +179,7 @@ struct TomlWidgetItem: Decodable {
                 DecodingError.Context(
                     codingPath: decoder.codingPath,
                     debugDescription:
-                        "Uncorrect inline-table in [widgets.displayed]"
+                        "Incorrect inline-table in [widgets.displayed]"
                 )
             )
         }
@@ -248,6 +251,17 @@ extension TOMLValue {
         return nil
     }
 
+    var doubleValue: Double? {
+        switch self {
+        case let .double(value):
+            return value
+        case let .int(value):
+            return Double(value)
+        default:
+            return nil
+        }
+    }
+
     var dictionaryValue: ConfigData? {
         if case let .dictionary(dict) = self { return dict }
         return nil
@@ -302,32 +316,56 @@ struct ExperimentalConfig: Decodable {
     }
 }
 
+/// Bar formation mode — controls how widgets are visually grouped.
+enum BarFormation: String, Decodable {
+    case full       // Full-width monobar — single unified background edge-to-edge
+    case floating   // Floating monobar — single background with margins from screen edges
+    case islands    // Separate capsules — each widget gets its own background (default)
+    case pills      // Grouped pills — widgets grouped by spacers, each group gets a shared background
+}
+
 struct ForegroundConfig: Decodable {
     let height: BackgroundForegroundHeight
     let horizontalPadding: CGFloat
     let widgetsBackground: WidgetBackgroundConfig
     let spacing: CGFloat
-    
+    let autoHide: Bool
+    let formation: BarFormation
+    let margin: CGFloat     // Screen-edge margin for floating/pills
+    let gap: CGFloat        // Gap between groups in pills mode
+
     init() {
         self.height = .defaultHeight
         self.horizontalPadding = Constants.menuBarHorizontalPadding
         self.widgetsBackground = WidgetBackgroundConfig()
         self.spacing = 15
+        self.autoHide = false
+        self.formation = .islands
+        self.margin = 8
+        self.gap = 10
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         height = try container.decodeIfPresent(BackgroundForegroundHeight.self, forKey: .height) ?? .defaultHeight
         horizontalPadding = try container.decodeIfPresent(CGFloat.self, forKey: .horizontalPadding) ?? Constants.menuBarHorizontalPadding
         widgetsBackground = try container.decodeIfPresent(WidgetBackgroundConfig.self, forKey: .widgetsBackground) ?? WidgetBackgroundConfig()
         spacing = try container.decodeIfPresent(CGFloat.self, forKey: .spacing) ?? 15
+        autoHide = try container.decodeIfPresent(Bool.self, forKey: .autoHide) ?? false
+        formation = try container.decodeIfPresent(BarFormation.self, forKey: .formation) ?? .islands
+        margin = try container.decodeIfPresent(CGFloat.self, forKey: .margin) ?? 8
+        gap = try container.decodeIfPresent(CGFloat.self, forKey: .gap) ?? 10
     }
-    
+
     enum CodingKeys: String, CodingKey {
         case height
         case horizontalPadding = "horizontal-padding"
         case widgetsBackground = "widgets-background"
         case spacing
+        case autoHide = "auto-hide"
+        case formation
+        case margin
+        case gap
     }
     
     func resolveHeight() -> CGFloat {
@@ -367,7 +405,7 @@ struct WidgetBackgroundConfig: Decodable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case displayed, height, blur
+        case displayed, blur
     }
 }
 
@@ -416,30 +454,6 @@ struct BackgroundConfig: Decodable {
     }
 }
 
-enum ForegroundPadding: Decodable {
-    case float(Float)
-    
-    init(from decoder: Decoder) throws {
-        if let floatValue = try? decoder.singleValueContainer().decode(Float.self) {
-            self = .float(floatValue)
-            return
-        }
-        
-        if let intValue = try? decoder.singleValueContainer().decode(Int.self) {
-            self = .float(Float(intValue))
-            return
-        }
-        
-        throw DecodingError.typeMismatch(
-            ForegroundPadding.self,
-            DecodingError.Context(
-                codingPath: decoder.codingPath,
-                debugDescription: "Expected a float value"
-            )
-        )
-    }
-}
-
 enum BackgroundForegroundHeight: Decodable {
     case defaultHeight
     case menuBar
@@ -474,7 +488,7 @@ enum BackgroundForegroundHeight: Decodable {
         }
         
         throw DecodingError.typeMismatch(
-            ForegroundPadding.self,
+            BackgroundForegroundHeight.self,
             DecodingError.Context(
                 codingPath: decoder.codingPath,
                 debugDescription: "Expected 'default', 'menu-bar' or a float value"
@@ -482,4 +496,3 @@ enum BackgroundForegroundHeight: Decodable {
         )
     }
 }
-

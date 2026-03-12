@@ -1,7 +1,10 @@
+import AppKit
 import Darwin
 import Foundation
 
 final class SystemMonitorViewModel: ObservableObject {
+    static let shared = SystemMonitorViewModel()
+
     @Published var cpuUsage: Double = 0
     @Published var memoryUsed: Double = 0
     @Published var memoryTotal: Double = 0
@@ -9,6 +12,8 @@ final class SystemMonitorViewModel: ObservableObject {
 
     private var timer: Timer?
     private var prevCPUInfo: host_cpu_load_info?
+    private var wakeObserver: NSObjectProtocol?
+    private let logger = AppLogger.shared
 
     var memoryUsagePercent: Double {
         guard memoryTotal > 0 else { return 0 }
@@ -24,10 +29,22 @@ final class SystemMonitorViewModel: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             self?.update()
         }
+        timer?.tolerance = 0.5
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.prevCPUInfo = self?.readCPUTicks()
+            self?.update()
+        }
     }
 
     deinit {
         timer?.invalidate()
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        }
     }
 
     private func update() {
@@ -67,7 +84,10 @@ final class SystemMonitorViewModel: ObservableObject {
             }
         }
 
-        guard result == KERN_SUCCESS else { return nil }
+        guard result == KERN_SUCCESS else {
+            logger.warning("host_statistics(HOST_CPU_LOAD_INFO) failed with code \(result)", category: .systemMonitor)
+            return nil
+        }
         return cpuLoadInfo
     }
 
@@ -87,7 +107,10 @@ final class SystemMonitorViewModel: ObservableObject {
             }
         }
 
-        guard result == KERN_SUCCESS else { return }
+        guard result == KERN_SUCCESS else {
+            logger.warning("host_statistics64(HOST_VM_INFO64) failed with code \(result)", category: .systemMonitor)
+            return
+        }
 
         let pageSize = Double(vm_kernel_page_size)
         let active = Double(stats.active_count) * pageSize

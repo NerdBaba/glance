@@ -4,34 +4,40 @@ struct ChangelogBannerWidget: View {
     @State private var rect: CGRect = .zero
 
     var body: some View {
-
-        Button(action: {
-            MenuBarPopup.show(rect: rect, id: "changelog") {
-                ChangelogPopup()
-            }
-        }) {
-            HStack(alignment: .center) {
+        Button(action: openChangelog) {
+            HStack {
                 Text("What's new")
                     .fontWeight(.semibold)
                 Image(systemName: "xmark.circle.fill")
-                    .onTapGesture {
-                        NotificationCenter.default.post(name: Notification.Name("HideWhatsNewBanner"), object: nil)
-                    }
+                    .onTapGesture(perform: dismissBanner)
             }
         }
-        .background(
-            GeometryReader { geometry in
-                Color.clear
-                    .onAppear { rect = geometry.frame(in: .global) }
-                    .onChange(of: geometry.frame(in: .global)) {
-                        _, newValue in
-                        rect = newValue
-                    }
-            }
-        )
+        .background(geometryTracker)
         .buttonStyle(BannerButtonStyle(color: .green.opacity(0.8)))
         .transition(.blurReplace)
+    }
 
+    private var geometryTracker: some View {
+        GeometryReader { geometry in
+            Color.clear
+                .onAppear { rect = geometry.frame(in: .global) }
+                .onChange(of: geometry.frame(in: .global)) { _, newValue in
+                    rect = newValue
+                }
+        }
+    }
+
+    private func openChangelog() {
+        MenuBarPopup.show(rect: rect, id: "changelog") {
+            ChangelogPopup()
+        }
+    }
+
+    private func dismissBanner() {
+        NotificationCenter.default.post(
+            name: Notification.Name("HideWhatsNewBanner"),
+            object: nil
+        )
     }
 }
 

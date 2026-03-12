@@ -1,5 +1,17 @@
 import SwiftUI
 
+// MARK: - Legacy Compatibility
+
+/// Old WIP style files still in the tree conform to this protocol.
+/// Keeping it here prevents filesystem-synchronized builds from breaking
+/// while the app uses the newer appearance-driven modifiers below.
+protocol BarStyleProvider {
+    func widgetBackground(cornerRadius: CGFloat) -> AnyView
+    func popupBackground(cornerRadius: CGFloat) -> AnyView
+    func hoverBrightness(isHovered: Bool) -> Double
+    func focusOpacity(isFocused: Bool) -> Double
+}
+
 // MARK: - Style Enum
 
 enum BarStyle: String, CaseIterable {

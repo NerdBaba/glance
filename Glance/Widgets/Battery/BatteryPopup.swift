@@ -1,13 +1,27 @@
 import SwiftUI
 
 struct BatteryPopup: View {
-    @StateObject private var batteryManager = BatteryManager()
+    let configProvider: ConfigProvider
+    @ObservedObject private var batteryManager = BatteryManager.shared
     @ObservedObject var configManager = ConfigManager.shared
     var appearance: AppearanceConfig { configManager.config.appearance }
 
+    private var warningLevel: Int {
+        configProvider.config["warning-level"]?.intValue ?? 20
+    }
+
+    private var criticalLevel: Int {
+        configProvider.config["critical-level"]?.intValue ?? 10
+    }
+
+    private var batteryStatus: String {
+        if batteryManager.isCharging { return "Charging" }
+        if batteryManager.isPluggedIn { return "Plugged In" }
+        return "On Battery"
+    }
+
     var body: some View {
         VStack(spacing: 14) {
-            // Ring progress
             ZStack {
                 Circle()
                     .stroke(appearance.foregroundColor.opacity(0.12), lineWidth: 5)
@@ -34,16 +48,22 @@ struct BatteryPopup: View {
             }
             .frame(width: 64, height: 64)
 
-            // Details
             Divider().opacity(0.15)
 
             VStack(alignment: .leading, spacing: 5) {
+                detailRow("Status", batteryStatus, color: batteryColor)
                 detailRow("Health", "\(batteryManager.healthPercent)%", color: healthColor)
                 detailRow("Cycles", "\(batteryManager.cycleCount)")
                 if batteryManager.temperature > 0 {
                     detailRow("Temperature", String(format: "%.1f°C", batteryManager.temperature))
                 }
                 detailRow("Power", batteryManager.powerSource)
+                if batteryManager.maxCapacity > 0, batteryManager.designCapacity > 0 {
+                    detailRow(
+                        "Capacity",
+                        "\(batteryManager.maxCapacity) / \(batteryManager.designCapacity) mAh"
+                    )
+                }
                 if let time = batteryManager.timeRemaining {
                     detailRow(
                         batteryManager.isCharging ? "Until Full" : "Remaining",
@@ -54,7 +74,7 @@ struct BatteryPopup: View {
             .font(.system(size: 12))
             .opacity(0.7)
         }
-        .frame(width: 180)
+        .frame(width: 220)
         .padding(22)
     }
 
@@ -76,9 +96,9 @@ struct BatteryPopup: View {
     private var batteryColor: Color {
         if batteryManager.isCharging {
             return .green
-        } else if batteryManager.batteryLevel <= 10 {
+        } else if batteryManager.batteryLevel <= criticalLevel {
             return .red
-        } else if batteryManager.batteryLevel <= 20 {
+        } else if batteryManager.batteryLevel <= warningLevel {
             return .yellow
         } else {
             return appearance.accentColor

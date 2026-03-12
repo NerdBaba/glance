@@ -4,6 +4,7 @@ import Foundation
 
 class SpacesViewModel: ObservableObject {
     @Published var spaces: [AnySpace] = []
+    @Published var isUnavailable = false
     private var timer: Timer?
     private var provider: AnySpacesProvider?
     private var appLaunchObserver: NSObjectProtocol?
@@ -34,6 +35,7 @@ class SpacesViewModel: ObservableObject {
             [weak self] _ in
             self?.loadSpaces()
         }
+        timer?.tolerance = 0.2
 
         // Immediately refresh on app activation (space switch) for responsiveness
         let center = NSWorkspace.shared.notificationCenter
@@ -71,16 +73,25 @@ class SpacesViewModel: ObservableObject {
     private func loadSpaces() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self,
-                let provider = self.provider,
-                let spaces = provider.getSpacesWithWindows()
+                let provider = self.provider
             else {
                 DispatchQueue.main.async {
                     self?.spaces = []
                 }
                 return
             }
+
+            guard let spaces = provider.getSpacesWithWindows() else {
+                DispatchQueue.main.async {
+                    self.spaces = []
+                    self.isUnavailable = true
+                }
+                return
+            }
+
             let sortedSpaces = spaces.sorted { $0.id < $1.id }
             DispatchQueue.main.async {
+                if self.isUnavailable { self.isUnavailable = false }
                 // Only publish if spaces actually changed — avoids unnecessary SwiftUI re-renders
                 if self.spaces != sortedSpaces {
                     self.spaces = sortedSpaces

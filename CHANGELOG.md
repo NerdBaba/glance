@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.2
+
+### New Widgets
+- **Disk** — storage usage with free/total display and usage bar
+- **Brightness** — display brightness with scroll-to-adjust (DisplayServices, CoreDisplay, IOKit backends)
+- **Bluetooth** — connected devices with battery levels (AirPods, keyboards, mice)
+- **Clipboard** — clipboard history with 20-entry buffer, click to paste
+- **Input Language** — current keyboard layout, zero-polling via TIS API
+- **Pomodoro** — focus timer with work/break cycles, session tracking, and notifications
+
+### New Features
+- **4 bar formations**: full, floating, islands, pills — configurable layout modes
+- **Global hotkey** (Ctrl+Option+B) to toggle bar visibility, configurable in Settings
+- **Fullscreen auto-hide** — bar fades when apps go fullscreen
+- **Settings GUI** — full widget management with drag-and-drop reordering, add/remove
+- **Preset picker** with live preview diagrams for formations, display modes, and highlight styles
+- **Custom preset editor** — create your own presets with full control over colors, shapes, borders, glow, shadows
+- **Config Export/Import** — backup and restore your configuration from Settings
+- **Changelog fallback** — "What's New" popup works offline using bundled changelog
+
+### Improvements
+- Pomodoro timer uses absolute end dates instead of decrement counting — immune to timer drift
+- Settings widget list uses stable UUID identity for smooth drag-and-drop
+- Fixed feedback loop in Settings that required double-click for add/remove operations
+- Config changes are now reactive in Pomodoro widget (live reload without restart)
+
+### Fixes
+- Fixed memory leak in Brightness widget (IORegistryEntryCreateCFProperty called twice)
+- Fixed data race in Now Playing manager (compiledScripts accessed without synchronization)
+- Fixed Bluetooth device ID instability (UUID fallback replaced with name-based fallback)
+- Fixed CalendarManager allow/deny list filtering (`.drop(while:)` → `.compactMap + .filter`)
+- Fixed main thread blocking in Spaces widget (`usleep` replaced with `asyncAfter`)
+- Fixed TimeWidget creating a new DateFormatter every second (now cached)
+- Fixed wrong type reference in ConfigModels error message
+- Removed dead code: unused ForegroundPadding enum, abandoned Focus widget
+
+### Performance
+- AppLogger uses persistent FileHandle instead of open/close per log line
+- Timer tolerances added across all widget timers for power efficiency
+- Pomodoro timer runs in `.common` RunLoop mode (ticks during UI interactions)
+
 ## 1.1.2
 
 ### Performance

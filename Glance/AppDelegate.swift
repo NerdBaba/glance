@@ -1,3 +1,4 @@
+import Combine
 import ServiceManagement
 import Sparkle
 import SwiftUI
@@ -13,6 +14,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private let updaterController = SPUStandardUpdaterController(
         startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+    private var hotkeyManager: HotkeyManager?
+    private var fullscreenDetector: FullscreenDetector?
+    private var fullscreenCancellable: AnyCancellable?
+    private var barVisible = true
+    private var userHidBar = false  // True when user manually hid bar via hotkey
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let error = ConfigManager.shared.initError {
@@ -32,6 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MenuBarPopup.setup()
         setupPanels()
         setupStatusItem()
+        setupHotkey()
+        setupFullscreenDetection()
         WindowGapManager.shared.start()
 
         // Show onboarding on first launch
@@ -109,7 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 sender.state = .on
             }
         } catch {
-            print("Failed to toggle launch at login: \(error)")
+            AppLogger.shared.error("Failed to toggle launch at login: \(error.localizedDescription)", category: .app)
         }
     }
 
@@ -173,6 +181,69 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         newPanel.orderFront(nil)
         panel = newPanel
+    }
+
+    // MARK: - Hotkey (Show/Hide Bar)
+
+    private func setupHotkey() {
+        let config = ConfigManager.shared.config.rootToml
+        let hotkeyString = config.hotkey ?? "ctrl+option+b"
+        guard hotkeyString != "false" else { return }
+
+        guard let parsed = HotkeyManager.parse(hotkeyString) else { return }
+
+        let manager = HotkeyManager()
+        manager.onToggle = { [weak self] in
+            self?.toggleBarVisibility()
+        }
+        manager.register(modifiers: parsed.modifiers, keyCode: parsed.keyCode)
+        hotkeyManager = manager
+    }
+
+    private func toggleBarVisibility() {
+        barVisible.toggle()
+        userHidBar = !barVisible
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.2
+            menuBarPanel?.animator().alphaValue = barVisible ? 1 : 0
+            backgroundPanel?.animator().alphaValue = barVisible ? 1 : 0
+        }
+    }
+
+    // MARK: - Fullscreen Auto-Hide
+
+    private func setupFullscreenDetection() {
+        let autoHide = ConfigManager.shared.config.experimental.foreground.autoHide
+        guard autoHide else { return }
+
+        let detector = FullscreenDetector()
+        fullscreenDetector = detector
+        fullscreenCancellable = detector.$isFullscreen
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] shouldHide in
+                self?.applyFullscreenVisibility(shouldHide: shouldHide)
+            }
+    }
+
+    private func applyFullscreenVisibility(shouldHide: Bool) {
+        guard !userHidBar else { return }
+
+        if shouldHide && barVisible {
+            barVisible = false
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.3
+                menuBarPanel?.animator().alphaValue = 0
+                backgroundPanel?.animator().alphaValue = 0
+            }
+        } else if !shouldHide && !barVisible {
+            barVisible = true
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.3
+                menuBarPanel?.animator().alphaValue = 1
+                backgroundPanel?.animator().alphaValue = 1
+            }
+        }
     }
 
     private func showFatalConfigError(message: String) {

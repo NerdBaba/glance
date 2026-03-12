@@ -1,7 +1,7 @@
-import CoreFoundation
+import CoreGraphics
 
-struct Constants {
-    static let menuBarHeight = CGFloat(55)
-    static let menuBarPopupAnimationDurationInMilliseconds = 350
-    static let menuBarHorizontalPadding = CGFloat(25)
+enum Constants {
+    static let menuBarHeight: CGFloat = 55
+    static let menuBarPopupAnimationDurationInMilliseconds: Int = 350
+    static let menuBarHorizontalPadding: CGFloat = 25
 }

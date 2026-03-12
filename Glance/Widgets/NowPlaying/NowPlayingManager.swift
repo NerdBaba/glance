@@ -15,13 +15,26 @@ enum PlaybackState: String {
 struct NowPlayingSong: Equatable, Identifiable {
     var id: String { title + artist }
     let appName: String
-    let state: PlaybackState
+    var state: PlaybackState
     let title: String
     let artist: String
     let album: String
     let albumArtURL: URL?
     let position: Double?
     let duration: Double?  // Duration in seconds
+
+    /// Direct initializer (used by MediaRemote provider).
+    init(appName: String, state: PlaybackState, title: String, artist: String,
+         album: String, albumArtURL: URL?, position: Double?, duration: Double?) {
+        self.appName = appName
+        self.state = state
+        self.title = title
+        self.artist = artist
+        self.album = album
+        self.albumArtURL = albumArtURL
+        self.position = position
+        self.duration = duration
+    }
 
     /// Initializes a song model from a given output string.
     /// - Parameters:
@@ -140,6 +153,8 @@ enum MusicApp: String, CaseIterable {
 final class NowPlayingProvider {
     /// Cache of compiled AppleScripts — compilation is expensive, execution is cheap.
     private static var compiledScripts: [String: NSAppleScript] = [:]
+    /// Serializes access to compiledScripts — accessed from main and background GCD queues.
+    private static let scriptsLock = NSLock()
 
     /// Returns the current playing song from any supported music application.
     /// Only queries apps that are actually running.
@@ -174,14 +189,19 @@ final class NowPlayingProvider {
     @discardableResult
     private static func runCompiledAppleScript(_ script: String) -> String? {
         let compiled: NSAppleScript
+        scriptsLock.lock()
         if let cached = compiledScripts[script] {
             compiled = cached
+            scriptsLock.unlock()
         } else {
+            scriptsLock.unlock()
             guard let newScript = NSAppleScript(source: script) else { return nil }
             var compileError: NSDictionary?
             newScript.compileAndReturnError(&compileError)
             if compileError != nil { return nil }
+            scriptsLock.lock()
             compiledScripts[script] = newScript
+            scriptsLock.unlock()
             compiled = newScript
         }
         var error: NSDictionary?
@@ -212,27 +232,67 @@ final class NowPlayingProvider {
 // MARK: - Now Playing Manager
 
 /// An observable manager that periodically updates the now playing song.
+/// Tries MediaRemote (private API) first; dynamically falls back to AppleScript
+/// if MediaRemote is unavailable or consistently fails.
 final class NowPlayingManager: ObservableObject {
     static let shared = NowPlayingManager()
 
     @Published private(set) var nowPlaying: NowPlayingSong?
     private var timer: Timer?
     private var consecutiveNilCount = 0
-    /// Number of consecutive nil responses before clearing the widget.
     private let nilThreshold = 10
-    /// Consecutive idle polls (no music app running) before slowing down.
     private var consecutiveIdleCount = 0
-
-    /// Polling interval: 1s when playing, 3s when paused/stopped, 5s when no music app running.
     private var currentInterval: TimeInterval = 1.0
 
+    /// Current provider. Starts with MediaRemote if symbols load, falls back dynamically.
+    private var useMediaRemote: Bool = false
+    /// Count of consecutive MediaRemote failures while a music app is running.
+    private var mrFailWhileMusicRunning = 0
+    /// After this many failures with a music app running, switch to AppleScript permanently.
+    private let mrFailThreshold = 5
+    private var mediaRemoteObservers: [NSObjectProtocol] = []
+    /// Grace period: after sending a command, ignore stale state fetches until this time.
+    private var commandGraceUntil: Date = .distantPast
+    private let logger = AppLogger.shared
+
     private init() {
+        let mr = MediaRemoteProvider.shared
+        useMediaRemote = mr._canLoad
+
+        if useMediaRemote {
+            mr.registerNotifications()
+            setupMediaRemoteObservers()
+        }
+
+        // Fetch immediately on init (non-blocking)
+        updateNowPlaying()
         scheduleTimer(interval: 1.0)
     }
 
     deinit {
         timer?.invalidate()
+        for obs in mediaRemoteObservers {
+            NotificationCenter.default.removeObserver(obs)
+        }
     }
+
+    // MARK: - MediaRemote Notifications
+
+    private func setupMediaRemoteObservers() {
+        let infoObs = NotificationCenter.default.addObserver(
+            forName: .mrNowPlayingInfoDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.fetchViaMediaRemote()
+        }
+        let playObs = NotificationCenter.default.addObserver(
+            forName: .mrNowPlayingIsPlayingDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.fetchViaMediaRemote()
+        }
+        mediaRemoteObservers = [infoObs, playObs]
+    }
+
+    // MARK: - Timer
 
     private func scheduleTimer(interval: TimeInterval) {
         timer?.invalidate()
@@ -240,29 +300,83 @@ final class NowPlayingManager: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.updateNowPlaying()
         }
-        // Fire immediately on first schedule
-        updateNowPlaying()
+        timer?.tolerance = min(1.0, interval * 0.25)
     }
 
-    /// Updates the now playing song asynchronously.
+    // MARK: - Update (dispatch to correct provider)
+
     private func updateNowPlaying() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
+        if useMediaRemote {
+            fetchViaMediaRemote()
+        } else {
+            fetchViaAppleScript()
+        }
+    }
+
+    // MARK: - MediaRemote Fetch
+
+    private func fetchViaMediaRemote() {
+        MediaRemoteProvider.shared.fetchNowPlaying { [weak self] song in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                let inGracePeriod = Date() < self.commandGraceUntil
+
+                if let song = song {
+                    self.consecutiveNilCount = 0
+                    self.mrFailWhileMusicRunning = 0
+                    if !inGracePeriod && self.nowPlaying != song {
+                        self.nowPlaying = song
+                    }
+                    let desiredInterval: TimeInterval = song.state == .playing ? 1.0 : 3.0
+                    if self.currentInterval != desiredInterval {
+                        self.scheduleTimer(interval: desiredInterval)
+                    }
+                } else {
+                    self.consecutiveNilCount += 1
+
+                    // Check if a music app is running but MediaRemote keeps failing
+                    let musicRunning = MusicApp.allCases.contains { NowPlayingProvider.isAppRunning($0) }
+                    if musicRunning {
+                        self.mrFailWhileMusicRunning += 1
+                        if self.mrFailWhileMusicRunning >= self.mrFailThreshold {
+                            self.useMediaRemote = false
+                            self.mrFailWhileMusicRunning = 0
+                            self.consecutiveNilCount = 0
+                            self.logger.warning("MediaRemote failed repeatedly; switching Now Playing to AppleScript fallback", category: .nowPlaying)
+                            self.fetchViaAppleScript()
+                            return
+                        }
+                    }
+
+                    if !inGracePeriod && self.consecutiveNilCount >= self.nilThreshold {
+                        self.nowPlaying = nil
+                    }
+                    if self.currentInterval != 5.0 {
+                        self.scheduleTimer(interval: 5.0)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - AppleScript Fetch (fallback)
+
+    private func fetchViaAppleScript() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
 
-            // Fast check: is any music app even running?
             let anyMusicAppRunning = MusicApp.allCases.contains { NowPlayingProvider.isAppRunning($0) }
 
             if !anyMusicAppRunning {
                 DispatchQueue.main.async {
+                    let inGracePeriod = Date() < self.commandGraceUntil
                     self.consecutiveIdleCount += 1
                     self.consecutiveNilCount += 1
-                    if self.consecutiveNilCount >= self.nilThreshold {
+                    if !inGracePeriod && self.consecutiveNilCount >= self.nilThreshold {
                         self.nowPlaying = nil
                     }
-                    // Slow down to 5s when no music app is running
-                    let desiredInterval: TimeInterval = 5.0
-                    if self.currentInterval != desiredInterval {
-                        self.scheduleTimer(interval: desiredInterval)
+                    if self.currentInterval != 5.0 {
+                        self.scheduleTimer(interval: 5.0)
                     }
                 }
                 return
@@ -270,45 +384,73 @@ final class NowPlayingManager: ObservableObject {
 
             let song = NowPlayingProvider.fetchNowPlaying()
             DispatchQueue.main.async {
+                let inGracePeriod = Date() < self.commandGraceUntil
                 self.consecutiveIdleCount = 0
                 if let song = song {
                     self.consecutiveNilCount = 0
-                    // Only publish if song data actually changed
-                    if self.nowPlaying != song {
+                    if !inGracePeriod && self.nowPlaying != song {
                         self.nowPlaying = song
                     }
-                    // 3s when playing, 5s when paused — AppleScript IPC is expensive
                     let desiredInterval: TimeInterval = song.state == .playing ? 3.0 : 5.0
                     if self.currentInterval != desiredInterval {
                         self.scheduleTimer(interval: desiredInterval)
                     }
                 } else {
                     self.consecutiveNilCount += 1
-                    if self.consecutiveNilCount >= self.nilThreshold {
+                    if !inGracePeriod && self.consecutiveNilCount >= self.nilThreshold {
                         self.nowPlaying = nil
                     }
-                    // Music app running but nothing playing — 5s
-                    let desiredInterval: TimeInterval = 5.0
-                    if self.currentInterval != desiredInterval {
-                        self.scheduleTimer(interval: desiredInterval)
+                    if self.currentInterval != 5.0 {
+                        self.scheduleTimer(interval: 5.0)
                     }
                 }
             }
         }
     }
 
-    /// Skips to the previous track.
+    // MARK: - Playback Controls
+
     func previousTrack() {
-        NowPlayingProvider.executeCommand { $0.previousTrackCommand }
+        sendPlaybackCommand {
+            if self.useMediaRemote {
+                MediaRemoteProvider.shared.sendCommand(.previousTrack)
+            } else {
+                NowPlayingProvider.executeCommand { $0.previousTrackCommand }
+            }
+        }
     }
 
-    /// Toggles between play and pause.
     func togglePlayPause() {
-        NowPlayingProvider.executeCommand { $0.togglePlayPauseCommand }
+        // Optimistic UI: flip state immediately for instant visual feedback
+        if var song = nowPlaying {
+            song.state = song.state == .playing ? .paused : .playing
+            nowPlaying = song
+        }
+        sendPlaybackCommand {
+            if self.useMediaRemote {
+                MediaRemoteProvider.shared.sendCommand(.togglePlayPause)
+            } else {
+                NowPlayingProvider.executeCommand { $0.togglePlayPauseCommand }
+            }
+        }
     }
 
-    /// Skips to the next track.
     func nextTrack() {
-        NowPlayingProvider.executeCommand { $0.nextTrackCommand }
+        sendPlaybackCommand {
+            if self.useMediaRemote {
+                MediaRemoteProvider.shared.sendCommand(.nextTrack)
+            } else {
+                NowPlayingProvider.executeCommand { $0.nextTrackCommand }
+            }
+        }
+    }
+
+    /// Sends a playback command with a 1-second grace period that prevents
+    /// stale state fetches from overwriting the optimistic UI.
+    private func sendPlaybackCommand(_ command: @escaping () -> Void) {
+        commandGraceUntil = Date().addingTimeInterval(1.0)
+        DispatchQueue.global(qos: .userInitiated).async {
+            command()
+        }
     }
 }

@@ -34,35 +34,47 @@ struct ChangelogPopup: View {
         }
     }
 
-    // Asynchronously loads the changelog from the remote URL
     private func loadChangelog() async {
-        guard
-            let url = URL(
-                string:
-                    "https://raw.githubusercontent.com/azixxxxx/glance/main/CHANGELOG.md"
-            )
-        else {
-            return
-        }
-
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            guard let fullChangelog = String(data: data, encoding: .utf8) else {
-                updateChangelogText("Failed to load CHANGELOG.")
+        // Try remote first, fall back to local bundled CHANGELOG.md
+        if let remote = await fetchRemoteChangelog() {
+            let section = extractSection(forVersion: bundleVersion, from: remote)
+            if !section.isEmpty {
+                updateChangelogText(section)
                 return
             }
-
-            let extractedSection = extractSection(
-                forVersion: bundleVersion, from: fullChangelog)
-            let displayText =
-                extractedSection.isEmpty
-                ? "Changelog for v\(bundleVersion) not found"
-                : extractedSection
-
-            updateChangelogText(displayText)
-        } catch {
-            updateChangelogText("Failed to load CHANGELOG.")
         }
+
+        // Fallback: read from app bundle or project root
+        if let local = loadLocalChangelog() {
+            let section = extractSection(forVersion: bundleVersion, from: local)
+            if !section.isEmpty {
+                updateChangelogText(section)
+                return
+            }
+        }
+
+        updateChangelogText("Changelog for v\(bundleVersion) not found")
+    }
+
+    private func fetchRemoteChangelog() async -> String? {
+        guard let url = URL(string: "https://raw.githubusercontent.com/azixxxxx/glance/main/CHANGELOG.md") else { return nil }
+        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private func loadLocalChangelog() -> String? {
+        // Try bundle resource first
+        if let bundleURL = Bundle.main.url(forResource: "CHANGELOG", withExtension: "md"),
+           let content = try? String(contentsOf: bundleURL) {
+            return content
+        }
+        // Try project root relative to executable
+        let execURL = Bundle.main.bundleURL
+            .deletingLastPathComponent()  // MacOS/
+            .deletingLastPathComponent()  // Contents/
+            .deletingLastPathComponent()  // Glance.app/
+        let rootChangelog = execURL.appendingPathComponent("CHANGELOG.md")
+        return try? String(contentsOf: rootChangelog)
     }
 
     // Updates the changelog text on the main thread

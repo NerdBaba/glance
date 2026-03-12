@@ -34,7 +34,7 @@ struct MenuBarPopupView<Content: View>: View {
         ZStack(alignment: .topTrailing) {
             content
                 .popupStyle(appearance, cornerRadius: ((1.0 - animationValue) * 1) + appearance.popupRoundness)
-                .padding(.top, foregroundHeight + 5)
+                .padding(.top, 14)
                 .offset(x: computedOffset, y: computedYOffset)
                 .shadow(radius: 30)
                 .blur(radius: (1.0 - (0.1 + 0.9 * animationValue)) * 20)

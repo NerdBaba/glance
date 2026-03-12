@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct NetworkPopup: View {
-    @StateObject private var viewModel = NetworkStatusViewModel()
+    @ObservedObject private var viewModel = NetworkStatusViewModel.shared
     @ObservedObject var configManager = ConfigManager.shared
     var appearance: AppearanceConfig { configManager.config.appearance }
 

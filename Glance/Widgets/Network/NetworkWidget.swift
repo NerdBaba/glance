@@ -2,11 +2,11 @@ import SwiftUI
 
 /// Widget for the menu, displaying Wi‑Fi and Ethernet icons.
 struct NetworkWidget: View {
-    @StateObject private var viewModel = NetworkStatusViewModel()
+    @ObservedObject private var viewModel = NetworkStatusViewModel.shared
     @State private var rect: CGRect = .zero
 
     var body: some View {
-        HStack(spacing: 15) {
+        HStack(spacing: 12) {
             if viewModel.wifiState != .notSupported {
                 wifiIcon
             }
@@ -14,6 +14,7 @@ struct NetworkWidget: View {
                 ethernetIcon
             }
         }
+        .barSingleLineAligned()
         .background(
             GeometryReader { geometry in
                 Color.clear
@@ -24,7 +25,6 @@ struct NetworkWidget: View {
             }
         )
         .contentShape(Rectangle())
-        .font(.system(size: 15))
         .experimentalConfiguration()
         .frame(maxHeight: .infinity)
         .background(.black.opacity(0.001))
@@ -37,21 +37,26 @@ struct NetworkWidget: View {
     private var wifiIcon: some View {
         switch viewModel.wifiState {
         case .connected:
-            Image(systemName: "wifi")
+            Image(systemName: "wifi").barStatusSymbol(opticalYOffset: -0.45)
         case .connecting:
             Image(systemName: "wifi")
+                .barStatusSymbol(opticalYOffset: -0.45)
                 .foregroundStyle(.yellow)
         case .connectedWithoutInternet:
             Image(systemName: "wifi.exclamationmark")
+                .barStatusSymbol(opticalYOffset: -0.25)
                 .foregroundStyle(.yellow)
         case .disconnected:
             Image(systemName: "wifi.slash")
+                .barStatusSymbol(opticalYOffset: -0.35)
                 .opacity(0.5)
         case .disabled:
             Image(systemName: "wifi.slash")
+                .barStatusSymbol(opticalYOffset: -0.35)
                 .foregroundStyle(.red)
         case .notSupported:
             Image(systemName: "wifi.exclamationmark")
+                .barStatusSymbol(opticalYOffset: -0.25)
                 .opacity(0.5)
         }
     }
@@ -60,18 +65,22 @@ struct NetworkWidget: View {
     private var ethernetIcon: some View {
         switch viewModel.ethernetState {
         case .connected:
-            Image(systemName: "network")
+            Image(systemName: "network").barStatusSymbol(opticalYOffset: -0.2)
         case .connectedWithoutInternet:
             Image(systemName: "network")
+                .barStatusSymbol(opticalYOffset: -0.2)
                 .foregroundStyle(.yellow)
         case .connecting:
             Image(systemName: "network.slash")
+                .barStatusSymbol(opticalYOffset: -0.1)
                 .foregroundStyle(.yellow)
         case .disconnected:
             Image(systemName: "network.slash")
+                .barStatusSymbol(opticalYOffset: -0.1)
                 .foregroundStyle(.red)
         case .disabled, .notSupported:
             Image(systemName: "questionmark.circle")
+                .barStatusSymbol(opticalYOffset: -0.1)
                 .opacity(0.5)
         }
     }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SystemMonitorWidget: View {
-    @StateObject private var viewModel = SystemMonitorViewModel()
+    @ObservedObject private var viewModel = SystemMonitorViewModel.shared
     @State private var rect: CGRect = .zero
 
     var body: some View {
@@ -9,7 +9,7 @@ struct SystemMonitorWidget: View {
             // CPU
             HStack(spacing: 3) {
                 Image(systemName: "cpu")
-                    .font(.system(size: 11))
+                    .barStatusSymbol(size: 11, opticalYOffset: -0.1)
                 Text(String(format: "%.0f%%", viewModel.cpuUsage))
                     .font(.system(size: 12, weight: .medium))
                     .monospacedDigit()
@@ -18,12 +18,13 @@ struct SystemMonitorWidget: View {
             // Memory
             HStack(spacing: 3) {
                 Image(systemName: "memorychip")
-                    .font(.system(size: 11))
+                    .barStatusSymbol(size: 11, opticalYOffset: -0.1)
                 Text(String(format: "%.1f", viewModel.memoryUsedGB) + "G")
                     .font(.system(size: 12, weight: .medium))
                     .monospacedDigit()
             }
         }
+        .barSingleLineAligned()
         .shadow(color: .black.opacity(0.3), radius: 3)
         .experimentalConfiguration(horizontalPadding: 10)
         .frame(maxHeight: .infinity)

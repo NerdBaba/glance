@@ -176,12 +176,20 @@ final class VolumeViewModel: ObservableObject {
 
         AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &vol)
         self.volume = vol
+
+        if vol > 0, isMuted {
+            setMuted(false)
+        }
     }
 
     func toggleMute() {
+        setMuted(!isMuted)
+    }
+
+    func setMuted(_ muted: Bool) {
         guard let deviceID = getDefaultOutputDevice() else { return }
 
-        var mute: UInt32 = isMuted ? 0 : 1
+        var mute: UInt32 = muted ? 1 : 0
         let size = UInt32(MemoryLayout<UInt32>.size)
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyMute,
@@ -190,7 +198,7 @@ final class VolumeViewModel: ObservableObject {
         )
 
         AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &mute)
-        self.isMuted = !self.isMuted
+        self.isMuted = muted
     }
 
     func adjustVolume(by delta: Float) {

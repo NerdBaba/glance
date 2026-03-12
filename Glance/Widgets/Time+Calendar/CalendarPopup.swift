@@ -2,7 +2,7 @@ import EventKit
 import SwiftUI
 
 struct CalendarPopup: View {
-    let calendarManager: CalendarManager
+    @ObservedObject var calendarManager: CalendarManager
     @ObservedObject var configProvider: ConfigProvider
     @ObservedObject var configManager = ConfigManager.shared
     var appearance: AppearanceConfig { configManager.config.appearance }
@@ -26,19 +26,41 @@ struct CalendarPopup: View {
                 appearance: appearance
             )
 
-            // Events
-            if !calendarManager.todaysEvents.isEmpty || !calendarManager.tomorrowsEvents.isEmpty {
+            if calendarManager.hasAccess {
                 Divider()
                     .background(appearance.foregroundColor.opacity(0.15))
                     .padding(.vertical, 16)
 
-                EventListView(
-                    todaysEvents: calendarManager.todaysEvents,
-                    tomorrowsEvents: calendarManager.tomorrowsEvents,
+                if !calendarManager.todaysEvents.isEmpty || !calendarManager.tomorrowsEvents.isEmpty {
+                    ScrollView {
+                        EventListView(
+                            todaysEvents: calendarManager.todaysEvents,
+                            tomorrowsEvents: calendarManager.tomorrowsEvents,
+                            appearance: appearance
+                        )
+                    }
+                    .scrollIndicators(.hidden)
+                    .frame(maxHeight: 220)
+                } else {
+                    EmptyCalendarStateView(
+                        title: "No upcoming events",
+                        subtitle: "Today and tomorrow are clear.",
+                        appearance: appearance
+                    )
+                }
+            } else {
+                Divider()
+                    .background(appearance.foregroundColor.opacity(0.15))
+                    .padding(.vertical, 16)
+
+                EmptyCalendarStateView(
+                    title: "Calendar access required",
+                    subtitle: "Enable Calendar access for Glance in System Settings to show events.",
                     appearance: appearance
                 )
             }
         }
+        .frame(width: 320, alignment: .leading)
         .padding(24)
     }
 }
@@ -263,5 +285,27 @@ private struct EventRow: View {
         let start = formatter.string(from: event.startDate).replacing(":00", with: "")
         let end = formatter.string(from: event.endDate).replacing(":00", with: "")
         return "\(start) — \(end)"
+    }
+}
+
+private struct EmptyCalendarStateView: View {
+    let title: String
+    let subtitle: String
+    let appearance: AppearanceConfig
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: 22))
+                .foregroundStyle(appearance.accentColor.opacity(0.8))
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+            Text(subtitle)
+                .font(.system(size: 11))
+                .opacity(0.45)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
     }
 }

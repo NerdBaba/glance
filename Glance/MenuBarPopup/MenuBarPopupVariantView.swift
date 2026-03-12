@@ -5,6 +5,14 @@ enum MenuBarPopupVariant: String, Equatable {
 }
 
 struct MenuBarPopupVariantView: View {
+    private struct VariantOption: Identifiable {
+        let variant: MenuBarPopupVariant
+        let iconName: String
+        let view: AnyView
+
+        var id: MenuBarPopupVariant { variant }
+    }
+
     private let box: AnyView?
     private let vertical: AnyView?
     private let horizontal: AnyView?
@@ -49,23 +57,8 @@ struct MenuBarPopupVariantView: View {
         }
         .overlay(alignment: .bottomTrailing) {
             HStack(spacing: 3) {
-                if box != nil {
-                    variantButton(
-                        variant: .box, systemImageName: "square.inset.filled")
-                }
-                if vertical != nil {
-                    variantButton(
-                        variant: .vertical,
-                        systemImageName: "rectangle.portrait.inset.filled")
-                }
-                if horizontal != nil {
-                    variantButton(
-                        variant: .horizontal,
-                        systemImageName: "rectangle.inset.filled")
-                }
-                if settings != nil {
-                    variantButton(
-                        variant: .settings, systemImageName: "gearshape.fill")
+                ForEach(availableVariants) { option in
+                    variantButton(option)
                 }
             }
             .padding(.horizontal, 20)
@@ -82,53 +75,78 @@ struct MenuBarPopupVariantView: View {
 
     @ViewBuilder
     private func content(for variant: MenuBarPopupVariant) -> some View {
-        switch variant {
-        case .box:
-            if let view = box { view }
-        case .vertical:
-            if let view = vertical { view }
-        case .horizontal:
-            if let view = horizontal { view }
-        case .settings:
-            if let view = settings { view }
+        if let view = availableVariants.first(where: { $0.variant == variant })?.view {
+            view
         }
     }
 
-    private func variantButton(
-        variant: MenuBarPopupVariant, systemImageName: String
-    ) -> some View {
-        Button {
-            if selectedVariant != variant {
-                withAnimation(.smooth(duration: 0.3)) {
-                    animationValue = 1
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    withAnimation(.smooth(duration: 0.3)) {
-                        onVariantSelected?(variant)
-                    }
-                }
+    private var availableVariants: [VariantOption] {
+        var options: [VariantOption] = []
+        appendVariant(.box, iconName: "square.inset.filled", view: box, to: &options)
+        appendVariant(
+            .vertical,
+            iconName: "rectangle.portrait.inset.filled",
+            view: vertical,
+            to: &options
+        )
+        appendVariant(
+            .horizontal,
+            iconName: "rectangle.inset.filled",
+            view: horizontal,
+            to: &options
+        )
+        appendVariant(.settings, iconName: "gearshape.fill", view: settings, to: &options)
+        return options
+    }
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation(.smooth(duration: 0.3)) {
-                        animationValue = 0
-                    }
-                }
-            }
+    private func appendVariant(
+        _ variant: MenuBarPopupVariant,
+        iconName: String,
+        view: AnyView?,
+        to options: inout [VariantOption]
+    ) {
+        guard let view else { return }
+        options.append(VariantOption(variant: variant, iconName: iconName, view: view))
+    }
+
+    private func variantButton(_ option: VariantOption) -> some View {
+        Button {
+            transition(to: option.variant)
         } label: {
-            Image(systemName: systemImageName)
+            Image(systemName: option.iconName)
                 .foregroundColor(.white.opacity(0.5))
                 .frame(width: 13, height: 10)
         }
         .buttonStyle(HoverButtonStyle())
         .overlay(
             Group {
-                if selectedVariant == variant {
+                if selectedVariant == option.variant {
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(Color.white.opacity(0.3), lineWidth: 1)
                         .opacity(1 - animationValue * 10)
                 }
             }
         )
+    }
+
+    private func transition(to variant: MenuBarPopupVariant) {
+        guard selectedVariant != variant else { return }
+
+        withAnimation(.smooth(duration: 0.3)) {
+            animationValue = 1
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            withAnimation(.smooth(duration: 0.3)) {
+                onVariantSelected?(variant)
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.smooth(duration: 0.3)) {
+                animationValue = 0
+            }
+        }
     }
 }
 

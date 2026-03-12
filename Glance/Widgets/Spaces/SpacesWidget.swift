@@ -1,5 +1,24 @@
 import SwiftUI
 
+// MARK: - Display Mode & Highlight Style
+
+enum SpacesDisplayMode: String {
+    case icons         = "icons"        // Space number + app icons + focused window title (default)
+    case numbers       = "numbers"      // Just space numbers in styled containers
+    case dots          = "dots"         // Small circles: filled/hollow/focused
+    case iconsOnly     = "icons-only"   // App icons only, no numbers
+    case focusedOnly   = "focused-only" // Only show the focused space
+}
+
+enum SpacesHighlight: String {
+    case opacity   // Focused 100%, inactive 60% (default)
+    case pill      // Accent capsule background behind focused
+    case underline // Colored bar beneath focused
+    case glow      // Soft accent glow around focused
+}
+
+// MARK: - Spaces Widget
+
 struct SpacesWidget: View {
     @StateObject var viewModel = SpacesViewModel()
 
@@ -7,22 +26,31 @@ struct SpacesWidget: View {
     var foregroundHeight: CGFloat { configManager.config.experimental.foreground.resolveHeight() }
 
     var body: some View {
-        HStack(spacing: foregroundHeight < 30 ? 0 : 8) {
-            ForEach(viewModel.spaces) { space in
-                SpaceView(space: space)
+        Group {
+            if viewModel.isUnavailable {
+                Text("Spaces unavailable")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: foregroundHeight < 30 ? 0 : 8) {
+                    ForEach(viewModel.spaces) { space in
+                        SpaceView(space: space)
+                    }
+                }
             }
         }
         .experimentalConfiguration(horizontalPadding: 5)
         .animation(.smooth(duration: 0.3), value: viewModel.spaces)
-        // Inherits foregroundColor from parent MenuBarView
         .environmentObject(viewModel)
     }
 }
 
-/// This view shows a space with its windows.
+// MARK: - Space View (routes to display mode)
+
 private struct SpaceView: View {
     @EnvironmentObject var configProvider: ConfigProvider
     @EnvironmentObject var viewModel: SpacesViewModel
+    @Environment(\.appearance) private var appearance
 
     var config: ConfigData { configProvider.config }
     var spaceConfig: ConfigData { config["space"]?.dictionaryValue ?? [:] }
@@ -32,12 +60,66 @@ private struct SpaceView: View {
 
     var showKey: Bool { spaceConfig["show-key"]?.boolValue ?? true }
 
+    var displayMode: SpacesDisplayMode {
+        guard let raw = spaceConfig["display-mode"]?.stringValue else { return .icons }
+        return SpacesDisplayMode(rawValue: raw) ?? .icons
+    }
+
+    var highlight: SpacesHighlight {
+        guard let raw = spaceConfig["highlight"]?.stringValue else { return .opacity }
+        return SpacesHighlight(rawValue: raw) ?? .opacity
+    }
+
     let space: AnySpace
 
     @State var isHovered = false
 
     var body: some View {
         let isFocused = space.windows.contains { $0.isFocused } || space.isFocused
+        let isOccupied = !space.windows.isEmpty
+
+        // In focused-only mode, hide non-focused spaces
+        if displayMode == .focusedOnly && !isFocused {
+            EmptyView()
+        } else {
+            spaceContent(isFocused: isFocused, isOccupied: isOccupied)
+                .highlightStyle(
+                    highlight,
+                    isFocused: isFocused,
+                    isHovered: isHovered,
+                    accentColor: appearance.accentColor
+                )
+                .contentShape(Rectangle())
+                .transition(.blurReplace)
+                .onTapGesture {
+                    viewModel.switchToSpace(space, needWindowFocus: true)
+                }
+                .animation(.smooth, value: isHovered)
+                .animation(.smooth, value: isFocused)
+                .onHover { value in
+                    isHovered = value
+                }
+        }
+    }
+
+    @ViewBuilder
+    private func spaceContent(isFocused: Bool, isOccupied: Bool) -> some View {
+        switch displayMode {
+        case .icons, .focusedOnly:
+            iconsContent(isFocused: isFocused)
+        case .numbers:
+            numbersContent(isFocused: isFocused)
+        case .dots:
+            dotsContent(isFocused: isFocused, isOccupied: isOccupied)
+        case .iconsOnly:
+            iconsOnlyContent(isFocused: isFocused)
+        }
+    }
+
+    // MARK: - Icons Mode (default — number + app icons + title)
+
+    @ViewBuilder
+    private func iconsContent(isFocused: Bool) -> some View {
         HStack(spacing: 4) {
             if showKey {
                 Text(space.id)
@@ -54,21 +136,121 @@ private struct SpaceView: View {
         }
         .padding(.horizontal, 6)
         .frame(height: 30)
-        .contentShape(Rectangle())
-        .opacity(isFocused ? 1.0 : (isHovered ? 0.9 : 0.6))
-        .transition(.blurReplace)
-        .onTapGesture {
-            viewModel.switchToSpace(space, needWindowFocus: true)
+    }
+
+    // MARK: - Numbers Mode (just space numbers)
+
+    @ViewBuilder
+    private func numbersContent(isFocused: Bool) -> some View {
+        Text(space.id)
+            .font(.system(size: 12, weight: isFocused ? .bold : .medium, design: .rounded))
+            .foregroundStyle(isFocused ? Color.white : Color.gray)
+            .frame(minWidth: 20, minHeight: 20)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 4)
+            .frame(height: 30)
+    }
+
+    // MARK: - Dots Mode (circles: focused/occupied/empty)
+
+    @ViewBuilder
+    private func dotsContent(isFocused: Bool, isOccupied: Bool) -> some View {
+        let dotSize: CGFloat = isFocused ? 8 : 6
+
+        Circle()
+            .fill(isFocused ? appearance.accentColor : (isOccupied ? Color.white.opacity(0.7) : Color.white.opacity(0.25)))
+            .frame(width: dotSize, height: dotSize)
+            .animation(.smooth(duration: 0.2), value: isFocused)
+            .padding(.horizontal, 3)
+            .frame(height: 30)
+    }
+
+    // MARK: - Icons Only Mode (app icons, no numbers)
+
+    @ViewBuilder
+    private func iconsOnlyContent(isFocused: Bool) -> some View {
+        HStack(spacing: 2) {
+            if space.windows.isEmpty {
+                // Show a small placeholder dot for empty spaces
+                Circle()
+                    .fill(Color.white.opacity(0.2))
+                    .frame(width: 6, height: 6)
+            } else {
+                ForEach(space.windows) { window in
+                    WindowView(window: window, space: space)
+                }
+            }
         }
-        .animation(.smooth, value: isHovered)
-        .animation(.smooth, value: isFocused)
-        .onHover { value in
-            isHovered = value
+        .padding(.horizontal, 4)
+        .frame(height: 30)
+    }
+}
+
+// MARK: - Highlight Style Modifier
+
+private struct HighlightModifier: ViewModifier {
+    let style: SpacesHighlight
+    let isFocused: Bool
+    let isHovered: Bool
+    let accentColor: Color
+
+    func body(content: Content) -> some View {
+        switch style {
+        case .opacity:
+            content
+                .opacity(isFocused ? 1.0 : (isHovered ? 0.9 : 0.6))
+
+        case .pill:
+            content
+                .background(
+                    Capsule()
+                        .fill(accentColor.opacity(isFocused ? 0.3 : 0))
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(accentColor.opacity(isFocused ? 0.4 : 0), lineWidth: 0.5)
+                        )
+                )
+                .opacity(isFocused ? 1.0 : (isHovered ? 0.85 : 0.55))
+
+        case .underline:
+            content
+                .overlay(alignment: .bottom) {
+                    if isFocused {
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(accentColor)
+                            .frame(width: 16, height: 2.5)
+                            .offset(y: -2)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+                .opacity(isFocused ? 1.0 : (isHovered ? 0.85 : 0.55))
+
+        case .glow:
+            content
+                .shadow(color: isFocused ? accentColor.opacity(0.6) : .clear, radius: isFocused ? 6 : 0)
+                .opacity(isFocused ? 1.0 : (isHovered ? 0.85 : 0.5))
         }
     }
 }
 
-/// This view shows a window and its icon.
+private extension View {
+    func highlightStyle(
+        _ style: SpacesHighlight,
+        isFocused: Bool,
+        isHovered: Bool,
+        accentColor: Color
+    ) -> some View {
+        modifier(HighlightModifier(
+            style: style,
+            isFocused: isFocused,
+            isHovered: isHovered,
+            accentColor: accentColor
+        ))
+    }
+}
+
+// MARK: - Window View (icon + optional title)
+
 private struct WindowView: View {
     @EnvironmentObject var configProvider: ConfigProvider
     @EnvironmentObject var viewModel: SpacesViewModel
@@ -137,8 +319,9 @@ private struct WindowView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.switchToSpace(space)
-            usleep(100_000)
-            viewModel.switchToWindow(window)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                viewModel.switchToWindow(window)
+            }
         }
         .onHover { value in
             isHovered = value

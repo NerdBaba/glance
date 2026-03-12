@@ -15,17 +15,24 @@ struct AeroWindow: WindowModel {
         case workspace
     }
 
+    private static func resolvedTitle(from rawTitle: String) -> String {
+        let trimmed = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Untitled" : trimmed
+    }
+
+    private static func icon(for appName: String?) -> NSImage? {
+        guard let appName else { return nil }
+        return IconCache.shared.icon(for: appName)
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(Int.self, forKey: .id)
-        title = try container.decode(String.self, forKey: .title)
+        title = Self.resolvedTitle(from: try container.decode(String.self, forKey: .title))
         appName = try container.decodeIfPresent(String.self, forKey: .appName)
-        workspace = try container.decodeIfPresent(
-            String.self, forKey: .workspace)
+        workspace = try container.decodeIfPresent(String.self, forKey: .workspace)
         isFocused = false
-        if let name = appName {
-            appIcon = IconCache.shared.icon(for: name)
-        }
+        appIcon = Self.icon(for: appName)
     }
 }
 
@@ -45,8 +52,11 @@ struct AeroSpace: SpaceModel {
         workspace = try container.decode(String.self, forKey: .workspace)
     }
 
-    init(workspace: String, isFocused: Bool = false, windows: [AeroWindow] = [])
-    {
+    init(
+        workspace: String,
+        isFocused: Bool = false,
+        windows: [AeroWindow] = []
+    ) {
         self.workspace = workspace
         self.isFocused = isFocused
         self.windows = windows

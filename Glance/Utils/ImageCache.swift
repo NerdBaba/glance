@@ -7,6 +7,15 @@ import SwiftUI
 /// A singleton cache for storing downloaded NSImage objects.
 final class ImageCache {
     static let shared = NSCache<NSString, NSImage>()
+
+    static func key(for url: URL, targetSize: CGSize?) -> NSString {
+        guard let targetSize else {
+            return url.absoluteString as NSString
+        }
+
+        return "\(url.absoluteString)#\(Int(targetSize.width))x\(Int(targetSize.height))"
+            as NSString
+    }
 }
 
 // MARK: - Image Loader
@@ -14,15 +23,15 @@ final class ImageCache {
 /// An observable object that asynchronously downloads and caches images.
 final class ImageLoader: ObservableObject {
     @Published var image: NSImage?
-    
+
     private var cancellable: AnyCancellable?
-    
+
     /// The URL of the image to load.
     var url: URL?
-    
+
     /// Optional target size to which the image should be resized.
     var targetSize: CGSize?
-    
+
     /// Initializes the loader with an optional URL and target size.
     /// - Parameters:
     ///   - url: The URL of the image.
@@ -34,28 +43,21 @@ final class ImageLoader: ObservableObject {
     
     /// Generates a cache key based on the URL and target size.
     private var cacheKey: NSString? {
-        guard let url = url else { return nil }
-        if let targetSize = targetSize {
-            return "\(url.absoluteString)-\(Int(targetSize.width))x\(Int(targetSize.height))" as NSString
-        } else {
-            return url.absoluteString as NSString
-        }
+        guard let url else { return nil }
+        return ImageCache.key(for: url, targetSize: targetSize)
     }
-    
+
     /// Loads the image from the URL, resizing if needed, and caches it.
     func load() {
-        // Cancel any ongoing request before starting a new one.
-        cancellable?.cancel()
-        
-        guard let url = url, let key = cacheKey else { return }
-        
-        // Check for cached image.
+        resetActiveRequest()
+
+        guard let url, let key = cacheKey else { return }
+
         if let cachedImage = ImageCache.shared.object(forKey: key) {
-            self.image = cachedImage
+            image = cachedImage
             return
         }
-        
-        // Download image asynchronously.
+
         cancellable = URLSession.shared.dataTaskPublisher(for: url)
             .tryMap { [weak self] data, _ -> NSImage? in
                 guard let downloadedImage = NSImage(data: data) else { return nil }
@@ -73,9 +75,14 @@ final class ImageLoader: ObservableObject {
                 self?.image = downloadedImage
             }
     }
-    
-    deinit {
+
+    private func resetActiveRequest() {
         cancellable?.cancel()
+        cancellable = nil
+    }
+
+    deinit {
+        resetActiveRequest()
     }
 }
 
@@ -102,12 +109,12 @@ extension NSImage {
 struct RotateAnimatedCachedImage<RotatingContent: View>: View {
     let url: URL?
     let targetSize: CGSize?
-    
+
     @StateObject private var loader: ImageLoader
     @State private var displayedImage: NSImage?
     @State private var rotation: Double = 1
     let rotatingModifier: (Image) -> RotatingContent
-    
+
     /// Initializes the view with a URL, optional target size, and a custom rotating modifier.
     init(
         url: URL?,
@@ -120,11 +127,6 @@ struct RotateAnimatedCachedImage<RotatingContent: View>: View {
         self.rotatingModifier = rotatingModifier
     }
     
-    /// Convenience initializer when no custom modifier is needed.
-    init(url: URL?, targetSize: CGSize? = nil) where RotatingContent == Image {
-        self.init(url: url, targetSize: targetSize) { image in image }
-    }
-    
     var body: some View {
         Group {
             if let image = displayedImage {
@@ -135,25 +137,36 @@ struct RotateAnimatedCachedImage<RotatingContent: View>: View {
                 Color.clear
             }
         }
-        .onAppear { loader.load() }
+        .onAppear(perform: loader.load)
         .onReceive(loader.$image) { newImage in
             guard let newImage = newImage else { return }
-            // If image is loading for the first time.
             if displayedImage == nil {
                 displayedImage = newImage
             } else if displayedImage != newImage {
-                // Animate the transition.
-                withAnimation(.easeInOut(duration: 0.2)) { rotation = 0 }
-                withAnimation(.easeOut(duration: 0.3).delay(0.2)) { rotation = 1 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    displayedImage = newImage
-                }
+                transition(to: newImage)
             }
         }
-        .onChange(of: url) { _, newURL in
-            loader.url = newURL
-            loader.load()
+        .onChange(of: url) { _, newURL in reload(for: newURL) }
+    }
+
+    private func transition(to image: NSImage) {
+        withAnimation(.easeInOut(duration: 0.2)) { rotation = 0 }
+        withAnimation(.easeOut(duration: 0.3).delay(0.2)) { rotation = 1 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            displayedImage = image
         }
+    }
+
+    private func reload(for newURL: URL?) {
+        loader.url = newURL
+        loader.load()
+    }
+}
+
+extension RotateAnimatedCachedImage where RotatingContent == Image {
+    /// Convenience initializer when no custom modifier is needed.
+    init(url: URL?, targetSize: CGSize? = nil) {
+        self.init(url: url, targetSize: targetSize) { image in image }
     }
 }
 
@@ -163,13 +176,13 @@ struct RotateAnimatedCachedImage<RotatingContent: View>: View {
 struct FadeAnimatedCachedImage<Content: View>: View {
     let url: URL?
     let targetSize: CGSize?
-    
+
     @StateObject private var loader: ImageLoader
     @State private var currentImage: NSImage?
     @State private var nextImage: NSImage?
     @State private var showNextImage: Bool = false
     let content: (Image) -> Content
-    
+
     /// Initializes the view with a URL, optional target size, and a custom content modifier.
     init(
         url: URL?,
@@ -182,45 +195,51 @@ struct FadeAnimatedCachedImage<Content: View>: View {
         self.content = content
     }
     
-    /// Convenience initializer when no custom modifier is needed.
-    init(url: URL?, targetSize: CGSize? = nil) where Content == Image {
-        self.init(url: url, targetSize: targetSize) { image in image }
-    }
-    
     var body: some View {
         ZStack {
             if let currentImage = currentImage {
                 content(Image(nsImage: currentImage))
             }
-            
+
             if let nextImage = nextImage {
                 content(Image(nsImage: nextImage))
                     .opacity(showNextImage ? 1 : 0)
             }
         }
-        .onAppear { loader.load() }
+        .onAppear(perform: loader.load)
         .onReceive(loader.$image) { newImage in
             guard let newImage = newImage else { return }
-            // Set the image for the first time.
             if currentImage == nil {
                 currentImage = newImage
             } else if currentImage != newImage {
-                // Animate the fade transition.
-                nextImage = newImage
-                withAnimation(.easeInOut(duration: 0.5)) {
-                    showNextImage = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    currentImage = newImage
-                    nextImage = nil
-                    showNextImage = false
-                }
+                animateSwap(to: newImage)
             }
         }
-        .onChange(of: url) { _, newURL in
-            loader.url = newURL
-            loader.load()
+        .onChange(of: url) { _, newURL in reload(for: newURL) }
+    }
+
+    private func animateSwap(to image: NSImage) {
+        nextImage = image
+        withAnimation(.easeInOut(duration: 0.5)) {
+            showNextImage = true
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            currentImage = image
+            nextImage = nil
+            showNextImage = false
+        }
+    }
+
+    private func reload(for newURL: URL?) {
+        loader.url = newURL
+        loader.load()
+    }
+}
+
+extension FadeAnimatedCachedImage where Content == Image {
+    /// Convenience initializer when no custom modifier is needed.
+    init(url: URL?, targetSize: CGSize? = nil) {
+        self.init(url: url, targetSize: targetSize) { image in image }
     }
 }
 
@@ -230,11 +249,11 @@ struct FadeAnimatedCachedImage<Content: View>: View {
 struct CachedImage<Content: View>: View {
     let url: URL?
     let targetSize: CGSize?
-    
+
     @StateObject private var loader: ImageLoader
     @State private var displayedImage: NSImage?
     let content: (Image) -> Content
-    
+
     /// Initializes the view with a URL and optional target size.
     init(
         url: URL?,
@@ -255,13 +274,15 @@ struct CachedImage<Content: View>: View {
                 Color.clear
             }
         }
-        .onAppear { loader.load() }
+        .onAppear(perform: loader.load)
         .onReceive(loader.$image) { newImage in
             displayedImage = newImage
         }
-        .onChange(of: url) { _, newURL in
-            loader.url = newURL
-            loader.load()
-        }
+        .onChange(of: url) { _, newURL in reload(for: newURL) }
+    }
+
+    private func reload(for newURL: URL?) {
+        loader.url = newURL
+        loader.load()
     }
 }

@@ -64,19 +64,19 @@ enum Preset: String, CaseIterable {
         case .frosted:
             return AppearanceConfig(
                 renderingStyle: .glass,
-                roundness: 12,
+                roundness: 14,
                 borderWidth: 0.5,
-                borderTopOpacity: 0.15,
-                borderMidOpacity: 0.08,
-                borderBottomOpacity: 0.04,
-                fillOpacity: 0.20,
+                borderTopOpacity: 0.18,
+                borderMidOpacity: 0.10,
+                borderBottomOpacity: 0.05,
+                fillOpacity: 0.25,
                 glowOpacity: 0,
                 glowRadius: 0,
-                shadowOpacity: 0.04,
-                shadowRadius: 2,
+                shadowOpacity: 0.06,
+                shadowRadius: 3,
                 shadowY: 1,
                 blurMaterial: .hudWindow,
-                popupDarkTint: 0.40,
+                popupDarkTint: 0.45,
                 popupRoundness: 16,
                 foregroundColor: .white,
                 accentColor: .white.opacity(0.9),
@@ -138,19 +138,21 @@ enum Preset: String, CaseIterable {
                 glowColor: .clear
             )
 
+        // ── Neon — cyberpunk glow with pink→cyan gradient ────────
+
         case .neon:
             return AppearanceConfig(
                 renderingStyle: .solid,
                 roundness: 20,
                 borderWidth: 1.5,
-                borderTopOpacity: 0.80,
-                borderMidOpacity: 0.50,
-                borderBottomOpacity: 0.30,
-                fillOpacity: 0.90,
-                glowOpacity: 0.30,
-                glowRadius: 6,
-                shadowOpacity: 0.20,
-                shadowRadius: 10,
+                borderTopOpacity: 0.85,
+                borderMidOpacity: 0.55,
+                borderBottomOpacity: 0.35,
+                fillOpacity: 0.92,
+                glowOpacity: 0.35,
+                glowRadius: 8,
+                shadowOpacity: 0.25,
+                shadowRadius: 12,
                 shadowY: 0,
                 blurMaterial: .popover,
                 popupDarkTint: 0,
@@ -158,161 +160,184 @@ enum Preset: String, CaseIterable {
                 foregroundColor: Self.hex("#f0f0f0"),
                 accentColor: Self.hex("#ff44cc"),
                 borderColor: Self.hex("#ff44cc"),
-                borderColor2: nil,
+                borderColor2: Self.hex("#00e5ff"),
                 widgetBackgroundColor: Self.hex("#0a0a0a"),
                 glowColor: Self.hex("#ff44cc")
             )
 
-        // ── Color scheme presets ──────────────────────────────────
+        // ── Tokyo Night — dreamy night atmosphere ────────────────
+        // Deep indigo bg, soft lavender text, blue accent with violet undertones.
+        // Subtle blue glow evokes the neon-lit night city aesthetic.
 
         case .tokyoNight:
             return AppearanceConfig(
                 renderingStyle: .solid,
-                roundness: 8,
-                borderWidth: 0.5,
-                borderTopOpacity: 0.20,
-                borderMidOpacity: 0.20,
-                borderBottomOpacity: 0.20,
-                fillOpacity: 0.90,
-                glowOpacity: 0,
-                glowRadius: 0,
-                shadowOpacity: 0.05,
-                shadowRadius: 3,
+                roundness: 12,
+                borderWidth: 1.0,
+                borderTopOpacity: 0.30,
+                borderMidOpacity: 0.15,
+                borderBottomOpacity: 0.08,
+                fillOpacity: 0.92,
+                glowOpacity: 0.12,
+                glowRadius: 4,
+                shadowOpacity: 0.10,
+                shadowRadius: 6,
                 shadowY: 2,
                 blurMaterial: .popover,
                 popupDarkTint: 0,
-                popupRoundness: 12,
-                foregroundColor: Self.hex("#a9b1d6"),
-                accentColor: Self.hex("#7aa2f7"),
-                borderColor: Self.hex("#414868"),
-                borderColor2: nil,
-                widgetBackgroundColor: Self.hex("#1a1b26"),
-                glowColor: .clear
+                popupRoundness: 14,
+                foregroundColor: Self.hex("#a9b1d6"),   // Storm — fg
+                accentColor: Self.hex("#7aa2f7"),       // Blue
+                borderColor: Self.hex("#7aa2f7"),       // Blue border top
+                borderColor2: Self.hex("#9d7cd8"),      // Purple border bottom
+                widgetBackgroundColor: Self.hex("#1a1b26"), // Night bg
+                glowColor: Self.hex("#7aa2f7")          // Blue glow
             )
+
+        // ── Dracula — bold, contrasty, purple-pink on dark ───────
+        // Purple primary, pink secondary. Gradient border purple→pink.
+        // Slightly more visible borders than average — Dracula is bold.
 
         case .dracula:
             return AppearanceConfig(
                 renderingStyle: .solid,
-                roundness: 8,
-                borderWidth: 0.5,
-                borderTopOpacity: 0.20,
+                roundness: 10,
+                borderWidth: 1.0,
+                borderTopOpacity: 0.35,
                 borderMidOpacity: 0.20,
-                borderBottomOpacity: 0.20,
-                fillOpacity: 0.90,
-                glowOpacity: 0,
-                glowRadius: 0,
-                shadowOpacity: 0.05,
-                shadowRadius: 3,
+                borderBottomOpacity: 0.10,
+                fillOpacity: 0.92,
+                glowOpacity: 0.10,
+                glowRadius: 4,
+                shadowOpacity: 0.10,
+                shadowRadius: 5,
                 shadowY: 2,
                 blurMaterial: .popover,
                 popupDarkTint: 0,
-                popupRoundness: 12,
-                foregroundColor: Self.hex("#f8f8f2"),
-                accentColor: Self.hex("#bd93f9"),
-                borderColor: Self.hex("#6272a4"),
-                borderColor2: nil,
-                widgetBackgroundColor: Self.hex("#282a36"),
-                glowColor: .clear
+                popupRoundness: 14,
+                foregroundColor: Self.hex("#f8f8f2"),   // Foreground
+                accentColor: Self.hex("#bd93f9"),       // Purple
+                borderColor: Self.hex("#bd93f9"),       // Purple border
+                borderColor2: Self.hex("#ff79c6"),      // Pink gradient end
+                widgetBackgroundColor: Self.hex("#282a36"), // Background
+                glowColor: Self.hex("#bd93f9")          // Purple glow
             )
+
+        // ── Gruvbox — warm retro, earthy orange on dark brown ────
+        // Warm, textured feel. Orange accent, yellow secondary.
+        // Slightly rounded, thicker borders for that retro CRT quality.
 
         case .gruvbox:
             return AppearanceConfig(
                 renderingStyle: .solid,
-                roundness: 8,
-                borderWidth: 0.5,
-                borderTopOpacity: 0.20,
-                borderMidOpacity: 0.20,
-                borderBottomOpacity: 0.20,
-                fillOpacity: 0.90,
-                glowOpacity: 0,
-                glowRadius: 0,
-                shadowOpacity: 0.05,
-                shadowRadius: 3,
+                roundness: 10,
+                borderWidth: 1.0,
+                borderTopOpacity: 0.28,
+                borderMidOpacity: 0.18,
+                borderBottomOpacity: 0.10,
+                fillOpacity: 0.93,
+                glowOpacity: 0.08,
+                glowRadius: 3,
+                shadowOpacity: 0.08,
+                shadowRadius: 4,
                 shadowY: 2,
                 blurMaterial: .popover,
                 popupDarkTint: 0,
                 popupRoundness: 12,
-                foregroundColor: Self.hex("#ebdbb2"),
-                accentColor: Self.hex("#fe8019"),
-                borderColor: Self.hex("#504945"),
-                borderColor2: nil,
-                widgetBackgroundColor: Self.hex("#282828"),
-                glowColor: .clear
+                foregroundColor: Self.hex("#ebdbb2"),   // fg
+                accentColor: Self.hex("#fe8019"),       // Orange
+                borderColor: Self.hex("#fe8019"),       // Orange border
+                borderColor2: Self.hex("#fabd2f"),      // Yellow gradient end
+                widgetBackgroundColor: Self.hex("#282828"), // bg0
+                glowColor: Self.hex("#fe8019")          // Warm orange glow
             )
+
+        // ── Nord — arctic, clean, precise ────────────────────────
+        // Cool blues on deep polar night. Crisp borders, no glow —
+        // Nord is about clarity and restraint, like fresh arctic air.
 
         case .nord:
             return AppearanceConfig(
                 renderingStyle: .solid,
                 roundness: 8,
                 borderWidth: 0.5,
-                borderTopOpacity: 0.20,
-                borderMidOpacity: 0.20,
-                borderBottomOpacity: 0.20,
-                fillOpacity: 0.90,
+                borderTopOpacity: 0.25,
+                borderMidOpacity: 0.15,
+                borderBottomOpacity: 0.08,
+                fillOpacity: 0.92,
                 glowOpacity: 0,
                 glowRadius: 0,
-                shadowOpacity: 0.05,
+                shadowOpacity: 0.06,
                 shadowRadius: 3,
                 shadowY: 2,
                 blurMaterial: .popover,
                 popupDarkTint: 0,
-                popupRoundness: 12,
-                foregroundColor: Self.hex("#d8dee9"),
-                accentColor: Self.hex("#88c0d0"),
-                borderColor: Self.hex("#3b4252"),
-                borderColor2: nil,
-                widgetBackgroundColor: Self.hex("#2e3440"),
-                glowColor: .clear
+                popupRoundness: 10,
+                foregroundColor: Self.hex("#d8dee9"),   // Snow Storm
+                accentColor: Self.hex("#88c0d0"),       // Frost (cyan)
+                borderColor: Self.hex("#434c5e"),       // Polar Night 3
+                borderColor2: nil,                      // No gradient — clean
+                widgetBackgroundColor: Self.hex("#2e3440"), // Polar Night 1
+                glowColor: .clear                       // No glow — crisp
             )
+
+        // ── Catppuccin Mocha — soft, pastel, cozy ────────────────
+        // Lavender/mauve on warm dark base. More rounded for softness.
+        // Gentle mauve glow, wider popup roundness — everything is smooth.
 
         case .catppuccin:
             return AppearanceConfig(
                 renderingStyle: .solid,
-                roundness: 10,
-                borderWidth: 0.5,
-                borderTopOpacity: 0.20,
-                borderMidOpacity: 0.20,
-                borderBottomOpacity: 0.20,
-                fillOpacity: 0.90,
-                glowOpacity: 0,
-                glowRadius: 0,
-                shadowOpacity: 0.05,
-                shadowRadius: 3,
+                roundness: 16,
+                borderWidth: 0.8,
+                borderTopOpacity: 0.25,
+                borderMidOpacity: 0.15,
+                borderBottomOpacity: 0.08,
+                fillOpacity: 0.92,
+                glowOpacity: 0.10,
+                glowRadius: 4,
+                shadowOpacity: 0.08,
+                shadowRadius: 5,
                 shadowY: 2,
                 blurMaterial: .popover,
                 popupDarkTint: 0,
-                popupRoundness: 12,
-                foregroundColor: Self.hex("#cdd6f4"),
-                accentColor: Self.hex("#cba6f7"),
-                borderColor: Self.hex("#45475a"),
-                borderColor2: nil,
-                widgetBackgroundColor: Self.hex("#1e1e2e"),
-                glowColor: .clear
+                popupRoundness: 18,
+                foregroundColor: Self.hex("#cdd6f4"),   // Text
+                accentColor: Self.hex("#cba6f7"),       // Mauve
+                borderColor: Self.hex("#cba6f7"),       // Mauve border
+                borderColor2: Self.hex("#89b4fa"),      // Blue gradient end
+                widgetBackgroundColor: Self.hex("#1e1e2e"), // Base
+                glowColor: Self.hex("#cba6f7")          // Soft mauve glow
             )
+
+        // ── Solarized Dark — precise, scientific, timeless ───────
+        // Ethan Schoonover's canonical palette. Teal-black base, precise borders.
+        // No glow, no gradient — Solarized is functional elegance.
+        // Slightly squared-off feel (low roundness), understated border.
 
         case .solarized:
             return AppearanceConfig(
                 renderingStyle: .solid,
-                roundness: 8,
+                roundness: 6,
                 borderWidth: 0.5,
-                borderTopOpacity: 0.20,
-                borderMidOpacity: 0.20,
-                borderBottomOpacity: 0.20,
-                fillOpacity: 0.90,
+                borderTopOpacity: 0.22,
+                borderMidOpacity: 0.14,
+                borderBottomOpacity: 0.08,
+                fillOpacity: 0.93,
                 glowOpacity: 0,
                 glowRadius: 0,
-                shadowOpacity: 0.05,
+                shadowOpacity: 0.06,
                 shadowRadius: 3,
                 shadowY: 2,
                 blurMaterial: .popover,
                 popupDarkTint: 0,
-                popupRoundness: 12,
-                foregroundColor: Self.hex("#839496"),
-                accentColor: Self.hex("#268bd2"),
-                borderColor: Self.hex("#073642"),
-                borderColor2: nil,
-                widgetBackgroundColor: Self.hex("#002b36"),
-                glowColor: .clear
+                popupRoundness: 10,
+                foregroundColor: Self.hex("#839496"),   // base0
+                accentColor: Self.hex("#268bd2"),       // blue
+                borderColor: Self.hex("#073642"),       // base02
+                borderColor2: nil,                      // No gradient — clean
+                widgetBackgroundColor: Self.hex("#002b36"), // base03
+                glowColor: .clear                       // No glow — understated
             )
         }
     }

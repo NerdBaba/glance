@@ -2,7 +2,8 @@ import EventKit
 import SwiftUI
 
 struct TimeWidget: View {
-    @EnvironmentObject var configProvider: ConfigProvider
+    @ObservedObject var configProvider: ConfigProvider
+    @StateObject private var calendarManager: CalendarManager
     var config: ConfigData { configProvider.config }
     var calendarConfig: ConfigData? { config["calendar"]?.dictionaryValue }
 
@@ -17,12 +18,20 @@ struct TimeWidget: View {
     }
 
     @State private var currentTime = Date()
-    let calendarManager: CalendarManager
-
     @State private var rect = CGRect()
+    @State private var cachedFormatter = DateFormatter()
+    @State private var cachedFormat: String = ""
+    @State private var cachedTimeZoneId: String?
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common)
         .autoconnect()
+
+    init(configProvider: ConfigProvider) {
+        self.configProvider = configProvider
+        _calendarManager = StateObject(
+            wrappedValue: CalendarManager(configProvider: configProvider)
+        )
+    }
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
@@ -64,20 +73,21 @@ struct TimeWidget: View {
         }
     }
 
-    // Format the current time.
+    // Format the current time — reuses cached DateFormatter when format/timezone haven't changed.
     private func formattedTime(pattern: String, from time: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = pattern
-
-        if let timeZone = timeZone,
-            let tz = TimeZone(identifier: timeZone)
-        {
-            formatter.timeZone = tz
-        } else {
-            formatter.timeZone = TimeZone.current
+        if pattern != cachedFormat || timeZone != cachedTimeZoneId {
+            cachedFormatter = DateFormatter()
+            cachedFormatter.dateFormat = pattern
+            if let timeZone = timeZone,
+               let tz = TimeZone(identifier: timeZone) {
+                cachedFormatter.timeZone = tz
+            } else {
+                cachedFormatter.timeZone = TimeZone.current
+            }
+            cachedFormat = pattern
+            cachedTimeZoneId = timeZone
         }
-
-        return formatter.string(from: time)
+        return cachedFormatter.string(from: time)
     }
 
     // Create text for the calendar event.
@@ -96,11 +106,9 @@ struct TimeWidget: View {
 struct TimeWidget_Previews: PreviewProvider {
     static var previews: some View {
         let provider = ConfigProvider(config: ConfigData())
-        let manager = CalendarManager(configProvider: provider)
 
         ZStack {
-            TimeWidget(calendarManager: manager)
-                .environmentObject(provider)
+            TimeWidget(configProvider: provider)
         }.frame(width: 500, height: 100)
     }
 }

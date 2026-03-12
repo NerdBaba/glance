@@ -7,7 +7,6 @@ struct VolumePopup: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            // Volume percentage
             HStack {
                 Image(systemName: viewModel.volumeIconName)
                     .font(.system(size: 14))
@@ -18,7 +17,6 @@ struct VolumePopup: View {
                 Spacer()
             }
 
-            // Slider
             HStack(spacing: 10) {
                 Image(systemName: "speaker.fill")
                     .font(.system(size: 10))
@@ -38,22 +36,23 @@ struct VolumePopup: View {
                     .opacity(0.4)
             }
 
-            // Mute button
-            Button(action: { viewModel.toggleMute() }) {
-                HStack(spacing: 6) {
-                    Image(systemName: viewModel.isMuted ? "speaker.slash" : "speaker.wave.2")
-                        .font(.system(size: 11))
-                    Text(viewModel.isMuted ? "Unmute" : "Mute")
-                        .font(.subheadline)
+            HStack(spacing: 8) {
+                popupButton(
+                    title: viewModel.isMuted ? "Unmute" : "Mute",
+                    systemName: viewModel.isMuted ? "speaker.wave.2.fill" : "speaker.slash.fill"
+                ) {
+                    viewModel.toggleMute()
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(appearance.foregroundColor.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-            .buttonStyle(.plain)
 
-            // Output device
+                popupButton(title: "-10%", systemName: "minus") {
+                    viewModel.adjustVolume(by: -0.10)
+                }
+
+                popupButton(title: "+10%", systemName: "plus") {
+                    viewModel.adjustVolume(by: 0.10)
+                }
+            }
+
             if !viewModel.outputDeviceName.isEmpty {
                 Divider().opacity(0.15)
 
@@ -69,7 +68,23 @@ struct VolumePopup: View {
                 }
             }
         }
-        .frame(width: 200)
+        .frame(width: 220)
         .padding(22)
+    }
+
+    private func popupButton(title: String, systemName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: systemName)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(title)
+                    .font(.subheadline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(appearance.foregroundColor.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
     }
 }

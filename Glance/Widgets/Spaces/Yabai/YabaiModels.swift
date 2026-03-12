@@ -24,23 +24,28 @@ struct YabaiWindow: WindowModel {
         case isSticky = "is-sticky"
     }
 
+    private static func resolvedTitle(from rawTitle: String?) -> String {
+        let trimmed = rawTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? "Unnamed" : trimmed
+    }
+
+    private static func icon(for appName: String?) -> NSImage? {
+        guard let appName else { return nil }
+        return IconCache.shared.icon(for: appName)
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(Int.self, forKey: .id)
         spaceId = try container.decode(Int.self, forKey: .spaceId)
-        title =
-            try container.decodeIfPresent(String.self, forKey: .title)
-            ?? "Unnamed"
+        title = Self.resolvedTitle(from: try container.decodeIfPresent(String.self, forKey: .title))
         appName = try container.decodeIfPresent(String.self, forKey: .appName)
         isFocused = try container.decode(Bool.self, forKey: .isFocused)
-        stackIndex =
-            try container.decodeIfPresent(Int.self, forKey: .stackIndex) ?? 0
+        stackIndex = try container.decodeIfPresent(Int.self, forKey: .stackIndex) ?? 0
         isHidden = try container.decode(Bool.self, forKey: .isHidden)
         isFloating = try container.decode(Bool.self, forKey: .isFloating)
         isSticky = try container.decode(Bool.self, forKey: .isSticky)
-        if let name = appName {
-            appIcon = IconCache.shared.icon(for: name)
-        }
+        appIcon = Self.icon(for: appName)
     }
 }
 

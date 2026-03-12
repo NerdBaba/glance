@@ -7,7 +7,7 @@ struct BatteryWidget: View {
     var warningLevel: Int { config["warning-level"]?.intValue ?? 20 }
     var criticalLevel: Int { config["critical-level"]?.intValue ?? 10 }
 
-    @StateObject private var batteryManager = BatteryManager()
+    @ObservedObject private var batteryManager = BatteryManager.shared
     private var level: Int { batteryManager.batteryLevel }
     private var isCharging: Bool { batteryManager.isCharging }
     private var isPluggedIn: Bool { batteryManager.isPluggedIn }
@@ -27,7 +27,7 @@ struct BatteryWidget: View {
                                 y: 0,
                                 width: 30 * Int(level)
                                     / (showPercentage ? 110 : 130),
-                                height: .bitWidth
+                                height: 10
                             )
                         )
                     )
@@ -52,11 +52,14 @@ struct BatteryWidget: View {
                 }
             )
         }
+        .barSingleLineAligned(opticalYOffset: -0.1)
         .experimentalConfiguration()
         .frame(maxHeight: .infinity)
         .background(.black.opacity(0.001))
         .onTapGesture {
-            MenuBarPopup.show(rect: rect, id: "battery") { BatteryPopup() }
+            MenuBarPopup.show(rect: rect, id: "battery") {
+                BatteryPopup(configProvider: configProvider)
+            }
         }
 
     }

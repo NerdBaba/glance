@@ -1,11 +1,31 @@
 import SwiftUI
 
 struct VolumeWidget: View {
+    @EnvironmentObject var configProvider: ConfigProvider
     @StateObject private var viewModel = VolumeViewModel()
     @State private var rect: CGRect = .zero
 
+    private var showPercentage: Bool {
+        configProvider.config["show-percentage"]?.boolValue ?? false
+    }
+
+    private var scrollStep: Float {
+        let configuredStep = configProvider.config["scroll-step"]?.doubleValue ?? 3
+        return Float(max(1, min(15, configuredStep))) / 100
+    }
+
     var body: some View {
-        Image(systemName: viewModel.volumeIconName)
+        HStack(spacing: 5) {
+            Image(systemName: viewModel.volumeIconName)
+                .barStatusSymbol(opticalYOffset: -0.2)
+            if showPercentage {
+                Text(viewModel.isMuted ? "Mute" : "\(viewModel.volumePercent)%")
+                    .font(.system(size: 13, weight: .medium))
+                    .monospacedDigit()
+            }
+        }
+        .barSingleLineAligned()
+        .shadow(color: .black.opacity(0.3), radius: 3)
             .background(
                 GeometryReader { geometry in
                     Color.clear
@@ -16,13 +36,12 @@ struct VolumeWidget: View {
                 }
             )
             .contentShape(Rectangle())
-            .font(.system(size: 15))
             .experimentalConfiguration()
             .frame(maxHeight: .infinity)
             .background(.black.opacity(0.001))
             .overlay(
                 VolumeScrollOverlay { delta in
-                    viewModel.adjustVolume(by: delta > 0 ? -0.03 : 0.03)
+                    viewModel.adjustVolume(by: delta > 0 ? -scrollStep : scrollStep)
                 }
             )
             .onTapGesture {
@@ -70,5 +89,6 @@ struct VolumeWidget_Previews: PreviewProvider {
         VolumeWidget()
             .frame(width: 200, height: 100)
             .background(Color.black)
+            .environmentObject(ConfigProvider(config: [:]))
     }
 }

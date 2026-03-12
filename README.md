@@ -32,14 +32,16 @@ Built with native Swift and SwiftUI. No Electron, no web views, no bloat.
 
 - **Liquid Glass UI** with blur, gradient borders, glow, and shadows
 - **11 built-in presets** so you can match your setup
+- **16 widgets** — spaces, now playing, weather, battery, volume, brightness, bluetooth, clipboard, pomodoro, and more
 - **Native macOS Spaces** out of the box (yabai and AeroSpace also supported)
 - **Rich popups** for every widget: calendar with events, network speed, battery health, now playing with progress bar
-- **Weather** with 5-day forecast (OpenMeteo, no API key needed)
-- **CPU & RAM monitor** with usage bars and memory pressure
+- **4 bar formations**: full, floating, islands, pills
 - **Custom script widgets** — run any shell command and display its output in the bar
-- **Auto-updates** via Sparkle — get notified when new versions are available
+- **Auto-updates** via Sparkle
 - **TOML config** with live reload. Edit, save, see changes instantly
 - **Settings GUI** if you don't want to touch config files
+- **Global hotkey** (Ctrl+Option+B) to toggle bar visibility
+- **Fullscreen auto-hide** — bar fades when apps go fullscreen
 - **Window gap management** so maximized windows don't hide behind the bar
 - **Launch at Login** via native macOS login items
 
@@ -47,15 +49,21 @@ Built with native Swift and SwiftUI. No Electron, no web views, no bloat.
 
 | Widget | What it shows |
 |--------|---------------|
-| **Spaces** | Your workspaces with app icons. Click to switch |
+| **Spaces** | Your workspaces with app icons. Click to switch. 5 display modes, 4 highlight styles |
 | **Active App** | Name of the frontmost app |
 | **Now Playing** | Current track, album art, progress bar, controls (Music & Spotify) |
 | **Volume** | Speaker icon, scroll to adjust. Popup: slider + output device |
+| **Brightness** | Display brightness, scroll to adjust |
 | **Network** | Wi-Fi/Ethernet status. Popup: signal, speed, IP, Tx Rate |
 | **Battery** | Charge level. Popup: health %, cycles, temperature |
+| **Bluetooth** | Connected devices with battery levels (AirPods, keyboards, mice) |
 | **Time** | Customizable date/time. Popup: calendar grid + upcoming events |
 | **Weather** | Temperature + condition. Popup: humidity, wind, feels like, 5-day forecast |
 | **System Monitor** | CPU % + RAM usage. Popup: usage bars, memory pressure |
+| **Disk** | Storage usage with free/total display |
+| **Input Language** | Current keyboard layout, zero-polling |
+| **Clipboard** | Clipboard history (20 entries), click to paste |
+| **Pomodoro** | Focus timer with work/break cycles and notifications |
 | **Script** | Run any shell command on an interval. Display output as text |
 
 Plus `spacer` and `divider` for layout.
@@ -166,8 +174,13 @@ displayed = [
     "spacer",
     "default.weather",
     "default.systemmonitor",
+    "default.disk",
     "default.volume",
     "default.network",
+    "default.inputlanguage",
+    "default.brightness",
+    "default.clipboard",
+    "default.bluetooth",
     "divider",
     "default.time",
 ]
@@ -222,10 +235,6 @@ All permissions are optional. The app works without them, you just lose the spec
 
 - macOS 14.6 (Sonoma) or later
 - Apple Silicon or Intel Mac
-
-## Credits
-
-Originally forked from [Barik](https://github.com/mocki-toki/barik) by mocki-toki. Rewritten and extended into a standalone project.
 
 ## License
 
