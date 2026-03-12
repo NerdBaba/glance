@@ -256,8 +256,10 @@ struct PresetEditorView: View {
     // MARK: - Save
 
     private func save() {
-        let name = presetName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { return }
+        let name = presetName.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "/", with: "")
+            .replacingOccurrences(of: "\0", with: "")
+        guard !name.isEmpty, name != ".", name != ".." else { return }
 
         var values: [String: String] = [
             "rendering-style": renderingStyle,

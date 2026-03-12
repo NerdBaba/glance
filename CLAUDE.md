@@ -56,11 +56,13 @@ Glance/
 │   ├── ConfigManager.swift             # Config loading, file watching, live reload
 │   ├── ConfigModels.swift              # RootToml, Config, style support
 │   ├── AppearanceConfig.swift          # Visual params struct + resolvedCornerRadius
-│   └── PresetRegistry.swift            # 11 built-in presets (Preset enum)
+│   ├── PresetRegistry.swift            # 11 built-in presets (Preset enum)
+│   └── CustomPresetStore.swift         # User presets in ~/Library/Application Support/glance/presets/
 ├── MenuBarPopup/                       # Popup infrastructure (glass background)
 ├── Settings/
 │   ├── SettingsWindowController.swift  # NSWindow manager for Settings
 │   ├── SettingsView.swift              # Tab-based settings (sidebar nav)
+│   ├── PresetEditorView.swift          # Full visual preset editor (sheet)
 │   └── Tabs/                           # General, Widgets, Spaces, Time, About
 ├── Styles/
 │   ├── BarStyleProvider.swift          # Protocol + BarStyle enum + @Environment keys
@@ -130,12 +132,13 @@ True center alignment with ZStack when 2 spacers create left|center|right sectio
 
 - **Tray icon:** `NSStatusItem` with `eye` icon. Menu: Settings, Check for Updates (Sparkle), Launch at Login, Quit
 - **Onboarding:** 4-page welcome on first launch. `UserDefaults` key: `hasSeenOnboarding`
-- **Settings:** Singleton NSWindow. Tabs: General (preset/formation pickers), Widgets, Spaces, Time, About
-- **What's New:** `VersionChecker` detects version change -> `ChangelogPopup` fetches `CHANGELOG.md` from GitHub
+- **Settings:** Singleton NSWindow. Tabs: General (preset/formation pickers, custom preset editor, config export/import, hotkey config), Widgets, Spaces, Time, About
+- **Custom presets:** Full visual editor for all appearance settings. Stored as TOML in `~/Library/Application Support/glance/presets/`
+- **What's New:** `VersionChecker` detects version change -> `ChangelogPopup` fetches `CHANGELOG.md` from GitHub (falls back to bundled file)
 - **Sparkle:** EdDSA-signed updates via `appcast.xml`. SPM dependency (2.9.0)
 - **AppUpdater:** Polls GitHub releases every 30min, opens browser (no auto-install)
 - **Window gaps:** AX observers push windows below bar. Initial scan + 2s delayed sweep on startup
-- **Global hotkey:** Ctrl+Option+B toggles bar visibility (Carbon `RegisterEventHotKey`)
+- **Global hotkey:** Configurable via Settings or TOML `hotkey = "ctrl+option+b"` (Carbon `RegisterEventHotKey`)
 - **Fullscreen auto-hide:** Compares frontmost window bounds to screen frame, fades bar
 
 ## Known Gotchas
@@ -231,8 +234,3 @@ formation = "floating"          # full | floating | islands | pills
 - Localization (Russian, Chinese)
 - Notification center widget
 
-**Done in v1.2:**
-- ~~Export/Import config from Settings GUI~~
-- ~~Configurable hotkeys in Settings GUI~~
-- ~~Changelog fallback to local file~~
-- ~~Custom preset editor (full visual editor with all appearance settings)~~
