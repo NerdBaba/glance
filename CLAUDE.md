@@ -223,6 +223,23 @@ formation = "floating"          # full | floating | islands | pills
 - **Bluetooth empty?** `IOBluetooth.framework` must be linked in Build Phases
 - **`sign_update` hangs?** Waiting for Keychain GUI approval
 
+## Security
+
+All network requests use HTTPS. No ATS exceptions in Info.plist.
+
+| Area | Approach |
+|---|---|
+| **Custom presets** | `CustomPresetStore.safeFileURL()` sanitizes names — strips `/`, `\0`, validates resolved path stays in presetsDir. Prevents path traversal |
+| **Script widget** | Runs user-configured shell commands via `/bin/sh -c`. By design — user controls the command in TOML config. Timeout enforced (default 5s) |
+| **SpacesCommandRunner** | Uses `Process.executableURL` + `arguments` array. No shell involved — no injection possible |
+| **AppleScript** | All scripts hardcoded in `MusicApp` enum. No user input interpolated into AppleScript |
+| **Config import** | File selected via native NSOpenPanel. Malformed TOML handled gracefully by decoder |
+| **Clipboard history** | In-memory only (`@Published var entries`). Never persisted to disk |
+| **Logs** | `~/Library/Application Support/glance/logs/`, 512KB rotation. No credentials or user data logged |
+| **Private APIs** | Brightness (dlopen DisplayServices/CoreDisplay), Spaces (CGS) — stability risk only, no security exposure |
+
+When adding new features that accept user input for file paths or shell commands, always sanitize through `lastPathComponent` + path containment check, or use `Process.arguments` (never shell interpolation).
+
 ## TODO
 
 **Medium:**
