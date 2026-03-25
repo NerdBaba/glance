@@ -377,7 +377,7 @@ struct GeneralSettingsTab: View {
         accentColor = a.accentColor
         widgetBackgroundColor = a.widgetBackgroundColor
         borderColor = a.borderColor
-        borderColor2 = a.borderColor2
+        borderColor2 = a.borderColor2 ?? .purple
         glowColor = a.glowColor
 
         let exp = config.experimental
