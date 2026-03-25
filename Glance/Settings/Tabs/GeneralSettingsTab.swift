@@ -26,6 +26,7 @@ struct GeneralSettingsTab: View {
     @State private var neonColor: Color = Color(red: 1, green: 0.27, blue: 0.8)
     @State private var neonColor2: Color = Color(red: 0.27, green: 0.8, blue: 1)
     @State private var useGradient: Bool = false
+    @State private var usePywal: Bool = false
     @State private var hotkeyString: String = "ctrl+option+b"
     @State private var hotkeyValid: Bool = true
     @State private var isSyncing: Bool = false
@@ -136,6 +137,11 @@ struct GeneralSettingsTab: View {
 
                 // MARK: - Appearance Overrides
                 SettingsSection(title: "Appearance") {
+                    Toggle("Use Pywal Colors", isOn: $usePywal)
+                        .onChange(of: usePywal) { _, newValue in
+                            guard !isSyncing else { return }
+                            configManager.updateConfigValue(key: "use-pywal", newValue: newValue ? "true" : "false")
+                        }
                     SliderRow(label: "Roundness", value: $roundness, range: 0...50, step: 1, format: "%.0f") {
                         configManager.updateConfigValue(key: "appearance.roundness", newValue: String(Int(roundness)))
                     }
@@ -310,6 +316,7 @@ struct GeneralSettingsTab: View {
         selectedFormation = exp.foreground.formation.rawValue
         formationMargin = exp.foreground.margin
         formationGap = exp.foreground.gap
+        usePywal = root.usePywal ?? false
         hotkeyString = root.hotkey ?? "ctrl+option+b"
         hotkeyValid = true
         syncNeonColors()

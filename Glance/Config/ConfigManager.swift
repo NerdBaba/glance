@@ -23,6 +23,14 @@ final class ConfigManager: ObservableObject {
     private let logger = AppLogger.shared
 
     private init() {
+        self.config = Config()
+        self.pywalColors = nil
+        self.initError = nil
+        self.fileWatchSource = nil
+        self.fileDescriptor = -1
+        self.configFilePath = nil
+        self.pywalWatchSource = nil
+        self.pywalFileDescriptor = -1
         loadOrCreateConfigIfNeeded()
         loadPywalColors()
     }
