@@ -6,6 +6,7 @@ struct RootToml: Decodable {
     var style: String?
     var preset: String?
     var hotkey: String?
+    var usePywal: Bool?
     var appearanceOverrides: AppearanceOverrides?
     var yabai: YabaiConfig?
     var aerospace: AerospaceConfig?
@@ -14,6 +15,7 @@ struct RootToml: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case theme, style, preset, hotkey, yabai, aerospace, experimental, widgets
+        case usePywal = "use-pywal"
         case appearanceOverrides = "appearance"
     }
 
@@ -22,6 +24,7 @@ struct RootToml: Decodable {
         self.style = nil
         self.preset = nil
         self.hotkey = nil
+        self.usePywal = nil
         self.appearanceOverrides = nil
         self.yabai = nil
         self.aerospace = nil
@@ -34,6 +37,7 @@ struct RootToml: Decodable {
         style = try container.decodeIfPresent(String.self, forKey: .style)
         preset = try container.decodeIfPresent(String.self, forKey: .preset)
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey)
+        usePywal = try container.decodeIfPresent(Bool.self, forKey: .usePywal)
         appearanceOverrides = try container.decodeIfPresent(AppearanceOverrides.self, forKey: .appearanceOverrides)
         yabai = try container.decodeIfPresent(YabaiConfig.self, forKey: .yabai)
         aerospace = try container.decodeIfPresent(AerospaceConfig.self, forKey: .aerospace)
@@ -44,22 +48,28 @@ struct RootToml: Decodable {
 
 struct Config {
     let rootToml: RootToml
+    let pywalColors: PywalColors?
 
-    init(rootToml: RootToml = RootToml()) {
+    init(rootToml: RootToml = RootToml(), pywalColors: PywalColors? = nil) {
         self.rootToml = rootToml
+        self.pywalColors = pywalColors
     }
 
     var appearance: AppearanceConfig {
         let base: Preset
         if let presetName = rootToml.preset,
-           let preset = Preset(rawValue: presetName) {
+            let preset = Preset(rawValue: presetName) {
             base = preset
         } else if let style = rootToml.style {
             base = Preset.fromLegacyStyle(style)
         } else {
             base = .liquidGlass
         }
-        return base.defaults.applying(overrides: rootToml.appearanceOverrides)
+        var config = base.defaults.applying(overrides: rootToml.appearanceOverrides)
+        if let pywal = pywalColors, rootToml.usePywal == true {
+            config = config.applyingPywal(pywal)
+        }
+        return config
     }
 
     var barStyle: BarStyle {
@@ -76,6 +86,20 @@ struct Config {
     
     var experimental: ExperimentalConfig {
         rootToml.experimental ?? ExperimentalConfig()
+    }
+}
+
+struct PywalColors {
+    let colors: [Color]
+
+    init?() {
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        let path = homeDir.appendingPathComponent(".cache/wal/colors").path
+        guard let content = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+        let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        guard lines.count >= 16 else { return nil }
+        colors = lines.compactMap { AppearanceConfig.parseHex($0) }
+        guard colors.count == 16 else { return nil }
     }
 }
 

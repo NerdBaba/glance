@@ -72,6 +72,32 @@ struct AppearanceConfig {
         )
     }
 
+    func applyingPywal(_ pywal: PywalColors) -> AppearanceConfig {
+        return AppearanceConfig(
+            renderingStyle: renderingStyle,
+            roundness: roundness,
+            borderWidth: borderWidth,
+            borderTopOpacity: borderTopOpacity,
+            borderMidOpacity: borderMidOpacity,
+            borderBottomOpacity: borderBottomOpacity,
+            fillOpacity: fillOpacity,
+            glowOpacity: glowOpacity,
+            glowRadius: glowRadius,
+            shadowOpacity: shadowOpacity,
+            shadowRadius: shadowRadius,
+            shadowY: shadowY,
+            blurMaterial: blurMaterial,
+            popupDarkTint: popupDarkTint,
+            popupRoundness: popupRoundness,
+            foregroundColor: pywal.colors[15],
+            accentColor: pywal.colors[4],
+            borderColor: pywal.colors[4],
+            borderColor2: pywal.colors[5],
+            widgetBackgroundColor: pywal.colors[0],
+            glowColor: pywal.colors[4]
+        )
+    }
+
     // MARK: - Hex parsing
 
     static func parseHex(_ hex: String) -> Color? {

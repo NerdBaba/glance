@@ -5,16 +5,26 @@ import TOMLDecoder
 final class ConfigManager: ObservableObject {
     static let shared = ConfigManager()
 
-    @Published private(set) var config = Config()
+    @Published private(set) var config: Config
     @Published private(set) var initError: String?
+    @Published private(set) var pywalColors: PywalColors? {
+        didSet {
+            if let path = configFilePath {
+                parseConfigFile(at: path)
+            }
+        }
+    }
     
     private var fileWatchSource: DispatchSourceFileSystemObject?
     private var fileDescriptor: CInt = -1
     private(set) var configFilePath: String?
+    private var pywalWatchSource: DispatchSourceFileSystemObject?
+    private var pywalFileDescriptor: CInt = -1
     private let logger = AppLogger.shared
 
     private init() {
         loadOrCreateConfigIfNeeded()
+        loadPywalColors()
     }
 
     private func loadOrCreateConfigIfNeeded() {
@@ -52,7 +62,7 @@ final class ConfigManager: ObservableObject {
             let decoder = TOMLDecoder()
             let rootToml = try decoder.decode(RootToml.self, from: content)
             DispatchQueue.main.async {
-                self.config = Config(rootToml: rootToml)
+                self.config = Config(rootToml: rootToml, pywalColors: self.pywalColors)
             }
         } catch {
             initError = "Error parsing TOML file: \(error.localizedDescription)"
@@ -69,6 +79,9 @@ final class ConfigManager: ObservableObject {
             # aerospace.path = ...
 
             theme = "system" # system, light, dark
+
+            # Use Pywal colors dynamically (overrides preset colors)
+            # use-pywal = false
 
             # Visual preset (overrides style). Available:
             #   liquid-glass, frosted, flat-dark, minimal-strip, system-native, neon
@@ -181,6 +194,53 @@ final class ConfigManager: ObservableObject {
     private func stopWatchingFile() {
         fileWatchSource?.cancel()
         fileWatchSource = nil
+    }
+
+    private func loadPywalColors() {
+        pywalColors = PywalColors()
+        startWatchingPywal()
+    }
+
+    private func startWatchingPywal() {
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        let path = homeDir.appendingPathComponent(".cache/wal/colors").path
+        if !FileManager.default.fileExists(atPath: path) { return }
+
+        stopWatchingPywal()
+        pywalFileDescriptor = open(path, O_EVTONLY)
+        if pywalFileDescriptor == -1 {
+            let message = String(cString: strerror(errno))
+            logger.error("Failed to watch pywal file at \(path): \(message)", category: .config)
+            return
+        }
+        pywalWatchSource = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: pywalFileDescriptor,
+            eventMask: [.write, .delete, .rename, .revoke],
+            queue: DispatchQueue.global())
+        pywalWatchSource?.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            let data = self.pywalWatchSource?.data ?? []
+            if data.contains(.delete) || data.contains(.rename) || data.contains(.revoke) {
+                self.stopWatchingPywal()
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) {
+                    self.loadPywalColors()
+                }
+                return
+            }
+            self.pywalColors = PywalColors()
+        }
+        pywalWatchSource?.setCancelHandler { [weak self] in
+            if let fd = self?.pywalFileDescriptor, fd != -1 {
+                close(fd)
+                self?.pywalFileDescriptor = -1
+            }
+        }
+        pywalWatchSource?.resume()
+    }
+
+    private func stopWatchingPywal() {
+        pywalWatchSource?.cancel()
+        pywalWatchSource = nil
     }
 
     func updateConfigValue(key: String, newValue: String) {
