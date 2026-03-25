@@ -23,6 +23,12 @@ struct GeneralSettingsTab: View {
     @State private var selectedFormation: String = "islands"
     @State private var formationMargin: Double = 8
     @State private var formationGap: Double = 10
+    @State private var foregroundColor: Color = .white
+    @State private var accentColor: Color = .blue
+    @State private var widgetBackgroundColor: Color = .black.opacity(0.5)
+    @State private var borderColor: Color = .blue
+    @State private var borderColor2: Color = .purple
+    @State private var glowColor: Color = .blue
     @State private var neonColor: Color = Color(red: 1, green: 0.27, blue: 0.8)
     @State private var neonColor2: Color = Color(red: 0.27, green: 0.8, blue: 1)
     @State private var useGradient: Bool = false
@@ -162,6 +168,67 @@ struct GeneralSettingsTab: View {
                     }
                     SliderRow(label: "Shadow Radius", value: $shadowRadius, range: 0...20, step: 1, format: "%.0f") {
                         configManager.updateConfigValue(key: "appearance.shadow-radius", newValue: String(format: "%.0f", shadowRadius))
+                    }
+
+                    HStack {
+                        Text("Foreground Color")
+                            .frame(width: 130, alignment: .leading)
+                        ColorPicker("", selection: $foregroundColor, supportsOpacity: false)
+                            .labelsHidden()
+                            .onChange(of: foregroundColor) { _, newValue in
+                                guard !isSyncing else { return }
+                                configManager.updateConfigValue(key: "appearance.foreground-color", newValue: newValue.toHex())
+                            }
+                    }
+                    HStack {
+                        Text("Accent Color")
+                            .frame(width: 130, alignment: .leading)
+                        ColorPicker("", selection: $accentColor, supportsOpacity: false)
+                            .labelsHidden()
+                            .onChange(of: accentColor) { _, newValue in
+                                guard !isSyncing else { return }
+                                configManager.updateConfigValue(key: "appearance.accent-color", newValue: newValue.toHex())
+                            }
+                    }
+                    HStack {
+                        Text("Widget Background")
+                            .frame(width: 130, alignment: .leading)
+                        ColorPicker("", selection: $widgetBackgroundColor, supportsOpacity: true)
+                            .labelsHidden()
+                            .onChange(of: widgetBackgroundColor) { _, newValue in
+                                guard !isSyncing else { return }
+                                configManager.updateConfigValue(key: "appearance.widget-background-color", newValue: newValue.toHex())
+                            }
+                    }
+                    HStack {
+                        Text("Border Color")
+                            .frame(width: 130, alignment: .leading)
+                        ColorPicker("", selection: $borderColor, supportsOpacity: false)
+                            .labelsHidden()
+                            .onChange(of: borderColor) { _, newValue in
+                                guard !isSyncing else { return }
+                                configManager.updateConfigValue(key: "appearance.border-color", newValue: newValue.toHex())
+                            }
+                    }
+                    HStack {
+                        Text("Border Color 2")
+                            .frame(width: 130, alignment: .leading)
+                        ColorPicker("", selection: $borderColor2, supportsOpacity: false)
+                            .labelsHidden()
+                            .onChange(of: borderColor2) { _, newValue in
+                                guard !isSyncing else { return }
+                                configManager.updateConfigValue(key: "appearance.border-color2", newValue: newValue.toHex())
+                            }
+                    }
+                    HStack {
+                        Text("Glow Color")
+                            .frame(width: 130, alignment: .leading)
+                        ColorPicker("", selection: $glowColor, supportsOpacity: false)
+                            .labelsHidden()
+                            .onChange(of: glowColor) { _, newValue in
+                                guard !isSyncing else { return }
+                                configManager.updateConfigValue(key: "appearance.glow-color", newValue: newValue.toHex())
+                            }
                     }
                 }
 
@@ -306,6 +373,12 @@ struct GeneralSettingsTab: View {
         glowOpacity = a.glowOpacity
         shadowOpacity = a.shadowOpacity
         shadowRadius = a.shadowRadius
+        foregroundColor = a.foregroundColor
+        accentColor = a.accentColor
+        widgetBackgroundColor = a.widgetBackgroundColor
+        borderColor = a.borderColor
+        borderColor2 = a.borderColor2
+        glowColor = a.glowColor
 
         let exp = config.experimental
         barHeight = exp.foreground.resolveHeight()

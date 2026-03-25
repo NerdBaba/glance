@@ -43,7 +43,13 @@ struct AppearanceConfig {
     func applying(overrides: AppearanceOverrides?) -> AppearanceConfig {
         guard let o = overrides else { return self }
 
-        // Parse neon custom colors
+        // Parse custom colors
+        let customForeground = o.foregroundColor.flatMap { Self.parseHex($0) }
+        let customAccent = o.accentColor.flatMap { Self.parseHex($0) }
+        let customWidgetBg = o.widgetBackgroundColor.flatMap { Self.parseHex($0) }
+        let customBorder = o.borderColor.flatMap { Self.parseHex($0) }
+        let customBorder2 = o.borderColor2.flatMap { Self.parseHex($0) }
+        let customGlow = o.glowColor.flatMap { Self.parseHex($0) }
         let customColor1 = o.neonColor.flatMap { Self.parseHex($0) }
         let customColor2 = o.neonColor2.flatMap { Self.parseHex($0) }
 
@@ -63,12 +69,12 @@ struct AppearanceConfig {
             blurMaterial: blurMaterial,
             popupDarkTint: popupDarkTint,
             popupRoundness: popupRoundness,
-            foregroundColor: foregroundColor,
-            accentColor: customColor1 ?? accentColor,
-            borderColor: customColor1 ?? borderColor,
-            borderColor2: customColor2 ?? borderColor2,
-            widgetBackgroundColor: widgetBackgroundColor,
-            glowColor: customColor1 ?? glowColor
+            foregroundColor: customForeground ?? foregroundColor,
+            accentColor: customAccent ?? customColor1 ?? accentColor,
+            borderColor: customBorder ?? customColor1 ?? borderColor,
+            borderColor2: customBorder2 ?? customColor2 ?? borderColor2,
+            widgetBackgroundColor: customWidgetBg ?? widgetBackgroundColor,
+            glowColor: customGlow ?? customColor1 ?? glowColor
         )
     }
 
@@ -124,6 +130,12 @@ struct AppearanceOverrides: Decodable {
     let glowOpacity: CGFloat?
     let shadowOpacity: CGFloat?
     let shadowRadius: CGFloat?
+    let foregroundColor: String?
+    let accentColor: String?
+    let widgetBackgroundColor: String?
+    let borderColor: String?
+    let borderColor2: String?
+    let glowColor: String?
     let neonColor: String?
     let neonColor2: String?
 
@@ -135,6 +147,12 @@ struct AppearanceOverrides: Decodable {
         case glowOpacity = "glow-opacity"
         case shadowOpacity = "shadow-opacity"
         case shadowRadius = "shadow-radius"
+        case foregroundColor = "foreground-color"
+        case accentColor = "accent-color"
+        case widgetBackgroundColor = "widget-background-color"
+        case borderColor = "border-color"
+        case borderColor2 = "border-color2"
+        case glowColor = "glow-color"
         case neonColor = "neon-color"
         case neonColor2 = "neon-color2"
     }
