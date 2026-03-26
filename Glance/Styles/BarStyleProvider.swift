@@ -69,71 +69,83 @@ struct PersistentBlurView: NSViewRepresentable {
 struct WidgetStyleModifier: ViewModifier {
     let appearance: AppearanceConfig
     let heightOverride: CGFloat?
+    let showBackground: Bool
+
+    init(appearance: AppearanceConfig, heightOverride: CGFloat? = nil, showBackground: Bool = true) {
+        self.appearance = appearance
+        self.heightOverride = heightOverride
+        self.showBackground = showBackground
+    }
 
     private var cornerRadius: CGFloat {
         appearance.resolvedWidgetCornerRadius(height: heightOverride ?? 38)
     }
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius)
+        if showBackground {
+            let shape = RoundedRectangle(cornerRadius: cornerRadius)
 
-        switch appearance.renderingStyle {
-        case .glass:
-            content
-                .background(
-                    ZStack {
-                        PersistentBlurView(material: appearance.blurMaterial)
-                        appearance.widgetBackgroundColor.opacity(appearance.fillOpacity)
-                    }
-                )
-                .clipShape(shape)
-                .overlay(
-                    shape
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    appearance.borderColor.opacity(appearance.borderTopOpacity),
-                                    appearance.borderColor.opacity(appearance.borderMidOpacity),
-                                    appearance.borderColor.opacity(appearance.borderBottomOpacity),
-                                ],
-                                startPoint: .top, endPoint: .bottom
-                            ),
-                            lineWidth: appearance.borderWidth
-                        )
-                )
-                .shadow(color: appearance.glowColor.opacity(appearance.glowOpacity), radius: appearance.glowRadius)
-                .shadow(color: .black.opacity(appearance.shadowOpacity), radius: appearance.shadowRadius, y: appearance.shadowY)
-        case .solid:
-            content
-                .background(appearance.widgetBackgroundColor.opacity(appearance.fillOpacity))
-                .clipShape(shape)
-                .overlay(
-                    shape
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: appearance.borderColor2 != nil
-                                    ? [
-                                        appearance.borderColor.opacity(appearance.borderTopOpacity),
-                                        appearance.borderColor2!.opacity(appearance.borderTopOpacity),
-                                    ]
-                                    : [
+            switch appearance.renderingStyle {
+            case .glass:
+                content
+                    .background(
+                        ZStack {
+                            PersistentBlurView(material: appearance.blurMaterial)
+                            appearance.widgetBackgroundColor.opacity(appearance.fillOpacity)
+                        }
+                    )
+                    .clipShape(shape)
+                    .overlay(
+                        shape
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [
                                         appearance.borderColor.opacity(appearance.borderTopOpacity),
                                         appearance.borderColor.opacity(appearance.borderMidOpacity),
                                         appearance.borderColor.opacity(appearance.borderBottomOpacity),
                                     ],
-                                startPoint: appearance.borderColor2 != nil ? .leading : .top,
-                                endPoint: appearance.borderColor2 != nil ? .trailing : .bottom
-                            ),
-                            lineWidth: appearance.borderWidth
-                        )
-                )
-                .shadow(color: appearance.glowColor.opacity(appearance.glowOpacity), radius: appearance.glowRadius)
-                .shadow(color: appearance.borderColor2 != nil
-                    ? appearance.borderColor2!.opacity(appearance.glowOpacity * 0.5)
-                    : .clear,
-                    radius: appearance.glowRadius)
-                .shadow(color: .black.opacity(appearance.shadowOpacity), radius: appearance.shadowRadius, y: appearance.shadowY)
-        case .minimal:
+                                    startPoint: .top, endPoint: .bottom
+                                ),
+                                lineWidth: appearance.borderWidth
+                            )
+                    )
+                    .shadow(color: appearance.glowColor.opacity(appearance.glowOpacity), radius: appearance.glowRadius)
+                    .shadow(color: .black.opacity(appearance.shadowOpacity), radius: appearance.shadowRadius, y: appearance.shadowY)
+            case .solid:
+                content
+                    .background(appearance.widgetBackgroundColor.opacity(appearance.fillOpacity))
+                    .clipShape(shape)
+                    .overlay(
+                        shape
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: appearance.borderColor2 != nil
+                                        ? [
+                                            appearance.borderColor.opacity(appearance.borderTopOpacity),
+                                            appearance.borderColor2!.opacity(appearance.borderTopOpacity),
+                                        ]
+                                        : [
+                                            appearance.borderColor.opacity(appearance.borderTopOpacity),
+                                            appearance.borderColor.opacity(appearance.borderMidOpacity),
+                                            appearance.borderColor.opacity(appearance.borderBottomOpacity),
+                                        ],
+                                    startPoint: appearance.borderColor2 != nil ? .leading : .top,
+                                    endPoint: appearance.borderColor2 != nil ? .trailing : .bottom
+                                ),
+                                lineWidth: appearance.borderWidth
+                            )
+                    )
+                    .shadow(color: appearance.glowColor.opacity(appearance.glowOpacity), radius: appearance.glowRadius)
+                    .shadow(color: appearance.borderColor2 != nil
+                        ? appearance.borderColor2!.opacity(appearance.glowOpacity * 0.5)
+                        : .clear,
+                        radius: appearance.glowRadius)
+                    .shadow(color: .black.opacity(appearance.shadowOpacity), radius: appearance.shadowRadius, y: appearance.shadowY)
+            case .minimal:
+                content
+            }
+        } else {
             content
         }
     }
@@ -207,8 +219,8 @@ struct PopupStyleModifier: ViewModifier {
 // MARK: - View Extensions
 
 extension View {
-    func widgetStyle(_ appearance: AppearanceConfig, heightOverride: CGFloat? = nil) -> some View {
-        modifier(WidgetStyleModifier(appearance: appearance, heightOverride: heightOverride))
+    func widgetStyle(_ appearance: AppearanceConfig, heightOverride: CGFloat? = nil, showBackground: Bool = true) -> some View {
+        modifier(WidgetStyleModifier(appearance: appearance, heightOverride: heightOverride, showBackground: showBackground))
     }
 
     func popupStyle(_ appearance: AppearanceConfig, cornerRadius: CGFloat) -> some View {

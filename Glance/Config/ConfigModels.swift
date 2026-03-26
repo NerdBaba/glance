@@ -50,10 +50,13 @@ struct RootToml: Decodable {
 struct Config {
     let rootToml: RootToml
     let pywalColors: PywalColors?
+    /// Timestamp to ensure each Config update is seen as a new value by SwiftUI
+    let updatedAt: UInt64
 
     init(rootToml: RootToml = RootToml(), pywalColors: PywalColors? = nil) {
         self.rootToml = rootToml
         self.pywalColors = pywalColors
+        self.updatedAt = Date().timeIntervalSince1970.bitPattern
     }
 
     var appearance: AppearanceConfig {
@@ -162,16 +165,28 @@ struct WidgetsSection: Decodable {
     }
 
     func config(for widgetId: String) -> ConfigData? {
-        // Base config: exact match (flat key)
-        var result = others[widgetId] ?? [:]
+        // Build a flat dictionary where keys use dot-notation (e.g., "space.display-mode")
+        var result: ConfigData = [:]
         let prefix = widgetId + "."
-        // Merge all subsection configs (keys that start with widgetId + ".")
-        for (key, value) in others {
-            if key.hasPrefix(prefix) {
-                let subKey = String(key.dropFirst(prefix.count))
-                result[subKey] = .dictionary(value)
+        
+        // Include exact match (widget-level direct config)
+        if let base = others[widgetId] {
+            for (k, v) in base {
+                result[k] = v
             }
         }
+        
+        // Include all subsection configs, flattening them
+        for (key, valueDict) in others {
+            if key.hasPrefix(prefix) {
+                let subPath = String(key.dropFirst(prefix.count))
+                for (innerKey, innerValue) in valueDict {
+                    let fullKey = subPath + "." + innerKey
+                    result[fullKey] = innerValue
+                }
+            }
+        }
+        
         return result.isEmpty ? nil : result
     }
 }
@@ -332,7 +347,12 @@ struct ExperimentalConfig: Decodable {
         self.foreground = ForegroundConfig()
         self.background = BackgroundConfig()
     }
-    
+
+    init(foreground: ForegroundConfig, background: BackgroundConfig) {
+        self.foreground = foreground
+        self.background = background
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         foreground = try container.decodeIfPresent(ForegroundConfig.self, forKey: .foreground) ?? ForegroundConfig()
@@ -355,8 +375,9 @@ struct ForegroundConfig: Decodable {
     let spacing: CGFloat
     let autoHide: Bool
     let formation: BarFormation
-    let margin: CGFloat     // Screen-edge margin for floating/pills
-    let gap: CGFloat        // Gap between groups in pills mode
+    let topMargin: CGFloat      // Offset from screen top
+    let margin: CGFloat         // Horizontal screen-edge margin (all formations)
+    let gap: CGFloat            // Gap between groups in pills mode
 
     init() {
         self.height = .defaultHeight
@@ -365,6 +386,7 @@ struct ForegroundConfig: Decodable {
         self.spacing = 15
         self.autoHide = false
         self.formation = .islands
+        self.topMargin = 0
         self.margin = 8
         self.gap = 10
     }
@@ -404,7 +426,20 @@ struct ForegroundConfig: Decodable {
         autoHide = try container.decodeIfPresent(Bool.self, forKey: .autoHide) ?? false
         formation = try container.decodeIfPresent(BarFormation.self, forKey: .formation) ?? .islands
         
-        // margin
+        // topMargin
+        if container.contains(.topMargin) {
+            if let doubleVal = try? container.decode(Double.self, forKey: .topMargin) {
+                topMargin = CGFloat(doubleVal)
+            } else if let intVal = try? container.decode(Int.self, forKey: .topMargin) {
+                topMargin = CGFloat(intVal)
+            } else {
+                topMargin = 0
+            }
+        } else {
+            topMargin = 0
+        }
+        
+        // margin (horizontal)
         if container.contains(.margin) {
             if let doubleVal = try? container.decode(Double.self, forKey: .margin) {
                 margin = CGFloat(doubleVal)
@@ -438,6 +473,7 @@ struct ForegroundConfig: Decodable {
         case spacing
         case autoHide = "auto-hide"
         case formation
+        case topMargin = "top-margin"
         case margin
         case gap
     }
@@ -459,14 +495,14 @@ struct WidgetBackgroundConfig: Decodable {
     let blur: Material
     
     init() {
-        self.displayed = false
+        self.displayed = true
         self.blur = .regular
     }
     
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        displayed = try container.decodeIfPresent(Bool.self, forKey: .displayed) ?? false
+        displayed = try container.decodeIfPresent(Bool.self, forKey: .displayed) ?? true
         
         var materialIndex = try container.decodeIfPresent(Int.self, forKey: .blur) ?? 1
         if materialIndex < 1 {

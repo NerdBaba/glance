@@ -78,16 +78,13 @@ struct SpacesSettingsTab: View {
     }
 
     private func syncFromConfig() {
-        let spacesConfig = configManager.globalWidgetConfig(for: "default.spaces")
-        let spaceSection = spacesConfig["space"]?.dictionaryValue ?? [:]
-        let windowSection = spacesConfig["window"]?.dictionaryValue ?? [:]
-        let titleSection = windowSection["title"]?.dictionaryValue ?? [:]
-
-        showKey = spaceSection["show-key"]?.boolValue ?? true
-        showTitle = windowSection["show-title"]?.boolValue ?? true
-        maxLength = Double(titleSection["max-length"]?.intValue ?? 50)
-        selectedDisplayMode = spaceSection["display-mode"]?.stringValue ?? "icons"
-        selectedHighlight = spaceSection["highlight"]?.stringValue ?? "opacity"
+        let spacesConfig = configManager.globalWidgetConfig(for: "default.spaces") ?? [:]
+        
+        showKey = spacesConfig["space.show-key"]?.boolValue ?? true
+        showTitle = spacesConfig["window.show-title"]?.boolValue ?? true
+        maxLength = Double(spacesConfig["window.title.max-length"]?.intValue ?? 50)
+        selectedDisplayMode = spacesConfig["space.display-mode"]?.stringValue ?? "icons"
+        selectedHighlight = spacesConfig["space.highlight"]?.stringValue ?? "opacity"
     }
 }
 

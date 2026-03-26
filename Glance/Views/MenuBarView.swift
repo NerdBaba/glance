@@ -4,6 +4,7 @@ struct MenuBarView: View {
     @ObservedObject var configManager = ConfigManager.shared
 
     var body: some View {
+        let _ = configManager.config // ensure body recomputes when config changes
         let items = configManager.config.rootToml.widgets?.displayed ?? []
         let appearance = configManager.config.appearance
         let fg = configManager.config.experimental.foreground
@@ -24,6 +25,7 @@ struct MenuBarView: View {
         .foregroundStyle(appearance.foregroundColor)
         .frame(height: max(fg.resolveHeight(), 1.0))
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, fg.margin)
         .background(.black.opacity(0.001))
         .contextMenu {
             Button("Settings...") {
@@ -43,26 +45,27 @@ struct MenuBarView: View {
 
     @ViewBuilder
     private func fullBar(items: [TomlWidgetItem], appearance: AppearanceConfig, fg: ForegroundConfig) -> some View {
+        let showBg = fg.widgetsBackground.displayed
         HStack(spacing: 0) {
             widgetContent(items: items, fg: fg)
         }
         .padding(.horizontal, fg.horizontalPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(appearance.widgetBackgroundColor.opacity(appearance.fillOpacity))
+        .background(showBg ? appearance.widgetBackgroundColor.opacity(appearance.fillOpacity) : Color.clear)
     }
 
     // MARK: - Floating Monobar
 
     @ViewBuilder
     private func floatingBar(items: [TomlWidgetItem], appearance: AppearanceConfig, fg: ForegroundConfig) -> some View {
+        let showBg = fg.widgetsBackground.displayed
         HStack(spacing: 0) {
             widgetContent(items: items, fg: fg)
         }
         .padding(.horizontal, fg.horizontalPadding)
         .frame(maxWidth: .infinity)
         .frame(height: capsuleHeight(fg))
-        .widgetStyle(appearance, heightOverride: capsuleHeight(fg))
-        .padding(.horizontal, fg.margin)
+        .widgetStyle(appearance, heightOverride: capsuleHeight(fg), showBackground: showBg)
     }
 
     // MARK: - Islands (Current Behavior)
@@ -71,22 +74,29 @@ struct MenuBarView: View {
     private func islandsBar(items: [TomlWidgetItem], appearance: AppearanceConfig, fg: ForegroundConfig) -> some View {
         let sections = splitBySpacer(items)
         let hasBanner = items.contains(where: { $0.id == "system-banner" })
+        let showBg = fg.widgetsBackground.displayed
 
         Group {
             if sections.count == 3 {
                 ZStack {
                     HStack(spacing: fg.spacing) {
-                        widgetRow(sections[0])
+                        ForEach(Array(sections[0].enumerated()), id: \.offset) { _, item in
+                            islandItem(item, appearance: appearance, fg: fg, showBg: showBg)
+                        }
                         Spacer(minLength: 0)
                     }
 
                     HStack(spacing: fg.spacing) {
-                        widgetRow(sections[1])
+                        ForEach(Array(sections[1].enumerated()), id: \.offset) { _, item in
+                            islandItem(item, appearance: appearance, fg: fg, showBg: showBg)
+                        }
                     }
 
                     HStack(spacing: fg.spacing) {
                         Spacer(minLength: 0)
-                        widgetRow(sections[2])
+                        ForEach(Array(sections[2].enumerated()), id: \.offset) { _, item in
+                            islandItem(item, appearance: appearance, fg: fg, showBg: showBg)
+                        }
                         if !hasBanner {
                             SystemBannerWidget(withLeftPadding: true)
                         }
@@ -95,8 +105,7 @@ struct MenuBarView: View {
             } else {
                 HStack(spacing: fg.spacing) {
                     ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                        buildView(for: item)
-                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                        islandItem(item, appearance: appearance, fg: fg, showBg: showBg)
                     }
                     if !hasBanner {
                         SystemBannerWidget(withLeftPadding: true)
@@ -106,6 +115,25 @@ struct MenuBarView: View {
         }
         .animation(.smooth(duration: 0.3), value: items.map(\.id))
         .padding(.horizontal, fg.horizontalPadding)
+    }
+
+    @ViewBuilder
+    private func islandItem(_ item: TomlWidgetItem, appearance: AppearanceConfig, fg: ForegroundConfig, showBg: Bool) -> some View {
+        if item.id == "spacer" {
+            Spacer().frame(minWidth: 50, maxWidth: .infinity)
+        } else if item.id == "divider" {
+            Rectangle()
+                .fill(appearance.accentColor.opacity(0.4))
+                .frame(width: 2, height: 15)
+                .clipShape(Capsule())
+        } else {
+            let h = capsuleHeight(fg)
+            buildView(for: item)
+                .padding(.horizontal, 6)
+                .frame(height: h)
+                .widgetStyle(appearance, heightOverride: h, showBackground: showBg)
+                .transition(.opacity.combined(with: .scale(scale: 0.8)))
+        }
     }
 
     // MARK: - Pills (Grouped by Spacers)
@@ -154,11 +182,11 @@ struct MenuBarView: View {
             }
         }
         .animation(.smooth(duration: 0.3), value: items.map(\.id))
-        .padding(.horizontal, fg.margin)
     }
 
     @ViewBuilder
     private func pillCapsule(_ group: WidgetGroup, height: CGFloat, appearance: AppearanceConfig, fg: ForegroundConfig) -> some View {
+        let showBg = fg.widgetsBackground.displayed
         HStack(spacing: fg.spacing) {
             ForEach(Array(group.items.enumerated()), id: \.offset) { _, item in
                 buildView(for: item)
@@ -167,14 +195,13 @@ struct MenuBarView: View {
         }
         .padding(.horizontal, 8)
         .frame(height: height)
-        .widgetStyle(appearance, heightOverride: height)
+        .widgetStyle(appearance, heightOverride: height, showBackground: showBg)
     }
 
     // MARK: - Shared Helpers
 
     private func capsuleHeight(_ fg: ForegroundConfig) -> CGFloat {
-        let h = fg.resolveHeight()
-        return h < 45 ? max(h - 4, 24) : 38
+        max(fg.resolveHeight() - 4, 24)
     }
 
     /// Splits widget items into sections separated by spacers.

@@ -170,7 +170,7 @@ struct AppearanceOverrides: Decodable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Helper to decode numeric values that may be Int or Double
-        func decodeNumber(for key: CodingKeys) throws Double? {
+        func decodeNumber(for key: CodingKeys) throws -> Double? {
             if container.contains(key) {
                 if let doubleVal = try? container.decode(Double.self, forKey: key) {
                     return doubleVal

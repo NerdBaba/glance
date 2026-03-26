@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyManager: HotkeyManager?
     private var fullscreenDetector: FullscreenDetector?
     private var fullscreenCancellable: AnyCancellable?
+    private var configCancellable: AnyCancellable?
     private var barVisible = true
     private var userHidBar = false  // True when user manually hid bar via hotkey
 
@@ -41,6 +42,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupHotkey()
         setupFullscreenDetection()
         WindowGapManager.shared.start()
+
+        // Update panel frames when config changes (e.g., bar height)
+        configCancellable = ConfigManager.shared.$config
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateMenuBarPanelFrame()
+            }
 
         // Show onboarding on first launch
         OnboardingWindowController.shared.showIfNeeded()
@@ -134,11 +142,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Configures and displays the background and menu bar panels.
     private func setupPanels() {
         guard let screenFrame = NSScreen.main?.frame else { return }
-        let barHeight = ConfigManager.shared.config.experimental.foreground.resolveHeight()
-        // Menu bar panel: only covers the bar area at the top of the screen
+        let fg = ConfigManager.shared.config.experimental.foreground
+        let barHeight = fg.resolveHeight()
+        let topMargin = fg.topMargin
+        // Menu bar panel: positioned with top margin offset
         let menuBarFrame = NSRect(
             x: screenFrame.origin.x,
-            y: screenFrame.origin.y + screenFrame.size.height - barHeight,
+            y: screenFrame.origin.y + screenFrame.size.height - barHeight - topMargin,
             width: screenFrame.size.width,
             height: barHeight
         )
@@ -152,6 +162,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             frame: menuBarFrame,
             level: Int(CGWindowLevelForKey(.backstopMenu)),
             hostingRootView: AnyView(MenuBarView()))
+    }
+
+    /// Updates the menu bar panel frame to match current config (bar height + margins).
+    private func updateMenuBarPanelFrame() {
+        guard let screenFrame = NSScreen.main?.frame else { return }
+        let fg = ConfigManager.shared.config.experimental.foreground
+        let barHeight = fg.resolveHeight()
+        let topMargin = fg.topMargin
+        let newFrame = NSRect(
+            x: screenFrame.origin.x,
+            y: screenFrame.origin.y + screenFrame.size.height - barHeight - topMargin,
+            width: screenFrame.size.width,
+            height: barHeight
+        )
+        if let panel = menuBarPanel {
+            if panel.frame != newFrame {
+                panel.setFrame(newFrame, display: true, animate: false)
+            }
+        } else {
+            // Panel doesn't exist yet, create it
+            setupPanel(
+                &menuBarPanel,
+                frame: newFrame,
+                level: Int(CGWindowLevelForKey(.backstopMenu)),
+                hostingRootView: AnyView(MenuBarView()))
+        }
     }
 
     /// Sets up an NSPanel with the provided parameters.

@@ -21,6 +21,7 @@ struct GeneralSettingsTab: View {
     @State private var showWidgetBackgrounds: Bool = false
     @State private var blurWallpaper: Bool = true
     @State private var selectedFormation: String = "islands"
+    @State private var topMargin: Double = 0
     @State private var formationMargin: Double = 8
     @State private var formationGap: Double = 10
     @State private var foregroundColor: Color = .white
@@ -247,21 +248,6 @@ struct GeneralSettingsTab: View {
                             key: "experimental.foreground.formation",
                             newValue: newValue)
                     }
-
-                    if selectedFormation == "floating" || selectedFormation == "pills" {
-                        SliderRow(label: "Margin", value: $formationMargin, range: 0...40, step: 1, format: "%.0f px") {
-                            configManager.updateConfigValue(
-                                key: "experimental.foreground.margin",
-                                newValue: String(Int(formationMargin)))
-                        }
-                    }
-                    if selectedFormation == "pills" {
-                        SliderRow(label: "Gap", value: $formationGap, range: 4...30, step: 1, format: "%.0f px") {
-                            configManager.updateConfigValue(
-                                key: "experimental.foreground.gap",
-                                newValue: String(Int(formationGap)))
-                        }
-                    }
                 }
 
                 // MARK: - Bar Layout
@@ -274,6 +260,14 @@ struct GeneralSettingsTab: View {
                     SliderRow(label: "Bar Height", value: $barHeight, range: 25...80, step: 1, format: "%.0f px") {
                         configManager.updateConfigValue(key: "experimental.foreground.height", newValue: String(Int(barHeight)))
                     }
+                    SliderRow(label: "Top Margin", value: $topMargin, range: 0...100, step: 1, format: "%.0f px") {
+                        configManager.updateConfigValue(key: "experimental.foreground.top-margin", newValue: String(Int(topMargin)))
+                    }
+                    SliderRow(label: "Horizontal Margin", value: $formationMargin, range: 0...60, step: 1, format: "%.0f px") {
+                        configManager.updateConfigValue(
+                            key: "experimental.foreground.margin",
+                            newValue: String(Int(formationMargin)))
+                    }
                     SliderRow(label: "Horizontal Padding", value: $horizontalPadding, range: 0...60, step: 1, format: "%.0f px") {
                         configManager.updateConfigValue(key: "experimental.foreground.horizontal-padding", newValue: String(Int(horizontalPadding)))
                     }
@@ -285,6 +279,13 @@ struct GeneralSettingsTab: View {
                             guard !isSyncing else { return }
                             configManager.updateConfigValue(key: "experimental.foreground.widgets-background.displayed", newValue: newValue ? "true" : "false")
                         }
+                    if selectedFormation == "pills" {
+                        SliderRow(label: "Group Gap", value: $formationGap, range: 4...30, step: 1, format: "%.0f px") {
+                            configManager.updateConfigValue(
+                                key: "experimental.foreground.gap",
+                                newValue: String(Int(formationGap)))
+                        }
+                    }
                 }
 
                 // MARK: - Hotkey
@@ -331,6 +332,9 @@ struct GeneralSettingsTab: View {
             .padding(24)
         }
         .onAppear { syncFromConfig() }
+        .onChange(of: configManager.config.updatedAt) { _, _ in
+            syncFromConfig()
+        }
     }
 
     // MARK: - Export / Import
@@ -393,6 +397,7 @@ struct GeneralSettingsTab: View {
         showWidgetBackgrounds = exp.foreground.widgetsBackground.displayed
         blurWallpaper = exp.background.displayed
         selectedFormation = exp.foreground.formation.rawValue
+        topMargin = exp.foreground.topMargin
         formationMargin = exp.foreground.margin
         formationGap = exp.foreground.gap
         usePywal = root.usePywal ?? false
