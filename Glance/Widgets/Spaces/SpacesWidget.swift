@@ -53,20 +53,19 @@ private struct SpaceView: View {
     @Environment(\.appearance) private var appearance
 
     var config: ConfigData { configProvider.config }
-    var spaceConfig: ConfigData { config["space"]?.dictionaryValue ?? [:] }
 
     @ObservedObject var configManager = ConfigManager.shared
     var foregroundHeight: CGFloat { configManager.config.experimental.foreground.resolveHeight() }
 
-    var showKey: Bool { spaceConfig["show-key"]?.boolValue ?? true }
+    var showKey: Bool { config["space.show-key"]?.boolValue ?? true }
 
     var displayMode: SpacesDisplayMode {
-        guard let raw = spaceConfig["display-mode"]?.stringValue else { return .icons }
+        guard let raw = config["space.display-mode"]?.stringValue else { return .icons }
         return SpacesDisplayMode(rawValue: raw) ?? .icons
     }
 
     var highlight: SpacesHighlight {
-        guard let raw = spaceConfig["highlight"]?.stringValue else { return .opacity }
+        guard let raw = config["space.highlight"]?.stringValue else { return .opacity }
         return SpacesHighlight(rawValue: raw) ?? .opacity
     }
 

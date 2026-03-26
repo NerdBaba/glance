@@ -11,7 +11,7 @@ struct RootToml: Decodable {
     var yabai: YabaiConfig?
     var aerospace: AerospaceConfig?
     var experimental: ExperimentalConfig?
-    var widgets: WidgetsSection
+    var widgets: WidgetsSection?
 
     enum CodingKeys: String, CodingKey {
         case theme, style, preset, hotkey, yabai, aerospace, experimental, widgets
@@ -28,7 +28,8 @@ struct RootToml: Decodable {
         self.appearanceOverrides = nil
         self.yabai = nil
         self.aerospace = nil
-        self.widgets = WidgetsSection(displayed: [], others: [:])
+        self.experimental = nil
+        self.widgets = nil
     }
 
     init(from decoder: Decoder) throws {
@@ -42,7 +43,7 @@ struct RootToml: Decodable {
         yabai = try container.decodeIfPresent(YabaiConfig.self, forKey: .yabai)
         aerospace = try container.decodeIfPresent(AerospaceConfig.self, forKey: .aerospace)
         experimental = try container.decodeIfPresent(ExperimentalConfig.self, forKey: .experimental)
-        widgets = try container.decode(WidgetsSection.self, forKey: .widgets)
+        widgets = try container.decodeIfPresent(WidgetsSection.self, forKey: .widgets)
     }
 }
 
@@ -372,13 +373,63 @@ struct ForegroundConfig: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         height = try container.decodeIfPresent(BackgroundForegroundHeight.self, forKey: .height) ?? .defaultHeight
-        horizontalPadding = try container.decodeIfPresent(CGFloat.self, forKey: .horizontalPadding) ?? Constants.menuBarHorizontalPadding
+        
+        // Decode horizontalPadding, accepting both Double and Int
+        if container.contains(.horizontalPadding) {
+            if let doubleVal = try? container.decode(Double.self, forKey: .horizontalPadding) {
+                horizontalPadding = CGFloat(doubleVal)
+            } else if let intVal = try? container.decode(Int.self, forKey: .horizontalPadding) {
+                horizontalPadding = CGFloat(intVal)
+            } else {
+                horizontalPadding = Constants.menuBarHorizontalPadding
+            }
+        } else {
+            horizontalPadding = Constants.menuBarHorizontalPadding
+        }
+        
         widgetsBackground = try container.decodeIfPresent(WidgetBackgroundConfig.self, forKey: .widgetsBackground) ?? WidgetBackgroundConfig()
-        spacing = try container.decodeIfPresent(CGFloat.self, forKey: .spacing) ?? 15
+        
+        // spacing
+        if container.contains(.spacing) {
+            if let doubleVal = try? container.decode(Double.self, forKey: .spacing) {
+                spacing = CGFloat(doubleVal)
+            } else if let intVal = try? container.decode(Int.self, forKey: .spacing) {
+                spacing = CGFloat(intVal)
+            } else {
+                spacing = 15
+            }
+        } else {
+            spacing = 15
+        }
+        
         autoHide = try container.decodeIfPresent(Bool.self, forKey: .autoHide) ?? false
         formation = try container.decodeIfPresent(BarFormation.self, forKey: .formation) ?? .islands
-        margin = try container.decodeIfPresent(CGFloat.self, forKey: .margin) ?? 8
-        gap = try container.decodeIfPresent(CGFloat.self, forKey: .gap) ?? 10
+        
+        // margin
+        if container.contains(.margin) {
+            if let doubleVal = try? container.decode(Double.self, forKey: .margin) {
+                margin = CGFloat(doubleVal)
+            } else if let intVal = try? container.decode(Int.self, forKey: .margin) {
+                margin = CGFloat(intVal)
+            } else {
+                margin = 8
+            }
+        } else {
+            margin = 8
+        }
+        
+        // gap
+        if container.contains(.gap) {
+            if let doubleVal = try? container.decode(Double.self, forKey: .gap) {
+                gap = CGFloat(doubleVal)
+            } else if let intVal = try? container.decode(Int.self, forKey: .gap) {
+                gap = CGFloat(intVal)
+            } else {
+                gap = 10
+            }
+        } else {
+            gap = 10
+        }
     }
 
     enum CodingKeys: String, CodingKey {

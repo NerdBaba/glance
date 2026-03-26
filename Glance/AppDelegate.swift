@@ -249,11 +249,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showFatalConfigError(message: String) {
         let alert = NSAlert()
         alert.messageText = "Configuration Error"
-        alert.informativeText = "\(message)\n\nPlease double check ~/.glance-config.toml and try again."
-        alert.alertStyle = .critical
-        alert.addButton(withTitle: "Quit")
-
+        alert.informativeText = "\(message)\n\nUsing fallback config. Check ~/.glance-config.toml."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        
         alert.runModal()
-        NSApplication.shared.terminate(nil)
     }
 }

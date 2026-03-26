@@ -1,0 +1,120 @@
+# If you installed yabai or aerospace without using Homebrew,
+# manually set the path to the binary. For example:
+#
+# yabai.path = "/run/current-system/sw/bin/yabai"
+# aerospace.path = ...
+
+theme = "system" # system, light, dark
+
+# Use Pywal colors dynamically (overrides preset colors)
+# use-pywal = false
+
+# Visual preset (overrides style). Available:
+#   liquid-glass, frosted, flat-dark, minimal-strip, system-native, neon
+# preset = "liquid-glass"
+
+# Override individual appearance parameters (optional):
+# [appearance]
+# roundness = 50       # 0 = square, 50 = capsule
+# border-width = 1.0
+# border-opacity = 0.4
+# fill-opacity = 0.04
+# glow-opacity = 0.05
+# shadow-opacity = 0.08
+# shadow-radius = 4.0
+
+use-pywal = true
+
+preset = "liquid-glass"
+
+[widgets]
+displayed = [
+    "default.spaces",
+    "default.activeapp",
+    "spacer",
+    "default.volume",
+    "default.pomodoro",
+    "default.systemmonitor",
+    "default.time",
+    "default.weather"
+]
+
+[widgets.default.spaces]
+space.show-key = true        # show space number (or character, if you use AeroSpace)
+window.show-title = true
+window.title.max-length = 50
+
+[widgets.default.battery]
+show-percentage = true
+warning-level = 30
+critical-level = 10
+
+# [widgets.default.volume]
+# show-percentage = false
+# scroll-step = 3
+
+# [widgets.default.brightness]
+# show-percentage = false
+# scroll-step = 3
+
+[widgets.default.time]
+format = "EEEE, d MMMM, h:mm a"
+calendar.format = "J:mm"
+
+calendar.show-events = true
+# calendar.allow-list = ["Home", "Personal"] # show only these calendars
+# calendar.deny-list = ["Work", "Boss"] # show all calendars except these
+
+# Weather widget options:
+# [widgets.default.weather]
+# provider = "met-no" # met-no (default) or open-meteo
+# use-ip-fallback = true
+#
+# [widgets.default.weather.location]
+# latitude = 55.7558
+# longitude = 37.6173
+# name = "Moscow"
+
+[popup.default.time]
+view-variant = "box"
+
+[background]
+enabled = true
+
+[appearance]
+roundness = 0
+border-width = 1.5
+border-opacity = 0.55
+fill-opacity = 0.48
+glow-opacity = 0.11
+shadow-opacity = 0.10
+shadow-radius = 4
+neon-color = ""
+neon-color2 = ""
+
+glow-color = "#ba8f3d"
+border-color2 = "#cfa13e"
+border-color = "#ba8f3d"
+widget-background-color = "#0a0905"
+accent-color = "#ba8f3d"
+foreground-color = "#dcc498"
+[experimental.background]
+displayed = false
+
+[experimental.foreground]
+formation = "full"
+
+height = 36
+horizontal-padding = 27
+spacing = 9
+[experimental.foreground.widgets-background]
+displayed = true
+
+
+
+
+
+
+[widgets.default.spaces.space]
+display-mode = "icons"
+highlight = "opacity"

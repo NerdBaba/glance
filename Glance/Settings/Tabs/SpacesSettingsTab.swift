@@ -14,22 +14,35 @@ struct SpacesSettingsTab: View {
             VStack(alignment: .leading, spacing: 24) {
                 // MARK: - Display Mode
                 SettingsSection(title: "Display Mode") {
-                    SpacesDisplayModePicker(selected: $selectedDisplayMode)
-                        .onChange(of: selectedDisplayMode) { _, newValue in
-                            configManager.updateConfigValue(
-                                key: "widgets.default.spaces.space.display-mode",
-                                newValue: newValue)
-                        }
+                    Picker("Display Mode", selection: $selectedDisplayMode) {
+                        Text("Icons").tag("icons")
+                        Text("Numbers").tag("numbers")
+                        Text("Dots").tag("dots")
+                        Text("Icons Only").tag("icons-only")
+                        Text("Focused Only").tag("focused-only")
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.spaces.space.display-mode",
+                            newValue: newValue)
+                    }
                 }
 
                 // MARK: - Highlight Style
                 SettingsSection(title: "Highlight Style") {
-                    SpacesHighlightPicker(selected: $selectedHighlight)
-                        .onChange(of: selectedHighlight) { _, newValue in
-                            configManager.updateConfigValue(
-                                key: "widgets.default.spaces.space.highlight",
-                                newValue: newValue)
-                        }
+                    Picker("Highlight", selection: $selectedHighlight) {
+                        Text("Opacity").tag("opacity")
+                        Text("Pill").tag("pill")
+                        Text("Underline").tag("underline")
+                        Text("Glow").tag("glow")
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedHighlight) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.spaces.space.highlight",
+                            newValue: newValue)
+                    }
                 }
 
                 // MARK: - Space Indicators
@@ -82,6 +95,7 @@ struct SpacesSettingsTab: View {
 
 private struct SpacesDisplayModePicker: View {
     @Binding var selected: String
+    var onSelect: (String) -> Void
 
     private let modes: [(id: String, label: String, icon: String, desc: String)] = [
         ("icons", "Icons", "square.grid.2x2", "Number + app icons"),
@@ -102,9 +116,8 @@ private struct SpacesDisplayModePicker: View {
                     SpacesDisplayDiagram(mode: mode.id)
                         .frame(height: 24)
                 } action: {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        selected = mode.id
-                    }
+                    selected = mode.id
+                    onSelect(mode.id)
                 }
             }
         }
@@ -115,6 +128,7 @@ private struct SpacesDisplayModePicker: View {
 
 private struct SpacesHighlightPicker: View {
     @Binding var selected: String
+    var onSelect: (String) -> Void
 
     private let styles: [(id: String, label: String)] = [
         ("opacity", "Opacity"),
@@ -134,9 +148,8 @@ private struct SpacesHighlightPicker: View {
                     SpacesHighlightDiagram(style: style.id)
                         .frame(height: 24)
                 } action: {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        selected = style.id
-                    }
+                    selected = style.id
+                    onSelect(style.id)
                 }
             }
         }

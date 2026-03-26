@@ -4,7 +4,7 @@ struct MenuBarView: View {
     @ObservedObject var configManager = ConfigManager.shared
 
     var body: some View {
-        let items = configManager.config.rootToml.widgets.displayed
+        let items = configManager.config.rootToml.widgets?.displayed ?? []
         let appearance = configManager.config.appearance
         let fg = configManager.config.experimental.foreground
         let formation = fg.formation

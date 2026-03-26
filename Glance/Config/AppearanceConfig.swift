@@ -53,18 +53,27 @@ struct AppearanceConfig {
         let customColor1 = o.neonColor.flatMap { Self.parseHex($0) }
         let customColor2 = o.neonColor2.flatMap { Self.parseHex($0) }
 
+        // Convert Double? overrides to CGFloat
+        let roundnessCGFloat = o.roundness.map { CGFloat($0) }
+        let borderWidthCGFloat = o.borderWidth.map { CGFloat($0) }
+        let borderOpacityCGFloat = o.borderOpacity.map { CGFloat($0) }
+        let fillOpacityCGFloat = o.fillOpacity.map { CGFloat($0) }
+        let glowOpacityCGFloat = o.glowOpacity.map { CGFloat($0) }
+        let shadowOpacityCGFloat = o.shadowOpacity.map { CGFloat($0) }
+        let shadowRadiusCGFloat = o.shadowRadius.map { CGFloat($0) }
+
         return AppearanceConfig(
             renderingStyle: renderingStyle,
-            roundness: o.roundness ?? roundness,
-            borderWidth: o.borderWidth ?? borderWidth,
-            borderTopOpacity: o.borderOpacity ?? borderTopOpacity,
-            borderMidOpacity: o.borderOpacity.map { $0 * 0.375 } ?? borderMidOpacity,
-            borderBottomOpacity: o.borderOpacity.map { $0 * 0.2 } ?? borderBottomOpacity,
-            fillOpacity: o.fillOpacity ?? fillOpacity,
-            glowOpacity: o.glowOpacity ?? glowOpacity,
+            roundness: roundnessCGFloat ?? roundness,
+            borderWidth: borderWidthCGFloat ?? borderWidth,
+            borderTopOpacity: borderOpacityCGFloat.map { $0 * 0.375 } ?? borderTopOpacity,
+            borderMidOpacity: borderOpacityCGFloat.map { $0 * 0.375 } ?? borderMidOpacity,
+            borderBottomOpacity: borderOpacityCGFloat.map { $0 * 0.2 } ?? borderBottomOpacity,
+            fillOpacity: fillOpacityCGFloat ?? fillOpacity,
+            glowOpacity: glowOpacityCGFloat ?? glowOpacity,
             glowRadius: glowRadius,
-            shadowOpacity: o.shadowOpacity ?? shadowOpacity,
-            shadowRadius: o.shadowRadius ?? shadowRadius,
+            shadowOpacity: shadowOpacityCGFloat ?? shadowOpacity,
+            shadowRadius: shadowRadiusCGFloat ?? shadowRadius,
             shadowY: shadowY,
             blurMaterial: blurMaterial,
             popupDarkTint: popupDarkTint,
@@ -123,13 +132,13 @@ struct AppearanceConfig {
 /// Decodable user overrides from `[appearance]` in TOML.
 /// All fields optional — only specified values override the preset.
 struct AppearanceOverrides: Decodable {
-    let roundness: CGFloat?
-    let borderWidth: CGFloat?
-    let borderOpacity: CGFloat?
-    let fillOpacity: CGFloat?
-    let glowOpacity: CGFloat?
-    let shadowOpacity: CGFloat?
-    let shadowRadius: CGFloat?
+    let roundness: Double?
+    let borderWidth: Double?
+    let borderOpacity: Double?
+    let fillOpacity: Double?
+    let glowOpacity: Double?
+    let shadowOpacity: Double?
+    let shadowRadius: Double?
     let foregroundColor: String?
     let accentColor: String?
     let widgetBackgroundColor: String?

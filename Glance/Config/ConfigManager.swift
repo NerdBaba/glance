@@ -71,10 +71,161 @@ final class ConfigManager: ObservableObject {
             let rootToml = try decoder.decode(RootToml.self, from: content)
             DispatchQueue.main.async {
                 self.config = Config(rootToml: rootToml, pywalColors: self.pywalColors)
+                self.initError = nil
             }
         } catch {
-            initError = "Error parsing TOML file: \(error.localizedDescription)"
-            logger.error("Error parsing TOML file at \(path): \(error.localizedDescription)", category: .config)
+            let detailedError = detailedTOMLError(error: error, path: path)
+            DispatchQueue.main.async {
+                self.initError = "Config error at line \(detailedError.line): \(detailedError.message)"
+            }
+            logger.error("Config parse error: \(detailedError.line) - \(detailedError.message)", category: .config)
+            lenientParseConfigFile(path: path)
+        }
+    }
+    
+    private func detailedTOMLError(error: Error, path: String) -> (line: Int, message: String) {
+        // Try to extract info from DecodingError
+        if let decodingError = error as? DecodingError {
+            let codingPath = decodingError.codingPath
+            if let lastKey = codingPath.last, let keyName = lastKey.stringValue, !keyName.isEmpty {
+                if let content = try? String(contentsOfFile: path, encoding: .utf8) {
+                    let lines = content.components(separatedBy: "\n")
+                    for (index, line) in lines.enumerated() {
+                        let trimmed = line.trimmingCharacters(in: .whitespaces)
+                        if trimmed.hasPrefix("#") { continue }
+                        // Check if line defines this key
+                        if trimmed.hasPrefix(keyName) {
+                            if let eqIndex = trimmed.firstIndex(of: "=") {
+                                let keyPart = trimmed[..<eqIndex].trimmingCharacters(in: .whitespaces)
+                                if keyPart == keyName {
+                                    let lineNum = index + 1
+                                    let desc: String
+                                    switch decodingError {
+                                    case .keyNotFound:
+                                        desc = "Missing required key '\(keyName)'"
+                                    case .valueNotFound(let type, _):
+                                        desc = "Missing value for key '\(keyName)' (expected \(type))"
+                                    case .typeMismatch(let type, _):
+                                        desc = "Invalid type for key '\(keyName)' (expected \(type))"
+                                    @unknown default:
+                                        desc = decodingError.localizedDescription
+                                    }
+                                    return (lineNum, desc)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // If we couldn't locate the line, fall through to other heuristics
+        }
+
+        guard let content = try? String(contentsOfFile: path, encoding: .utf8) else {
+            return (0, error.localizedDescription)
+        }
+
+        let lines = content.components(separatedBy: "\n")
+
+        // Check for common issues
+        for (index, line) in lines.enumerated() {
+            let lineNum = index + 1
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+
+            // Check for duplicate sections
+            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                let section = String(trimmed.dropFirst().dropLast())
+                // Check if this section appears again later
+                for (j, otherLine) in lines.enumerated() where j > index {
+                    let otherTrimmed = otherLine.trimmingCharacters(in: .whitespaces)
+                    if otherTrimmed == trimmed {
+                        return (lineNum, "Duplicate section '\(section)' at line \(lineNum) (first defined at line \(lineNum))")
+                    }
+                }
+            }
+
+            // Check for [background] instead of [experimental.background]
+            if trimmed.hasPrefix("[") && String(trimmed.dropFirst().dropLast()) == "background" {
+                return (lineNum, "Use '[experimental.background]' instead of '[background]'")
+            }
+
+            // Check for [popup] without experimental
+            if trimmed.hasPrefix("[") && String(trimmed.dropFirst().dropLast()) == "popup.default.time" {
+                return (lineNum, "'[popup.default.time]' section - may be missing or invalid")
+            }
+        }
+
+        return (0, error.localizedDescription)
+    }
+    
+    private func lenientParseConfigFile(path: String) {
+        guard let content = try? String(contentsOfFile: path, encoding: .utf8) else { return }
+        
+        var partialToml = RootToml()
+        
+        let lines = content.components(separatedBy: "\n")
+        var currentSection = ""
+        var sectionLines: [String] = []
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") && !trimmed.hasPrefix("[[") && !trimmed.hasSuffix("]]") {
+                if !sectionLines.isEmpty {
+                    parseSection(currentSection, lines: sectionLines, into: &partialToml)
+                }
+                currentSection = String(trimmed.dropFirst().dropLast())
+                sectionLines = []
+            } else if !trimmed.isEmpty && !trimmed.hasPrefix("#") {
+                sectionLines.append(line)
+            }
+        }
+        
+        if !sectionLines.isEmpty {
+            parseSection(currentSection, lines: sectionLines, into: &partialToml)
+        }
+        
+        DispatchQueue.main.async {
+            self.config = Config(rootToml: partialToml, pywalColors: self.pywalColors)
+        }
+        logger.warning("Used lenient config parsing due to errors", category: .config)
+    }
+    
+    private func parseSection(_ section: String, lines: [String], into root: inout RootToml) {
+        let sectionContent = lines.joined(separator: "\n")
+        
+        if section == "widgets" {
+            if let widgets = try? TOMLDecoder().decode(WidgetsSection.self, from: sectionContent) {
+                root.widgets = widgets
+            }
+        } else if section == "appearance" {
+            if let appearance = try? TOMLDecoder().decode(AppearanceOverrides.self, from: sectionContent) {
+                root.appearanceOverrides = appearance
+            }
+        } else if section.hasPrefix("widgets.default.") {
+            let widgetKey = String(section.dropFirst("widgets.".count))
+            var widgetConfig: ConfigData = [:]
+            for line in lines {
+                if let eqIndex = line.firstIndex(of: "=") {
+                    let k = String(line[..<eqIndex]).trimmingCharacters(in: .whitespaces)
+                    let v = String(line[line.index(after: eqIndex)...]).trimmingCharacters(in: .whitespaces)
+                    if v.hasPrefix("\"") && v.hasSuffix("\"") {
+                        widgetConfig[k] = .string(String(v.dropFirst().dropLast()))
+                    } else if v == "true" {
+                        widgetConfig[k] = .bool(true)
+                    } else if v == "false" {
+                        widgetConfig[k] = .bool(false)
+                    } else if let num = Int(v) {
+                        widgetConfig[k] = .int(num)
+                    } else {
+                        widgetConfig[k] = .string(v)
+                    }
+                }
+            }
+            let existing = root.widgets ?? WidgetsSection(displayed: [], others: [:])
+            var newOthers = existing.others
+            newOthers[widgetKey] = widgetConfig
+            root.widgets = WidgetsSection(displayed: existing.displayed, others: newOthers)
         }
     }
 
@@ -252,6 +403,7 @@ final class ConfigManager: ObservableObject {
     }
 
     func updateConfigValue(key: String, newValue: String) {
+        print("ConfigManager.updateConfigValue called: \(key) = \(newValue)")
         guard let path = configFilePath else {
             logger.warning("Config file path is not set while updating \(key)", category: .config)
             return
@@ -515,7 +667,7 @@ final class ConfigManager: ObservableObject {
     }
 
     func globalWidgetConfig(for widgetId: String) -> ConfigData {
-        config.rootToml.widgets.config(for: widgetId) ?? [:]
+        config.rootToml.widgets?.config(for: widgetId) ?? [:]
     }
 
     func resolvedWidgetConfig(for item: TomlWidgetItem) -> ConfigData {

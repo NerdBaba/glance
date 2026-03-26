@@ -234,13 +234,19 @@ struct GeneralSettingsTab: View {
 
                 // MARK: - Formation
                 SettingsSection(title: "Formation") {
-                    FormationPicker(selected: $selectedFormation)
-                        .onChange(of: selectedFormation) { _, newValue in
-                            guard !isSyncing else { return }
-                            configManager.updateConfigValue(
-                                key: "experimental.foreground.formation",
-                                newValue: newValue)
-                        }
+                    Picker("Formation", selection: $selectedFormation) {
+                        Text("Full").tag("full")
+                        Text("Floating").tag("floating")
+                        Text("Islands").tag("islands")
+                        Text("Pills").tag("pills")
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedFormation) { _, newValue in
+                        guard !isSyncing else { return }
+                        configManager.updateConfigValue(
+                            key: "experimental.foreground.formation",
+                            newValue: newValue)
+                    }
 
                     if selectedFormation == "floating" || selectedFormation == "pills" {
                         SliderRow(label: "Margin", value: $formationMargin, range: 0...40, step: 1, format: "%.0f px") {
@@ -559,6 +565,9 @@ struct SliderRow: View {
 
 private struct FormationPicker: View {
     @Binding var selected: String
+    var onSelect: (String) -> Void
+    
+    @State private var focusedIndex: Int = 0
 
     private let formations: [(id: String, label: String)] = [
         ("full", "Full"),
@@ -569,15 +578,52 @@ private struct FormationPicker: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            ForEach(formations, id: \.id) { f in
-                FormationCard(
-                    id: f.id,
-                    label: f.label,
-                    isSelected: selected == f.id
-                ) {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        selected = f.id
+            ForEach(Array(formations.enumerated()), id: \.element.id) { index, f in
+                VStack(spacing: 8) {
+                    FormationDiagram(formation: f.id)
+                        .frame(height: 32)
+
+                    Text(f.label)
+                        .font(.caption)
+                        .fontWeight(selected == f.id ? .semibold : .regular)
+                        .foregroundStyle(selected == f.id ? .primary : .secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(selected == f.id ? Color.accentColor.opacity(0.15) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(
+                            selected == f.id ? Color.accentColor : Color.white.opacity(0.08),
+                            lineWidth: selected == f.id ? 1.5 : 0.5
+                        )
+                )
+                .onTapGesture {
+                    print("Tapped: \(f.id)")
+                    selected = f.id
+                    onSelect(f.id)
+                }
+                .focusable()
+                .onKeyPress(.leftArrow) {
+                    if index > 0 {
+                        focusedIndex = index - 1
                     }
+                    return .handled
+                }
+                .onKeyPress(.rightArrow) {
+                    if index < formations.count - 1 {
+                        focusedIndex = index + 1
+                    }
+                    return .handled
+                }
+                .onKeyPress(.space) {
+                    selected = f.id
+                    onSelect(f.id)
+                    return .handled
                 }
             }
         }

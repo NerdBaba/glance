@@ -323,7 +323,7 @@ struct WidgetsSettingsTab: View {
     }
 
     private func syncWidgetList() {
-        activeWidgets = configManager.config.rootToml.widgets.displayed
+        activeWidgets = (configManager.config.rootToml.widgets?.displayed ?? [])
             .map { IdentifiedWidget(item: $0) }
     }
 
