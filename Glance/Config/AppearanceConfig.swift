@@ -165,4 +165,39 @@ struct AppearanceOverrides: Decodable {
         case neonColor = "neon-color"
         case neonColor2 = "neon-color2"
     }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Helper to decode numeric values that may be Int or Double
+        func decodeNumber(for key: CodingKeys) throws Double? {
+            if container.contains(key) {
+                if let doubleVal = try? container.decode(Double.self, forKey: key) {
+                    return doubleVal
+                }
+                if let intVal = try? container.decode(Int.self, forKey: key) {
+                    return Double(intVal)
+                }
+                return nil // type mismatch, will be ignored
+            }
+            return nil
+        }
+
+        roundness = try decodeNumber(for: .roundness)
+        borderWidth = try decodeNumber(for: .borderWidth)
+        borderOpacity = try decodeNumber(for: .borderOpacity)
+        fillOpacity = try decodeNumber(for: .fillOpacity)
+        glowOpacity = try decodeNumber(for: .glowOpacity)
+        shadowOpacity = try decodeNumber(for: .shadowOpacity)
+        shadowRadius = try decodeNumber(for: .shadowRadius)
+
+        foregroundColor = try container.decodeIfPresent(String.self, forKey: .foregroundColor)
+        accentColor = try container.decodeIfPresent(String.self, forKey: .accentColor)
+        widgetBackgroundColor = try container.decodeIfPresent(String.self, forKey: .widgetBackgroundColor)
+        borderColor = try container.decodeIfPresent(String.self, forKey: .borderColor)
+        borderColor2 = try container.decodeIfPresent(String.self, forKey: .borderColor2)
+        glowColor = try container.decodeIfPresent(String.self, forKey: .glowColor)
+        neonColor = try container.decodeIfPresent(String.self, forKey: .neonColor)
+        neonColor2 = try container.decodeIfPresent(String.self, forKey: .neonColor2)
+    }
 }

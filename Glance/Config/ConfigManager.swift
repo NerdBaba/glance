@@ -202,6 +202,10 @@ final class ConfigManager: ObservableObject {
             if let appearance = try? TOMLDecoder().decode(AppearanceOverrides.self, from: sectionContent) {
                 root.appearanceOverrides = appearance
             }
+        } else if section == "experimental" {
+            if let experimental = try? TOMLDecoder().decode(ExperimentalConfig.self, from: sectionContent) {
+                root.experimental = experimental
+            }
         } else if section.hasPrefix("widgets.default.") {
             let widgetKey = String(section.dropFirst("widgets.".count))
             var widgetConfig: ConfigData = [:]
