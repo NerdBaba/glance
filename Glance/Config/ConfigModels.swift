@@ -162,18 +162,17 @@ struct WidgetsSection: Decodable {
     }
 
     func config(for widgetId: String) -> ConfigData? {
-        let keys = widgetId.split(separator: ".").map { String($0) }
-
-        var current: Any? = others
-
-        for key in keys {
-            guard let dict = current as? [String: Any] else {
-                return nil
+        // Base config: exact match (flat key)
+        var result = others[widgetId] ?? [:]
+        let prefix = widgetId + "."
+        // Merge all subsection configs (keys that start with widgetId + ".")
+        for (key, value) in others {
+            if key.hasPrefix(prefix) {
+                let subKey = String(key.dropFirst(prefix.count))
+                result[subKey] = .dictionary(value)
             }
-            current = dict[key]
         }
-
-        return (current as? TOMLValue)?.dictionaryValue as? ConfigData
+        return result.isEmpty ? nil : result
     }
 }
 
