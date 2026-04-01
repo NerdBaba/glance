@@ -12,6 +12,7 @@ enum AppLogCategory: String {
     case script
     case systemMonitor = "system-monitor"
     case spaces
+    case temperature
     case updates
     case weather
     case windowGap = "window-gap"

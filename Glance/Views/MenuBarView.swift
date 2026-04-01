@@ -342,6 +342,12 @@ struct MenuBarView: View {
         case "default.disk":
             DiskWidget().environmentObject(config)
 
+        case "default.fan":
+            FanWidget().environmentObject(config)
+
+        case "default.energy":
+            EnergyWidget().environmentObject(config)
+
         case "default.pomodoro":
             PomodoroWidget().environmentObject(config)
 
@@ -356,6 +362,9 @@ struct MenuBarView: View {
 
         case "default.bluetooth":
             BluetoothWidget().environmentObject(config)
+
+        case "default.temperature":
+            TemperatureWidget().environmentObject(config)
 
         case "spacer":
             Spacer().frame(minWidth: 50, maxWidth: .infinity)

@@ -32,8 +32,9 @@ displayed = [
     "default.spaces",
     "default.activeapp",
     "spacer",
-    "default.volume",
-    "default.pomodoro",
+    "default.temperature",
+    "default.fan",
+    "default.energy",
     "default.systemmonitor",
     "default.time",
     "default.weather"

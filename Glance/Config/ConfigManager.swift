@@ -324,6 +324,19 @@ final class ConfigManager: ObservableObject {
             # longitude = 37.6173
             # name = "Moscow"
 
+            # Temperature widget (CPU/GPU/Heatsink via SMC):
+            # [widgets.default.temperature]
+            # show-unit = true        # show °C
+            # sensor = "cpu"          # cpu, gpu, heatsink
+
+            # Fan speed widget:
+            # [widgets.default.fan]
+            # show-percentage = false # show RPM or estimated %
+
+            # Energy consumption widget:
+            # [widgets.default.energy]
+            # mode = "current"        # "current" (W) or "total" (kWh)
+
             [popup.default.time]
             view-variant = "box"
             

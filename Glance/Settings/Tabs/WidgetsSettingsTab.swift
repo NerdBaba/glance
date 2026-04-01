@@ -49,6 +49,9 @@ struct WidgetsSettingsTab: View {
         ("default.clipboard", "Clipboard", "doc.on.clipboard"),
         ("default.bluetooth", "Bluetooth", "wave.3.right"),
         ("default.time", "Time", "clock"),
+        ("default.temperature", "Temperature", "thermometer"),
+        ("default.fan", "Fan Speed", "fan"),
+        ("default.energy", "Energy", "bolt.fill"),
         ("spacer", "Spacer", "arrow.left.and.right"),
         ("divider", "Divider", "minus"),
     ]
