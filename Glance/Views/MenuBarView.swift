@@ -22,7 +22,6 @@ struct MenuBarView: View {
                 pillsBar(items: items, appearance: appearance, fg: fg)
             }
         }
-        .font(appearance.barFont.toFont())
         .foregroundStyle(appearance.foregroundColor)
         .frame(height: max(fg.resolveHeight(), 1.0))
         .frame(maxWidth: .infinity)
