@@ -112,7 +112,7 @@ private struct BatteryText: View {
 
             if !isCharging && isPluggedIn && level != 100 {
                 Image(systemName: "powerplug.portrait.fill")
-                    .font(barFont.toFont())
+                    .font(widgetFont.toFont())
                     .padding(.leading, 1)
             }
         }

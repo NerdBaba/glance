@@ -39,7 +39,7 @@ struct MenuBarView: View {
         .environment(\.barStyle, configManager.config.barStyle)
         .environment(\.appearance, appearance)
         .environment(\.barFont, appearance.barFont)
-        .environment(\.widgetFont, appearance.useSingleFont ? appearance.barFont : appearance.widgetFont)
+        .environment(\.widgetFont, appearance.barFont)
         .preferredColorScheme(.dark)
     }
 

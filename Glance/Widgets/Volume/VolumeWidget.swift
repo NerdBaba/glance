@@ -21,7 +21,7 @@ struct VolumeWidget: View {
                 .barStatusSymbol(opticalYOffset: -0.2)
             if showPercentage {
                 Text(viewModel.isMuted ? "Mute" : "\(viewModel.volumePercent)%")
-                    .font(barFont.toFont())
+                    .font(widgetFont.toFont())
                     .monospacedDigit()
             }
         }

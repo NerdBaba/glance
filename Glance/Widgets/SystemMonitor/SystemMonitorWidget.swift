@@ -12,7 +12,7 @@ struct SystemMonitorWidget: View {
                 Image(systemName: "cpu")
                     .barStatusSymbol(size: 11, opticalYOffset: -0.1)
                 Text(String(format: "%.0f%%", viewModel.cpuUsage))
-                    .font(barFont.toFont())
+                    .font(widgetFont.toFont())
                     .monospacedDigit()
             }
 
@@ -21,7 +21,7 @@ struct SystemMonitorWidget: View {
                 Image(systemName: "memorychip")
                     .barStatusSymbol(size: 11, opticalYOffset: -0.1)
                 Text(String(format: "%.1f", viewModel.memoryUsedGB) + "G")
-                    .font(barFont.toFont())
+                    .font(widgetFont.toFont())
                     .monospacedDigit()
             }
         }
