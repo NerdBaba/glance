@@ -21,6 +21,7 @@ struct GeneralSettingsTab: View {
     @State private var showWidgetBackgrounds: Bool = false
     @State private var blurWallpaper: Bool = true
     @State private var selectedFormation: String = "islands"
+    @State private var selectedPosition: String = "top"
     @State private var topMargin: Double = 0
     @State private var formationMargin: Double = 8
     @State private var formationGap: Double = 10
@@ -248,6 +249,18 @@ struct GeneralSettingsTab: View {
                             key: "experimental.foreground.formation",
                             newValue: newValue)
                     }
+                    
+                    Picker("Position", selection: $selectedPosition) {
+                        Text("Top").tag("top")
+                        Text("Bottom").tag("bottom")
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedPosition) { _, newValue in
+                        guard !isSyncing else { return }
+                        configManager.updateConfigValue(
+                            key: "experimental.foreground.position",
+                            newValue: newValue)
+                    }
                 }
 
                 // MARK: - Bar Layout
@@ -397,6 +410,7 @@ struct GeneralSettingsTab: View {
         showWidgetBackgrounds = exp.foreground.widgetsBackground.displayed
         blurWallpaper = exp.background.displayed
         selectedFormation = exp.foreground.formation.rawValue
+        selectedPosition = exp.foreground.position
         topMargin = exp.foreground.topMargin
         formationMargin = exp.foreground.margin
         formationGap = exp.foreground.gap

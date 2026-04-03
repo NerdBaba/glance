@@ -378,6 +378,7 @@ struct ForegroundConfig: Decodable {
     let topMargin: CGFloat      // Offset from screen top
     let margin: CGFloat         // Horizontal screen-edge margin (all formations)
     let gap: CGFloat            // Gap between groups in pills mode
+    let position: String        // "top" or "bottom"
 
     init() {
         self.height = .defaultHeight
@@ -389,6 +390,7 @@ struct ForegroundConfig: Decodable {
         self.topMargin = 0
         self.margin = 8
         self.gap = 10
+        self.position = "top"
     }
 
     init(from decoder: Decoder) throws {
@@ -464,8 +466,11 @@ struct ForegroundConfig: Decodable {
         } else {
             gap = 10
         }
+        
+        // position
+        position = try container.decodeIfPresent(String.self, forKey: .position) ?? "top"
     }
-
+    
     enum CodingKeys: String, CodingKey {
         case height
         case horizontalPadding = "horizontal-padding"
@@ -476,6 +481,7 @@ struct ForegroundConfig: Decodable {
         case topMargin = "top-margin"
         case margin
         case gap
+        case position
     }
     
     func resolveHeight() -> CGFloat {

@@ -145,13 +145,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let fg = ConfigManager.shared.config.experimental.foreground
         let barHeight = fg.resolveHeight()
         let topMargin = fg.topMargin
-        // Menu bar panel: positioned with top margin offset
-        let menuBarFrame = NSRect(
-            x: screenFrame.origin.x,
-            y: screenFrame.origin.y + screenFrame.size.height - barHeight - topMargin,
-            width: screenFrame.size.width,
-            height: barHeight
-        )
+        let bottomMargin = fg.position == "bottom" ? topMargin : 0
+        
+        // Menu bar panel: positioned at top or bottom based on config
+        let menuBarFrame: NSRect
+        if fg.position == "bottom" {
+            // Bottom position
+            menuBarFrame = NSRect(
+                x: screenFrame.origin.x,
+                y: screenFrame.origin.y + bottomMargin,
+                width: screenFrame.size.width,
+                height: barHeight
+            )
+        } else {
+            // Top position (default)
+            menuBarFrame = NSRect(
+                x: screenFrame.origin.x,
+                y: screenFrame.origin.y + screenFrame.size.height - barHeight - topMargin,
+                width: screenFrame.size.width,
+                height: barHeight
+            )
+        }
+        
         setupPanel(
             &backgroundPanel,
             frame: screenFrame,
@@ -170,12 +185,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let fg = ConfigManager.shared.config.experimental.foreground
         let barHeight = fg.resolveHeight()
         let topMargin = fg.topMargin
-        let newFrame = NSRect(
-            x: screenFrame.origin.x,
-            y: screenFrame.origin.y + screenFrame.size.height - barHeight - topMargin,
-            width: screenFrame.size.width,
-            height: barHeight
-        )
+        let bottomMargin = fg.position == "bottom" ? topMargin : 0
+        
+        let newFrame: NSRect
+        if fg.position == "bottom" {
+            newFrame = NSRect(
+                x: screenFrame.origin.x,
+                y: screenFrame.origin.y + bottomMargin,
+                width: screenFrame.size.width,
+                height: barHeight
+            )
+        } else {
+            newFrame = NSRect(
+                x: screenFrame.origin.x,
+                y: screenFrame.origin.y + screenFrame.size.height - barHeight - topMargin,
+                width: screenFrame.size.width,
+                height: barHeight
+            )
+        }
+        
         if let panel = menuBarPanel {
             if panel.frame != newFrame {
                 panel.setFrame(newFrame, display: true, animate: false)
