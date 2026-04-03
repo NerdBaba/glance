@@ -35,6 +35,7 @@ Built with native Swift and SwiftUI. No Electron, no web views, no bloat.
 - **16 widgets** — spaces, now playing, weather, battery, volume, brightness, bluetooth, clipboard, pomodoro, and more
 - **Native macOS Spaces** out of the box (yabai and AeroSpace also supported)
 - **Rich popups** for every widget: calendar with events, network speed, battery health, now playing with progress bar
+- **Native font selection** — use any installed font with support for weights, traits, and live updates
 - **4 bar formations**: full, floating, islands, pills
 - **Custom script widgets** — run any shell command and display its output in the bar
 - **Auto-updates** via Sparkle
@@ -101,12 +102,16 @@ Pick one line in your config and the whole bar changes:
 
 ## Settings
 
-No need to edit files if you don't want to. The Settings GUI covers presets, appearance tuning, widget order, and more.
+No need to edit files if you don't want to. The Settings GUI covers presets, appearance tuning, font selection, widget order, and more.
 
 <table>
 <tr>
 <td><img src="resources/General%20Settings.png" alt="General Settings" /></td>
 <td><img src="resources/Widgets%20Settings.png" alt="Widgets Settings" /></td>
+</tr>
+<tr>
+<td align="center"><img src="resources/Font%20Settings.jpg" alt="Font Settings" /></td>
+<td></td>
 </tr>
 </table>
 
