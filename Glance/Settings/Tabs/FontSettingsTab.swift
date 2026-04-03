@@ -243,14 +243,16 @@ struct FontSettingsTab: View {
     }
     
     private func selectFont(_ fontName: String?, for target: FontTarget) {
+        let resolvedFontName = fontName?.isEmpty ?? true ? nil : fontName
+        
         switch target {
         case .bar:
-            barFontName = fontName
-            configManager.updateConfigValue(key: "appearance.bar-font-name", newValue: fontName ?? "")
+            barFontName = resolvedFontName
+            configManager.updateConfigValue(key: "appearance.bar-font-name", newValue: resolvedFontName ?? "")
             
         case .widget:
-            widgetFontName = fontName
-            configManager.updateConfigValue(key: "appearance.widget-font-name", newValue: fontName ?? "")
+            widgetFontName = resolvedFontName
+            configManager.updateConfigValue(key: "appearance.widget-font-name", newValue: resolvedFontName ?? "")
         }
     }
     
@@ -305,15 +307,30 @@ struct FontSettingsTab: View {
         guard !isSyncing else { return }
         let appearance = configManager.config.appearance
         
-        barFontName = appearance.barFont.fontName
-        barFontSize = Double(appearance.barFont.fontSize)
-        barFontWeight = appearance.barFont.weight.toInt()
+        // Only update if values are actually different (prevents fighting with user input)
+        if barFontName != appearance.barFont.fontName {
+            barFontName = appearance.barFont.fontName
+        }
+        if abs(barFontSize - Double(appearance.barFont.fontSize)) > 0.1 {
+            barFontSize = Double(appearance.barFont.fontSize)
+        }
+        if barFontWeight != appearance.barFont.weight.toInt() {
+            barFontWeight = appearance.barFont.weight.toInt()
+        }
         
-        widgetFontName = appearance.widgetFont.fontName
-        widgetFontSize = Double(appearance.widgetFont.fontSize)
-        widgetFontWeight = appearance.widgetFont.weight.toInt()
+        if widgetFontName != appearance.widgetFont.fontName {
+            widgetFontName = appearance.widgetFont.fontName
+        }
+        if abs(widgetFontSize - Double(appearance.widgetFont.fontSize)) > 0.1 {
+            widgetFontSize = Double(appearance.widgetFont.fontSize)
+        }
+        if widgetFontWeight != appearance.widgetFont.weight.toInt() {
+            widgetFontWeight = appearance.widgetFont.weight.toInt()
+        }
         
-        useSingleFont = appearance.useSingleFont
+        if useSingleFont != appearance.useSingleFont {
+            useSingleFont = appearance.useSingleFont
+        }
     }
 }
 

@@ -114,18 +114,16 @@ struct AppearanceConfig {
             borderColor2: customBorder2 ?? customColor2 ?? borderColor2,
             widgetBackgroundColor: customWidgetBg ?? widgetBackgroundColor,
             glowColor: customGlow ?? customColor1 ?? glowColor,
-            barFont: o.barFontName.map { name in
-                let weight = o.barFontWeight.map { intVal in
-                    Font.Weight.fromInt(intVal) ?? .medium
-                } ?? .medium
-                return FontConfig(fontName: name, fontSize: o.barFontSize ?? 13, weight: weight)
-            } ?? barFont,
-            widgetFont: o.widgetFontName.map { name in
-                let weight = o.widgetFontWeight.map { intVal in
-                    Font.Weight.fromInt(intVal) ?? .medium
-                } ?? .medium
-                return FontConfig(fontName: name, fontSize: o.widgetFontSize ?? 13, weight: weight)
-            } ?? widgetFont,
+            barFont: FontConfig(
+                fontName: o.barFontName.flatMap { $0.isEmpty ? nil : $0 } ?? barFont.fontName,
+                fontSize: o.barFontSize.map { CGFloat($0) } ?? barFont.fontSize,
+                weight: o.barFontWeight.map { Font.Weight.fromInt($0) ?? .medium } ?? barFont.weight
+            ),
+            widgetFont: FontConfig(
+                fontName: o.widgetFontName.flatMap { $0.isEmpty ? nil : $0 } ?? widgetFont.fontName,
+                fontSize: o.widgetFontSize.map { CGFloat($0) } ?? widgetFont.fontSize,
+                weight: o.widgetFontWeight.map { Font.Weight.fromInt($0) ?? .medium } ?? widgetFont.weight
+            ),
             useSingleFont: o.useSingleFont ?? useSingleFont
         )
     }
