@@ -1,5 +1,30 @@
 import SwiftUI
 
+/// Font configuration for bar and widgets.
+struct FontConfig: Equatable {
+    var fontName: String?      // nil = system default
+    var fontSize: CGFloat
+    var weight: Font.Weight
+    
+    /// Create a custom font from the config.
+    func toFont() -> Font {
+        if let fontName = fontName, !fontName.isEmpty {
+            return Font.custom(fontName, size: fontSize)
+        } else {
+            return Font.system(size: fontSize)
+        }
+    }
+    
+    /// Apply weight to the font.
+    func withWeight(_ weight: Font.Weight) -> Font {
+        if let fontName = fontName, !fontName.isEmpty {
+            return Font.custom(fontName, size: fontSize, relativeTo: .body).weight(weight)
+        } else {
+            return Font.system(size: fontSize, weight: weight)
+        }
+    }
+}
+
 /// All visual parameters for widget/popup rendering.
 /// Resolved from a preset + optional user overrides.
 struct AppearanceConfig {
@@ -26,6 +51,11 @@ struct AppearanceConfig {
     let borderColor2: Color?        // Non-nil = gradient border
     let widgetBackgroundColor: Color
     let glowColor: Color
+    
+    // Typography
+    let barFont: FontConfig
+    let widgetFont: FontConfig
+    let useSingleFont: Bool         // If true, widgetFont = barFont
 
     /// Maps roundness (0-50) to a concrete cornerRadius for widget capsules.
     func resolvedWidgetCornerRadius(height: CGFloat = 38) -> CGFloat {
@@ -83,7 +113,20 @@ struct AppearanceConfig {
             borderColor: customBorder ?? customColor1 ?? borderColor,
             borderColor2: customBorder2 ?? customColor2 ?? borderColor2,
             widgetBackgroundColor: customWidgetBg ?? widgetBackgroundColor,
-            glowColor: customGlow ?? customColor1 ?? glowColor
+            glowColor: customGlow ?? customColor1 ?? glowColor,
+            barFont: o.barFontName.map { name in
+                let weight = o.barFontWeight.map { intVal in
+                    Font.Weight.fromInt(intVal) ?? .medium
+                } ?? .medium
+                return FontConfig(fontName: name, fontSize: o.barFontSize ?? 13, weight: weight)
+            } ?? barFont,
+            widgetFont: o.widgetFontName.map { name in
+                let weight = o.widgetFontWeight.map { intVal in
+                    Font.Weight.fromInt(intVal) ?? .medium
+                } ?? .medium
+                return FontConfig(fontName: name, fontSize: o.widgetFontSize ?? 13, weight: weight)
+            } ?? widgetFont,
+            useSingleFont: o.useSingleFont ?? useSingleFont
         )
     }
 
@@ -109,7 +152,10 @@ struct AppearanceConfig {
             borderColor: pywal.colors[4],
             borderColor2: pywal.colors[5],
             widgetBackgroundColor: pywal.colors[0],
-            glowColor: pywal.colors[4]
+            glowColor: pywal.colors[4],
+            barFont: barFont,
+            widgetFont: widgetFont,
+            useSingleFont: useSingleFont
         )
     }
 
@@ -147,6 +193,15 @@ struct AppearanceOverrides: Decodable {
     let glowColor: String?
     let neonColor: String?
     let neonColor2: String?
+    
+    // Typography
+    let barFontName: String?
+    let barFontSize: Double?
+    let barFontWeight: Int?
+    let widgetFontName: String?
+    let widgetFontSize: Double?
+    let widgetFontWeight: Int?
+    let useSingleFont: Bool?
 
     enum CodingKeys: String, CodingKey {
         case roundness
@@ -164,6 +219,15 @@ struct AppearanceOverrides: Decodable {
         case glowColor = "glow-color"
         case neonColor = "neon-color"
         case neonColor2 = "neon-color2"
+        
+        // Typography
+        case barFontName = "bar-font-name"
+        case barFontSize = "bar-font-size"
+        case barFontWeight = "bar-font-weight"
+        case widgetFontName = "widget-font-name"
+        case widgetFontSize = "widget-font-size"
+        case widgetFontWeight = "widget-font-weight"
+        case useSingleFont = "use-single-font"
     }
 
     init(from decoder: Decoder) throws {
@@ -178,19 +242,41 @@ struct AppearanceOverrides: Decodable {
                 if let intVal = try? container.decode(Int.self, forKey: key) {
                     return Double(intVal)
                 }
-                return nil // type mismatch, will be ignored
+            }
+            return nil
+        }
+        
+        // Helper to decode font weight from string or int
+        func decodeFontWeight(for key: CodingKeys) throws -> Int? {
+            guard container.contains(key) else { return nil }
+            if let intVal = try? container.decode(Int.self, forKey: key) {
+                return intVal
+            }
+            if let strVal = try? container.decode(String.self, forKey: key) {
+                // Map common weight names to Int values
+                switch strVal.lowercased() {
+                case "thin": return 0
+                case "ultraLight": return 2
+                case "light": return 3
+                case "regular": return 4
+                case "medium": return 5
+                case "semibold": return 6
+                case "bold": return 7
+                case "heavy": return 8
+                case "black": return 9
+                default: return nil
+                }
             }
             return nil
         }
 
-        roundness = try decodeNumber(for: .roundness)
-        borderWidth = try decodeNumber(for: .borderWidth)
+        roundness = try container.decodeIfPresent(Double.self, forKey: .roundness)
+        borderWidth = try container.decodeIfPresent(Double.self, forKey: .borderWidth)
         borderOpacity = try decodeNumber(for: .borderOpacity)
         fillOpacity = try decodeNumber(for: .fillOpacity)
         glowOpacity = try decodeNumber(for: .glowOpacity)
         shadowOpacity = try decodeNumber(for: .shadowOpacity)
         shadowRadius = try decodeNumber(for: .shadowRadius)
-
         foregroundColor = try container.decodeIfPresent(String.self, forKey: .foregroundColor)
         accentColor = try container.decodeIfPresent(String.self, forKey: .accentColor)
         widgetBackgroundColor = try container.decodeIfPresent(String.self, forKey: .widgetBackgroundColor)
@@ -199,5 +285,50 @@ struct AppearanceOverrides: Decodable {
         glowColor = try container.decodeIfPresent(String.self, forKey: .glowColor)
         neonColor = try container.decodeIfPresent(String.self, forKey: .neonColor)
         neonColor2 = try container.decodeIfPresent(String.self, forKey: .neonColor2)
+        
+        // Typography
+        barFontName = try container.decodeIfPresent(String.self, forKey: .barFontName)
+        barFontSize = try container.decodeIfPresent(Double.self, forKey: .barFontSize)
+        barFontWeight = try decodeFontWeight(for: .barFontWeight)
+        widgetFontName = try container.decodeIfPresent(String.self, forKey: .widgetFontName)
+        widgetFontSize = try container.decodeIfPresent(Double.self, forKey: .widgetFontSize)
+        widgetFontWeight = try decodeFontWeight(for: .widgetFontWeight)
+        useSingleFont = try container.decodeIfPresent(Bool.self, forKey: .useSingleFont)
+    }
+}
+
+// MARK: - Font.Weight extension
+
+extension Font.Weight {
+    /// Convert from Int (0-9) to Font.Weight
+    static func fromInt(_ value: Int) -> Font.Weight? {
+        switch value {
+        case 0: return .thin
+        case 1: return .ultraLight
+        case 2: return .light
+        case 3: return .regular
+        case 4: return .medium
+        case 5: return .semibold
+        case 6: return .bold
+        case 7: return .heavy
+        case 8: return .black
+        default: return nil
+        }
+    }
+    
+    /// Convert to Int (0-9)
+    func toInt() -> Int {
+        switch self {
+        case .thin: return 0
+        case .ultraLight: return 1
+        case .light: return 2
+        case .regular: return 3
+        case .medium: return 4
+        case .semibold: return 5
+        case .bold: return 6
+        case .heavy: return 7
+        case .black: return 8
+        default: return 4 // regular
+        }
     }
 }

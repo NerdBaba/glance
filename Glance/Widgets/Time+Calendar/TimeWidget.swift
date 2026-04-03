@@ -33,17 +33,21 @@ struct TimeWidget: View {
         )
     }
 
+    @Environment(\.appearance) var appearance
+    @Environment(\.barFont) var barFont
+    
     var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
             Text(formattedTime(pattern: format, from: currentTime))
                 .fontWeight(.semibold)
+                .font(barFont.toFont())
             if let event = calendarManager.nextEvent, calendarShowEvents {
                 Text(eventText(for: event))
                     .opacity(0.8)
                     .font(.subheadline)
             }
         }
-        .font(.headline)
+        .font(barFont.toFont())
         .shadow(color: .black.opacity(0.3), radius: 3)
         .onReceive(timer) { date in
             currentTime = date

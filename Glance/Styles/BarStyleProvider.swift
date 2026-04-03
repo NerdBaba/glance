@@ -30,6 +30,14 @@ private struct AppearanceConfigKey: EnvironmentKey {
     static let defaultValue: AppearanceConfig = Preset.liquidGlass.defaults
 }
 
+private struct BarFontKey: EnvironmentKey {
+    static let defaultValue: FontConfig = FontConfig(fontName: nil, fontSize: 13, weight: .medium)
+}
+
+private struct WidgetFontKey: EnvironmentKey {
+    static let defaultValue: FontConfig = FontConfig(fontName: nil, fontSize: 13, weight: .medium)
+}
+
 extension EnvironmentValues {
     var barStyle: BarStyle {
         get { self[BarStyleKey.self] }
@@ -39,6 +47,16 @@ extension EnvironmentValues {
     var appearance: AppearanceConfig {
         get { self[AppearanceConfigKey.self] }
         set { self[AppearanceConfigKey.self] = newValue }
+    }
+    
+    var barFont: FontConfig {
+        get { self[BarFontKey.self] }
+        set { self[BarFontKey.self] = newValue }
+    }
+    
+    var widgetFont: FontConfig {
+        get { self[WidgetFontKey.self] }
+        set { self[WidgetFontKey.self] = newValue }
     }
 }
 
@@ -225,5 +243,51 @@ extension View {
 
     func popupStyle(_ appearance: AppearanceConfig, cornerRadius: CGFloat) -> some View {
         modifier(PopupStyleModifier(appearance: appearance, cornerRadius: cornerRadius))
+    }
+    
+    /// Apply bar font from environment.
+    func barFontStyle() -> some View {
+        self.fontEnvironment(\.barFont)
+    }
+    
+    /// Apply widget font from environment.
+    func widgetFontStyle() -> some View {
+        self.fontEnvironment(\.widgetFont)
+    }
+    
+    /// Apply custom font config.
+    func fontStyle(_ config: FontConfig) -> some View {
+        self.modifier(FontConfigModifier(config: config))
+    }
+}
+
+// MARK: - Font Environment Modifier
+
+/// Generic modifier that applies a FontConfig from environment.
+struct FontConfigModifier: ViewModifier {
+    let config: FontConfig
+    
+    func body(content: Content) -> some View {
+        content.font(config.toFont())
+    }
+}
+
+extension View {
+    /// Apply font from a specific environment key path.
+    fileprivate func fontEnvironment(_ keyPath: KeyPath<EnvironmentValues, FontConfig>) -> some View {
+        self.modifier(EnvironmentFontModifier(keyPath: keyPath))
+    }
+}
+
+private struct EnvironmentFontModifier: ViewModifier {
+    let keyPath: KeyPath<EnvironmentValues, FontConfig>
+    
+    @Environment(\.appearance) var appearance
+    
+    func body(content: Content) -> some View {
+        let config = appearance.useSingleFont 
+            ? appearance.barFont 
+            : (keyPath == \.widgetFont ? appearance.widgetFont : appearance.barFont)
+        return content.font(config.toFont())
     }
 }

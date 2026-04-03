@@ -22,6 +22,7 @@ struct MenuBarView: View {
                 pillsBar(items: items, appearance: appearance, fg: fg)
             }
         }
+        .font(appearance.barFont.toFont())
         .foregroundStyle(appearance.foregroundColor)
         .frame(height: max(fg.resolveHeight(), 1.0))
         .frame(maxWidth: .infinity)
@@ -38,6 +39,8 @@ struct MenuBarView: View {
         }
         .environment(\.barStyle, configManager.config.barStyle)
         .environment(\.appearance, appearance)
+        .environment(\.barFont, appearance.barFont)
+        .environment(\.widgetFont, appearance.useSingleFont ? appearance.barFont : appearance.widgetFont)
         .preferredColorScheme(.dark)
     }
 

@@ -58,7 +58,10 @@ enum Preset: String, CaseIterable {
                 borderColor: .white,
                 borderColor2: nil,
                 widgetBackgroundColor: .white,
-                glowColor: .white
+                glowColor: .white,
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         case .frosted:
@@ -83,7 +86,10 @@ enum Preset: String, CaseIterable {
                 borderColor: .white,
                 borderColor2: nil,
                 widgetBackgroundColor: .white,
-                glowColor: .clear
+                glowColor: .clear,
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         // ── Flat presets ──────────────────────────────────────────
@@ -110,7 +116,10 @@ enum Preset: String, CaseIterable {
                 borderColor: Self.hex("#333333"),
                 borderColor2: nil,
                 widgetBackgroundColor: Self.hex("#1c1c1c"),
-                glowColor: .clear
+                glowColor: .clear,
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         case .minimal:
@@ -135,7 +144,10 @@ enum Preset: String, CaseIterable {
                 borderColor: .clear,
                 borderColor2: nil,
                 widgetBackgroundColor: .clear,
-                glowColor: .clear
+                glowColor: .clear,
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         // ── Neon — cyberpunk glow with pink→cyan gradient ────────
@@ -162,7 +174,10 @@ enum Preset: String, CaseIterable {
                 borderColor: Self.hex("#ff44cc"),
                 borderColor2: Self.hex("#00e5ff"),
                 widgetBackgroundColor: Self.hex("#0a0a0a"),
-                glowColor: Self.hex("#ff44cc")
+                glowColor: Self.hex("#ff44cc"),
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         // ── Tokyo Night — dreamy night atmosphere ────────────────
@@ -191,7 +206,10 @@ enum Preset: String, CaseIterable {
                 borderColor: Self.hex("#7aa2f7"),       // Blue border top
                 borderColor2: Self.hex("#9d7cd8"),      // Purple border bottom
                 widgetBackgroundColor: Self.hex("#1a1b26"), // Night bg
-                glowColor: Self.hex("#7aa2f7")          // Blue glow
+                glowColor: Self.hex("#7aa2f7"),          // Blue glow
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         // ── Dracula — bold, contrasty, purple-pink on dark ───────
@@ -220,7 +238,10 @@ enum Preset: String, CaseIterable {
                 borderColor: Self.hex("#bd93f9"),       // Purple border
                 borderColor2: Self.hex("#ff79c6"),      // Pink gradient end
                 widgetBackgroundColor: Self.hex("#282a36"), // Background
-                glowColor: Self.hex("#bd93f9")          // Purple glow
+                glowColor: Self.hex("#bd93f9"),          // Purple glow
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         // ── Gruvbox — warm retro, earthy orange on dark brown ────
@@ -249,7 +270,10 @@ enum Preset: String, CaseIterable {
                 borderColor: Self.hex("#fe8019"),       // Orange border
                 borderColor2: Self.hex("#fabd2f"),      // Yellow gradient end
                 widgetBackgroundColor: Self.hex("#282828"), // bg0
-                glowColor: Self.hex("#fe8019")          // Warm orange glow
+                glowColor: Self.hex("#fe8019"),          // Warm orange glow
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         // ── Nord — arctic, clean, precise ────────────────────────
@@ -278,7 +302,10 @@ enum Preset: String, CaseIterable {
                 borderColor: Self.hex("#434c5e"),       // Polar Night 3
                 borderColor2: nil,                      // No gradient — clean
                 widgetBackgroundColor: Self.hex("#2e3440"), // Polar Night 1
-                glowColor: .clear                       // No glow — crisp
+                glowColor: .clear,                       // No glow — crisp
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         // ── Catppuccin Mocha — soft, pastel, cozy ────────────────
@@ -307,7 +334,10 @@ enum Preset: String, CaseIterable {
                 borderColor: Self.hex("#cba6f7"),       // Mauve border
                 borderColor2: Self.hex("#89b4fa"),      // Blue gradient end
                 widgetBackgroundColor: Self.hex("#1e1e2e"), // Base
-                glowColor: Self.hex("#cba6f7")          // Soft mauve glow
+                glowColor: Self.hex("#cba6f7"),          // Soft mauve glow
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
 
         // ── Solarized Dark — precise, scientific, timeless ───────
@@ -337,7 +367,10 @@ enum Preset: String, CaseIterable {
                 borderColor: Self.hex("#073642"),       // base02
                 borderColor2: nil,                      // No gradient — clean
                 widgetBackgroundColor: Self.hex("#002b36"), // base03
-                glowColor: .clear                       // No glow — understated
+                glowColor: .clear,                       // No glow — understated
+                barFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                widgetFont: FontConfig(fontName: nil, fontSize: 13, weight: .medium),
+                useSingleFont: true
             )
         }
     }

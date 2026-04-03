@@ -5,6 +5,7 @@ enum SettingsTab: String, CaseIterable {
     case widgets = "Widgets"
     case spaces = "Spaces"
     case time = "Time"
+    case fonts = "Fonts"
     case about = "About"
 
     var icon: String {
@@ -13,6 +14,7 @@ enum SettingsTab: String, CaseIterable {
         case .widgets: return "square.grid.2x2"
         case .spaces: return "rectangle.3.group"
         case .time: return "clock"
+        case .fonts: return "textformat"
         case .about: return "info.circle"
         }
     }
@@ -38,6 +40,8 @@ struct SettingsView: View {
                 SpacesSettingsTab()
             case .time:
                 TimeSettingsTab()
+            case .fonts:
+                FontSettingsTab()
             case .about:
                 AboutSettingsTab()
             }
