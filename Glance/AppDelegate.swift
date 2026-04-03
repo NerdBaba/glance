@@ -42,12 +42,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupHotkey()
         setupFullscreenDetection()
         WindowGapManager.shared.start()
+        
+        // Configure yabai external_bar based on bar position
+        configureYabaiExternalBar()
 
         // Update panel frames when config changes (e.g., bar height)
         configCancellable = ConfigManager.shared.$config
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.updateMenuBarPanelFrame()
+                self?.configureYabaiExternalBar()
             }
 
         // Show onboarding on first launch
@@ -58,6 +62,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             selector: #selector(screenParametersDidChange(_:)),
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil)
+    }
+    
+    /// Configures yabai external_bar based on current bar position and dimensions.
+    private func configureYabaiExternalBar() {
+        let fg = ConfigManager.shared.config.experimental.foreground
+        let position = fg.position
+        let barHeight = fg.resolveHeight()
+        let topMargin = fg.topMargin
+        
+        YabaiConfigManager.shared.updateExternalBarConfig(
+            position: position,
+            barHeight: barHeight,
+            topMargin: topMargin
+        )
     }
 
     @objc private func screenParametersDidChange(_ notification: Notification) {

@@ -260,6 +260,9 @@ struct GeneralSettingsTab: View {
                         configManager.updateConfigValue(
                             key: "experimental.foreground.position",
                             newValue: newValue)
+                        
+                        // Update yabai external_bar config
+                        updateYabaiExternalBar(position: newValue)
                     }
                 }
 
@@ -517,6 +520,20 @@ struct GeneralSettingsTab: View {
         case .catppuccin:  return "Catppuccin"
         case .solarized:   return "Solarized"
         }
+    }
+    
+    // MARK: - Yabai Integration
+    
+    private func updateYabaiExternalBar(position: String) {
+        let fg = configManager.config.experimental.foreground
+        let barHeight = fg.resolveHeight()
+        let topMargin = fg.topMargin
+        
+        YabaiConfigManager.shared.updateExternalBarConfig(
+            position: position,
+            barHeight: barHeight,
+            topMargin: topMargin
+        )
     }
 }
 
