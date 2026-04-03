@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import SwiftUI
 
 /// Manages font loading, caching, and native macOS font panel integration.
@@ -12,7 +13,7 @@ final class FontManager: NSObject {
     private var swiftUIFontCache: [String: Font] = [:]
     
     /// Completion handler for font panel selection
-    private var fontSelectionHandler: ((String, CGFloat) -> Void)?
+    private var fontSelectionHandler: ((String, CGFloat, Double) -> Void)?
     
     override private init() {
         super.init()
@@ -74,12 +75,12 @@ final class FontManager: NSObject {
     ///   - initialFontName: Initial font name (nil = system default)
     ///   - initialSize: Initial font size
     ///   - parentWindow: Window to present over
-    ///   - completion: Called when user selects a font with (fontName, fontSize)
+    ///   - completion: Called when user selects a font with (fontName, fontSize, weight 0-8)
     func openFontPanel(
         initialFontName: String?,
         initialSize: CGFloat,
         parentWindow: NSWindow?,
-        completion: @escaping (String, CGFloat) -> Void
+        completion: @escaping (String, CGFloat, Double) -> Void
     ) {
         fontSelectionHandler = completion
         
@@ -114,11 +115,37 @@ final class FontManager: NSObject {
             return
         }
         
-        // Get the new font from the font manager
+        // Get the new font from the font manager (includes trait changes)
         let newFont = fontManager.convert(oldFont)
         
-        handler(newFont.fontName, newFont.pointSize)
+        // Extract font traits and convert to weight
+        let weight = extractWeight(from: newFont)
+        
+        // Pass font name, size, and weight to handler
+        handler(newFont.fontName, newFont.pointSize, Double(weight))
         fontSelectionHandler = nil
+    }
+    
+    /// Extract font weight from NSFont based on font traits and name
+    private func extractWeight(from font: NSFont) -> Int {
+        // Check font name for weight indicators (most reliable)
+        let fontName = font.fontName.lowercased()
+        if fontName.contains("black") { return 8 }
+        if fontName.contains("heavy") { return 7 }
+        if fontName.contains("bold") { return 6 }
+        if fontName.contains("semibold") || fontName.contains("semi-bold") { return 5 }
+        if fontName.contains("medium") { return 4 }
+        if fontName.contains("regular") || fontName.contains("book") { return 3 }
+        if fontName.contains("light") { return 2 }
+        if fontName.contains("thin") { return 0 }
+        
+        // Check symbolic traits from font descriptor
+        let descriptor = font.fontDescriptor
+        let symbolicTraits = descriptor.symbolicTraits
+        if symbolicTraits.contains(.bold) { return 6 }
+        if symbolicTraits.contains(.expanded) { return 7 }
+        
+        return 3 // regular
     }
     
     // MARK: - Helpers

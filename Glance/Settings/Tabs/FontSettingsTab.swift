@@ -230,7 +230,7 @@ struct FontSettingsTab: View {
             initialFontName: currentName,
             initialSize: currentSize,
             parentWindow: window
-        ) { fontName, fontSize in
+        ) { fontName, fontSize, weight in
             // Update state on main thread
             DispatchQueue.main.async {
                 self.isSyncing = true
@@ -240,14 +240,18 @@ struct FontSettingsTab: View {
                 case .bar:
                     barFontName = fontName.isEmpty ? nil : fontName
                     barFontSize = Double(fontSize)
+                    barFontWeight = Int(weight)
                     configManager.updateConfigValue(key: "appearance.bar-font-name", newValue: fontName)
                     configManager.updateConfigValue(key: "appearance.bar-font-size", newValue: String(Int(fontSize)))
+                    configManager.updateConfigValue(key: "appearance.bar-font-weight", newValue: String(Int(weight)))
                     
                 case .widget:
                     widgetFontName = fontName.isEmpty ? nil : fontName
                     widgetFontSize = Double(fontSize)
+                    widgetFontWeight = Int(weight)
                     configManager.updateConfigValue(key: "appearance.widget-font-name", newValue: fontName)
                     configManager.updateConfigValue(key: "appearance.widget-font-size", newValue: String(Int(fontSize)))
+                    configManager.updateConfigValue(key: "appearance.widget-font-weight", newValue: String(Int(weight)))
                 }
             }
         }
