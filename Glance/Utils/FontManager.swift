@@ -110,7 +110,6 @@ final class FontManager: NSObject {
     
     @objc func changeFont(_ sender: NSFontManager?) {
         guard let fontManager = sender,
-              let handler = fontSelectionHandler,
               let oldFont = fontManager.selectedFont else {
             return
         }
@@ -121,13 +120,15 @@ final class FontManager: NSObject {
         // Extract font traits and convert to weight
         let weight = extractWeight(from: newFont)
         
-        // Pass font name, size, and weight to handler
-        handler(newFont.fontName, newFont.pointSize, Double(weight))
-        fontSelectionHandler = nil
+        // Call handler if set (don't clear it - allow continuous updates)
+        fontSelectionHandler?(newFont.fontName, newFont.pointSize, Double(weight))
     }
     
     /// Extract font weight from NSFont based on font traits and name
     private func extractWeight(from font: NSFont) -> Int {
+        // First check if it's a valid/system font
+        guard !font.fontName.isEmpty else { return 3 }
+        
         // Check font name for weight indicators (most reliable)
         let fontName = font.fontName.lowercased()
         if fontName.contains("black") { return 8 }

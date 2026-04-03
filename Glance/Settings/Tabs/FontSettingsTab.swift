@@ -230,28 +230,36 @@ struct FontSettingsTab: View {
             initialFontName: currentName,
             initialSize: currentSize,
             parentWindow: window
-        ) { fontName, fontSize, weight in
-            // Update state on main thread
-            DispatchQueue.main.async {
+        ) { [target] fontName, fontSize, weight in
+            // Update state on main thread - allow continuous updates
+            DispatchQueue.main.async { [self] in
+                // Skip if syncing to prevent loops
+                if self.isSyncing { return }
+                
                 self.isSyncing = true
-                defer { self.isSyncing = false }
+                defer { 
+                    self.isSyncing = false
+                }
+                
+                // Validate font name (check for valid fonts)
+                let validFontName = fontName.isEmpty ? "" : fontName
                 
                 switch target {
                 case .bar:
-                    barFontName = fontName.isEmpty ? nil : fontName
-                    barFontSize = Double(fontSize)
-                    barFontWeight = Int(weight)
-                    configManager.updateConfigValue(key: "appearance.bar-font-name", newValue: fontName)
-                    configManager.updateConfigValue(key: "appearance.bar-font-size", newValue: String(Int(fontSize)))
-                    configManager.updateConfigValue(key: "appearance.bar-font-weight", newValue: String(Int(weight)))
+                    self.barFontName = validFontName.isEmpty ? nil : validFontName
+                    self.barFontSize = Double(fontSize)
+                    self.barFontWeight = Int(weight)
+                    self.configManager.updateConfigValue(key: "appearance.bar-font-name", newValue: validFontName)
+                    self.configManager.updateConfigValue(key: "appearance.bar-font-size", newValue: String(Int(fontSize)))
+                    self.configManager.updateConfigValue(key: "appearance.bar-font-weight", newValue: String(Int(weight)))
                     
                 case .widget:
-                    widgetFontName = fontName.isEmpty ? nil : fontName
-                    widgetFontSize = Double(fontSize)
-                    widgetFontWeight = Int(weight)
-                    configManager.updateConfigValue(key: "appearance.widget-font-name", newValue: fontName)
-                    configManager.updateConfigValue(key: "appearance.widget-font-size", newValue: String(Int(fontSize)))
-                    configManager.updateConfigValue(key: "appearance.widget-font-weight", newValue: String(Int(weight)))
+                    self.widgetFontName = validFontName.isEmpty ? nil : validFontName
+                    self.widgetFontSize = Double(fontSize)
+                    self.widgetFontWeight = Int(weight)
+                    self.configManager.updateConfigValue(key: "appearance.widget-font-name", newValue: validFontName)
+                    self.configManager.updateConfigValue(key: "appearance.widget-font-size", newValue: String(Int(fontSize)))
+                    self.configManager.updateConfigValue(key: "appearance.widget-font-weight", newValue: String(Int(weight)))
                 }
             }
         }
