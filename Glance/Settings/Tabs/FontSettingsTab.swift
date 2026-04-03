@@ -17,11 +17,6 @@ struct FontSettingsTab: View {
     // Single font mode
     @State private var useSingleFont: Bool
     
-    // Font picker state
-    @State private var showingBarFontPicker = false
-    @State private var showingWidgetFontPicker = false
-    @State private var availableFonts: [String] = []
-    
     init() {
         let appearance = ConfigManager.shared.config.appearance
         
@@ -37,9 +32,6 @@ struct FontSettingsTab: View {
         
         // Single font mode
         _useSingleFont = State(initialValue: appearance.useSingleFont)
-        
-        // Load available fonts
-        _availableFonts = State(initialValue: FontManager.shared.availableFontFamilies())
     }
     
     var body: some View {
@@ -62,23 +54,10 @@ struct FontSettingsTab: View {
                         Text("Bar Font")
                             .fontWeight(.medium)
                         Spacer()
-                        Menu {
-                            Button("System Font") {
-                                selectFont(nil, for: .bar)
-                            }
-                            
-                            Divider()
-                            
-                            ForEach(availableFonts, id: \.self) { fontName in
-                                Button(fontName) {
-                                    selectFont(fontName, for: .bar)
-                                }
-                            }
-                        } label: {
-                            Label("Choose Font", systemImage: "chevron.down")
+                        Button("Choose Font…") {
+                            openNativeFontPicker(for: .bar)
                         }
-                        .menuStyle(.borderlessButton)
-                        .fixedSize(horizontal: true, vertical: false)
+                        .buttonStyle(.borderedProminent)
                     }
                     
                     fontPreviewRow(
@@ -132,23 +111,10 @@ struct FontSettingsTab: View {
                             Text("Widget Font")
                                 .fontWeight(.medium)
                             Spacer()
-                            Menu {
-                                Button("System Font") {
-                                    selectFont(nil, for: .widget)
-                                }
-                                
-                                Divider()
-                                
-                                ForEach(availableFonts, id: \.self) { fontName in
-                                    Button(fontName) {
-                                        selectFont(fontName, for: .widget)
-                                    }
-                                }
-                            } label: {
-                                Label("Choose Font", systemImage: "chevron.down")
+                            Button("Choose Font…") {
+                                openNativeFontPicker(for: .widget)
                             }
-                            .menuStyle(.borderlessButton)
-                            .fixedSize(horizontal: true, vertical: false)
+                            .buttonStyle(.borderedProminent)
                         }
                         
                         fontPreviewRow(
@@ -235,32 +201,79 @@ struct FontSettingsTab: View {
         .frame(height: 24)
     }
     
-    // MARK: - Actions
+    // MARK: - Native Font Panel
     
     private enum FontTarget {
         case bar
         case widget
     }
     
-    private func selectFont(_ fontName: String?, for target: FontTarget) {
-        let resolvedFontName = fontName?.isEmpty ?? true ? nil : fontName
+    private func openNativeFontPicker(for target: FontTarget) {
+        let currentName: String?
+        let currentSize: CGFloat
         
         switch target {
         case .bar:
-            barFontName = resolvedFontName
-            configManager.updateConfigValue(key: "appearance.bar-font-name", newValue: resolvedFontName ?? "")
-            
+            currentName = barFontName
+            currentSize = CGFloat(barFontSize)
         case .widget:
-            widgetFontName = resolvedFontName
-            configManager.updateConfigValue(key: "appearance.widget-font-name", newValue: resolvedFontName ?? "")
+            currentName = widgetFontName
+            currentSize = CGFloat(widgetFontSize)
+        }
+        
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else {
+            print("No window available for font panel")
+            return
+        }
+        
+        FontManager.shared.openFontPanel(
+            initialFontName: currentName,
+            initialSize: currentSize,
+            parentWindow: window
+        ) { fontName, fontSize in
+            // Update state on main thread
+            DispatchQueue.main.async {
+                self.isSyncing = true
+                defer { self.isSyncing = false }
+                
+                switch target {
+                case .bar:
+                    barFontName = fontName.isEmpty ? nil : fontName
+                    barFontSize = Double(fontSize)
+                    configManager.updateConfigValue(key: "appearance.bar-font-name", newValue: fontName)
+                    configManager.updateConfigValue(key: "appearance.bar-font-size", newValue: String(Int(fontSize)))
+                    
+                case .widget:
+                    widgetFontName = fontName.isEmpty ? nil : fontName
+                    widgetFontSize = Double(fontSize)
+                    configManager.updateConfigValue(key: "appearance.widget-font-name", newValue: fontName)
+                    configManager.updateConfigValue(key: "appearance.widget-font-size", newValue: String(Int(fontSize)))
+                }
+            }
         }
     }
     
+    // MARK: - Actions
+    
     private func resetFont(for target: FontTarget) {
-        selectFont(nil, for: target)
+        isSyncing = true
+        defer { isSyncing = false }
+        
+        switch target {
+        case .bar:
+            barFontName = nil
+            configManager.updateConfigValue(key: "appearance.bar-font-name", newValue: "")
+            
+        case .widget:
+            widgetFontName = nil
+            configManager.updateConfigValue(key: "appearance.widget-font-name", newValue: "")
+        }
     }
     
     private func resetAllFonts() {
+        isSyncing = true
+        defer { isSyncing = false }
+        
         barFontName = nil
         barFontSize = 13
         barFontWeight = 4 // medium
@@ -278,12 +291,6 @@ struct FontSettingsTab: View {
         configManager.updateConfigValue(key: "appearance.widget-font-size", newValue: String(13))
         configManager.updateConfigValue(key: "appearance.widget-font-weight", newValue: String(5))
         configManager.updateConfigValue(key: "appearance.use-single-font", newValue: String(true))
-    }
-    
-    private func updateConfigValue(key: String, stringValue: String) {
-        isSyncing = true
-        defer { isSyncing = false }
-        configManager.updateConfigValue(key: key, newValue: stringValue)
     }
     
     // MARK: - Helpers
