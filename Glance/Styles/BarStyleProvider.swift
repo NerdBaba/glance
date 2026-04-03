@@ -49,11 +49,13 @@ extension EnvironmentValues {
         set { self[AppearanceConfigKey.self] = newValue }
     }
     
+    /// Font for bar-level text (not widgets). Use widgetFont for widget content.
     var barFont: FontConfig {
         get { self[BarFontKey.self] }
         set { self[BarFontKey.self] = newValue }
     }
     
+    /// Font for widget content. Automatically resolves based on useSingleFont setting.
     var widgetFont: FontConfig {
         get { self[WidgetFontKey.self] }
         set { self[WidgetFontKey.self] = newValue }

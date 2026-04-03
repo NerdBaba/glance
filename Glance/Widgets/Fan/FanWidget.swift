@@ -2,7 +2,7 @@ import SwiftUI
 
 struct FanWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
-    @Environment(\.barFont) var barFont
+    @Environment(\.widgetFont) var widgetFont
     @ObservedObject private var thermalManager = ThermalManager.shared
     @State private var rect: CGRect = .zero
 
@@ -17,11 +17,11 @@ struct FanWidget: View {
                 // Estimate percentage based on typical max ~3000 RPM
                 let percent = min(100, Int((Double(thermalManager.fanSpeed) / 3000.0) * 100))
                 Text("\(percent)%")
-                    .font(barFont.toFont())
+                    .font(widgetFont.toFont())
                     .monospacedDigit()
             } else {
                 Text("\(thermalManager.fanSpeed)")
-                    .font(barFont.toFont())
+                    .font(widgetFont.toFont())
                     .monospacedDigit()
             }
         }

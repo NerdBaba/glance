@@ -2,12 +2,12 @@ import SwiftUI
 
 struct ActiveAppWidget: View {
     @StateObject private var viewModel = ActiveAppViewModel()
-    @Environment(\.barFont) var barFont
+    @Environment(\.widgetFont) var widgetFont
     @Environment(\.appearance) var appearance
     
     var body: some View {
         Text(viewModel.appName)
-            .font(barFont.toFont())
+            .font(widgetFont.toFont())
             .lineLimit(1)
             .shadow(color: .black.opacity(0.3), radius: 3)
             .experimentalConfiguration(horizontalPadding: 10)

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct EnergyWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
-    @Environment(\.barFont) var barFont
+    @Environment(\.widgetFont) var widgetFont
     @ObservedObject private var energyManager = EnergyManager.shared
     @State private var rect: CGRect = .zero
 
@@ -33,7 +33,7 @@ struct EnergyWidget: View {
             Image(systemName: "bolt.fill")
                 .barStatusSymbol(size: 12, opticalYOffset: -0.1)
             Text(displayValue)
-                .font(barFont.toFont())
+                .font(widgetFont.toFont())
                 .monospacedDigit()
         }
         .barSingleLineAligned()

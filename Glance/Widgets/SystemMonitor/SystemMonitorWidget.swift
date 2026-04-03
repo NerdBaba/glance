@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SystemMonitorWidget: View {
     @ObservedObject private var viewModel = SystemMonitorViewModel.shared
-    @Environment(\.barFont) var barFont
+    @Environment(\.widgetFont) var widgetFont
     @State private var rect: CGRect = .zero
 
     var body: some View {

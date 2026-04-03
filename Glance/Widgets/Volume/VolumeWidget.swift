@@ -2,7 +2,7 @@ import SwiftUI
 
 struct VolumeWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
-    @Environment(\.barFont) var barFont
+    @Environment(\.widgetFont) var widgetFont
     @StateObject private var viewModel = VolumeViewModel()
     @State private var rect: CGRect = .zero
 

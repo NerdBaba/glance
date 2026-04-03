@@ -34,20 +34,20 @@ struct TimeWidget: View {
     }
 
     @Environment(\.appearance) var appearance
-    @Environment(\.barFont) var barFont
+    @Environment(\.widgetFont) var widgetFont
     
     var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
             Text(formattedTime(pattern: format, from: currentTime))
                 .fontWeight(.semibold)
-                .font(barFont.toFont())
+                .font(widgetFont.toFont())
             if let event = calendarManager.nextEvent, calendarShowEvents {
                 Text(eventText(for: event))
                     .opacity(0.8)
                     .font(.subheadline)
             }
         }
-        .font(barFont.toFont())
+        .font(widgetFont.toFont())
         .shadow(color: .black.opacity(0.3), radius: 3)
         .onReceive(timer) { date in
             currentTime = date

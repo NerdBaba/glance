@@ -2,7 +2,7 @@ import SwiftUI
 
 struct TemperatureWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
-    @Environment(\.barFont) var barFont
+    @Environment(\.widgetFont) var widgetFont
     @ObservedObject private var thermalManager = ThermalManager.shared
     @State private var rect: CGRect = .zero
 
@@ -23,7 +23,7 @@ struct TemperatureWidget: View {
             Image(systemName: "thermometer")
                 .barStatusSymbol(size: 12, opticalYOffset: -0.1)
             Text("\(Int(round(displayTemp)))\(displayUnit)")
-                .font(barFont.toFont())
+                .font(widgetFont.toFont())
                 .monospacedDigit()
         }
         .barSingleLineAligned()
