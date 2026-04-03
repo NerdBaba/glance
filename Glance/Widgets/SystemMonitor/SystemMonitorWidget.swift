@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SystemMonitorWidget: View {
     @ObservedObject private var viewModel = SystemMonitorViewModel.shared
+    @Environment(\.barFont) var barFont
     @State private var rect: CGRect = .zero
 
     var body: some View {
@@ -11,7 +12,7 @@ struct SystemMonitorWidget: View {
                 Image(systemName: "cpu")
                     .barStatusSymbol(size: 11, opticalYOffset: -0.1)
                 Text(String(format: "%.0f%%", viewModel.cpuUsage))
-                    .font(.system(size: 12, weight: .medium))
+                    .font(barFont.toFont())
                     .monospacedDigit()
             }
 
@@ -20,7 +21,7 @@ struct SystemMonitorWidget: View {
                 Image(systemName: "memorychip")
                     .barStatusSymbol(size: 11, opticalYOffset: -0.1)
                 Text(String(format: "%.1f", viewModel.memoryUsedGB) + "G")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(barFont.toFont())
                     .monospacedDigit()
             }
         }

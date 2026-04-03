@@ -2,6 +2,7 @@ import SwiftUI
 
 struct VolumeWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
+    @Environment(\.barFont) var barFont
     @StateObject private var viewModel = VolumeViewModel()
     @State private var rect: CGRect = .zero
 
@@ -20,7 +21,7 @@ struct VolumeWidget: View {
                 .barStatusSymbol(opticalYOffset: -0.2)
             if showPercentage {
                 Text(viewModel.isMuted ? "Mute" : "\(viewModel.volumePercent)%")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(barFont.toFont())
                     .monospacedDigit()
             }
         }

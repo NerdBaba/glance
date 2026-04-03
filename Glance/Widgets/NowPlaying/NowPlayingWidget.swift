@@ -154,6 +154,7 @@ struct AlbumArtView: View {
 struct SongTextView: View {
     let song: NowPlayingSong
     @ObservedObject var configManager = ConfigManager.shared
+    @Environment(\.barFont) var barFont
     var foregroundHeight: CGFloat { configManager.config.experimental.foreground.resolveHeight() }
 
     var body: some View {
@@ -161,16 +162,15 @@ struct SongTextView: View {
         VStack(alignment: .leading, spacing: -1) {
             if foregroundHeight >= 30 {
                 Text(song.title)
-                    .font(.system(size: 11))
-                    .fontWeight(.medium)
+                    .font(barFont.toFont())
                     .padding(.trailing, 2)
                 Text(song.artist)
                     .opacity(0.8)
-                    .font(.system(size: 10))
+                    .font(barFont.toFont())
                     .padding(.trailing, 2)
             } else {
                 Text(song.artist + " — " + song.title)
-                    .font(.system(size: 12))
+                    .font(barFont.toFont())
             }
         }
         // Disable animations for text changes.

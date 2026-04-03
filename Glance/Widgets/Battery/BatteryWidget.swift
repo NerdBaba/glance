@@ -89,6 +89,7 @@ struct BatteryWidget: View {
 
 private struct BatteryText: View {
     @EnvironmentObject var configProvider: ConfigProvider
+    @Environment(\.barFont) var barFont
     var config: ConfigData { configProvider.config }
     var showPercentage: Bool { config["show-percentage"]?.boolValue ?? true }
 
@@ -100,18 +101,18 @@ private struct BatteryText: View {
         HStack(alignment: .center, spacing: -1) {
             if showPercentage {
                 Text("\(level)")
-                    .font(.system(size: 12))
+                    .font(barFont.toFont())
                     .transition(.blurReplace)
             }
 
             if isCharging && level != 100 {
                 Image(systemName: "bolt.fill")
-                    .font(.system(size: showPercentage ? 8 : 10))
+                    .font(barFont.toFont())
             }
 
             if !isCharging && isPluggedIn && level != 100 {
                 Image(systemName: "powerplug.portrait.fill")
-                    .font(.system(size: 8))
+                    .font(barFont.toFont())
                     .padding(.leading, 1)
             }
         }

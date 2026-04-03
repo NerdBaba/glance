@@ -3,6 +3,7 @@ import SwiftUI
 struct WeatherWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
     @ObservedObject private var viewModel = WeatherViewModel.shared
+    @Environment(\.barFont) var barFont
     @State private var rect: CGRect = .zero
 
     var body: some View {
@@ -13,7 +14,7 @@ struct WeatherWidget: View {
                         .barStatusSymbol(opticalYOffset: -0.15)
                         .symbolRenderingMode(.hierarchical)
                     Text(String(format: "%.0f°", temp))
-                        .font(.system(size: 13, weight: .medium))
+                        .font(barFont.toFont())
                         .monospacedDigit()
                 }
                 .barSingleLineAligned()

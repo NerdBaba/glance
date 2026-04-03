@@ -6,16 +6,16 @@ struct FontConfig: Equatable {
     var fontSize: CGFloat
     var weight: Font.Weight
     
-    /// Create a custom font from the config.
+    /// Create a custom font from the config (includes weight).
     func toFont() -> Font {
         if let fontName = fontName, !fontName.isEmpty {
-            return Font.custom(fontName, size: fontSize)
+            return Font.custom(fontName, size: fontSize).weight(weight)
         } else {
-            return Font.system(size: fontSize)
+            return Font.system(size: fontSize, weight: weight)
         }
     }
     
-    /// Apply weight to the font.
+    /// Apply weight to the font (deprecated - use toFont() which includes weight).
     func withWeight(_ weight: Font.Weight) -> Font {
         if let fontName = fontName, !fontName.isEmpty {
             return Font.custom(fontName, size: fontSize, relativeTo: .body).weight(weight)

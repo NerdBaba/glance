@@ -2,11 +2,12 @@ import SwiftUI
 
 struct InputLanguageWidget: View {
     @StateObject private var viewModel = InputLanguageViewModel()
+    @Environment(\.barFont) var barFont
     @State private var rect: CGRect = .zero
 
     var body: some View {
         Text(viewModel.languageCode)
-            .font(.system(size: 12, weight: .semibold))
+            .font(barFont.toFont())
             .shadow(color: .black.opacity(0.3), radius: 3)
             .experimentalConfiguration(horizontalPadding: 8)
             .frame(maxHeight: .infinity)

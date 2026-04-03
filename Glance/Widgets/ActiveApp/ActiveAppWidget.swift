@@ -8,7 +8,6 @@ struct ActiveAppWidget: View {
     var body: some View {
         Text(viewModel.appName)
             .font(barFont.toFont())
-            .fontWeight(barFont.weight)
             .lineLimit(1)
             .shadow(color: .black.opacity(0.3), radius: 3)
             .experimentalConfiguration(horizontalPadding: 10)
