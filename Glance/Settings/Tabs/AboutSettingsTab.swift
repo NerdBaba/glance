@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AboutSettingsTab: View {
+    @AppStorage("showUpdateButton") private var showUpdateButton: Bool = true
+    
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     }
@@ -28,6 +30,12 @@ struct AboutSettingsTab: View {
 
             Divider()
                 .frame(width: 200)
+
+            Toggle("Show Update Button", isOn: $showUpdateButton)
+
+            Text("Show update button in status bar when new version is available")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Text("Made by azixxxxx")
                 .font(.callout)

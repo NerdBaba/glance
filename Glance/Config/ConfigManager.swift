@@ -437,7 +437,6 @@ final class ConfigManager: ObservableObject {
     }
 
     func updateConfigValue(key: String, newValue: String) {
-        print("ConfigManager.updateConfigValue called: \(key) = \(newValue)")
         guard let path = configFilePath else {
             logger.warning("Config file path is not set while updating \(key)", category: .config)
             return

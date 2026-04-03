@@ -2,15 +2,24 @@ import SwiftUI
 
 struct UpdateBannerWidget: View {
     @StateObject private var updater = AppUpdater()
+    @AppStorage("showUpdateButton") private var showUpdateButton: Bool = true
 
     var body: some View {
-        if updater.updateAvailable {
-            Button(action: handleUpdate) {
-                Text("Update")
-                    .fontWeight(.semibold)
+        Group {
+            if shouldShowButton {
+                Button(action: handleUpdate) {
+                    Text("Update")
+                        .fontWeight(.semibold)
+                }
+                .buttonStyle(BannerButtonStyle(color: .blue))
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
-            .buttonStyle(BannerButtonStyle(color: .blue))
         }
+        .animation(.smooth(duration: 0.25), value: shouldShowButton)
+    }
+    
+    private var shouldShowButton: Bool {
+        showUpdateButton && updater.updateAvailable
     }
 
     /// Opens the GitHub releases page so the user can download via Sparkle or manually.
