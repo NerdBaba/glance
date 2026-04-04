@@ -368,6 +368,9 @@ struct MenuBarView: View {
         case "default.temperature":
             TemperatureWidget().environmentObject(config)
 
+        case "default.hotcorners":
+            HotCornersWidget()
+
         case "spacer":
             Spacer().frame(minWidth: 50, maxWidth: .infinity)
 
