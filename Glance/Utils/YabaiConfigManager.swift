@@ -8,13 +8,35 @@ final class YabaiConfigManager {
     
     private let logger = AppLogger.shared
     private var isYabaiAvailable: Bool?
+    private var yabaiPath: String?
     
-    /// Checks if yabai is installed and accessible.
+    /// Checks if yabai is installed and accessible, caching the full path.
+    /// Tries multiple methods to find yabai since Spotlight-launched apps
+    /// don't inherit shell PATH.
     func checkYabaiAvailability() -> Bool {
         if let cached = isYabaiAvailable {
             return cached
         }
         
+        // Try common yabai installation paths
+        let possiblePaths = [
+            "/usr/local/bin/yabai",      // Intel Mac Homebrew
+            "/opt/homebrew/bin/yabai",   // Apple Silicon Homebrew
+            "/usr/bin/yabai",            // System location
+            "/usr/local/sbin/yabai",     // Alternative location
+        ]
+        
+        // First, try direct file existence checks (works regardless of PATH)
+        for path in possiblePaths {
+            if FileManager.default.fileExists(atPath: path) {
+                yabaiPath = path
+                isYabaiAvailable = true
+                logger.info("Found yabai at: \(path)", category: .app)
+                return true
+            }
+        }
+        
+        // Fallback: try which command (may work if PATH is set)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         process.arguments = ["yabai"]
@@ -22,12 +44,26 @@ final class YabaiConfigManager {
         do {
             try process.run()
             process.waitUntilExit()
-            isYabaiAvailable = (process.terminationStatus == 0)
-            return isYabaiAvailable!
+            
+            if process.terminationStatus == 0 {
+                // Read the output to get the full path
+                if let pipe = process.standardOutput as? Pipe,
+                   let data = try? pipe.fileHandleForReading.readToEnd(),
+                   let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !path.isEmpty {
+                    yabaiPath = path
+                    isYabaiAvailable = true
+                    logger.info("Found yabai via which: \(path)", category: .app)
+                    return true
+                }
+            }
         } catch {
-            isYabaiAvailable = false
-            return false
+            logger.warning("Error checking yabai with which: \(error.localizedDescription)", category: .app)
         }
+        
+        isYabaiAvailable = false
+        logger.warning("Yabai not found in any standard location", category: .app)
+        return false
     }
     
     /// Updates yabai's external_bar configuration based on bar position.
@@ -36,8 +72,10 @@ final class YabaiConfigManager {
     ///   - barHeight: Current height of the Glance bar
     ///   - topMargin: Top margin from config (used as padding value)
     func updateExternalBarConfig(position: String, barHeight: CGFloat, topMargin: CGFloat) {
+        logger.info("updateExternalBarConfig called: position=\(position), height=\(barHeight), margin=\(topMargin)", category: .app)
+        
         guard checkYabaiAvailability() else {
-            logger.info("Yabai not available, skipping external_bar config update", category: .app)
+            logger.warning("Yabai not available, skipping external_bar config update", category: .app)
             return
         }
         
@@ -55,8 +93,14 @@ final class YabaiConfigManager {
             bottomPadding = 0
         }
         
-        // Build yabai command: external_bar all:<top>:<bottom>
-        let command = "yabai -m config external_bar all:\(topPadding):\(bottomPadding)"
+        // Build yabai command using cached full path
+        guard let yabaiPath = yabaiPath else {
+            logger.error("Yabai path is nil after availability check", category: .app)
+            return
+        }
+        
+        let command = "\(yabaiPath) -m config external_bar all:\(topPadding):\(bottomPadding)"
+        logger.info("Executing yabai command: \(command)", category: .app)
         
         executeYabaiCommand(command)
     }
@@ -65,22 +109,39 @@ final class YabaiConfigManager {
     func resetExternalBarConfig() {
         guard checkYabaiAvailability() else { return }
         
-        let command = "yabai -m config external_bar off"
+        guard let yabaiPath = yabaiPath else { return }
+        
+        let command = "\(yabaiPath) -m config external_bar off"
         executeYabaiCommand(command)
     }
     
-    /// Executes a shell command asynchronously.
+    /// Executes a shell command asynchronously with full environment.
     private func executeYabaiCommand(_ command: String) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             self?.runCommand(command)
         }
     }
     
-    /// Runs a shell command and logs the result.
+    /// Runs a shell command and logs the result with detailed output.
     private func runCommand(_ command: String) {
+        logger.info("Running command: \(command)", category: .app)
+        
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = ["-c", command]
+        
+        // Set up environment to include user's PATH
+        // This is critical for Spotlight-launched apps
+        let currentEnv = ProcessInfo.processInfo.environment
+        var env = currentEnv
+        
+        // Ensure PATH includes common binary locations
+        let existingPath = env["PATH"] ?? ""
+        if !existingPath.contains("/usr/local/bin") {
+            env["PATH"] = "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin" + (existingPath.isEmpty ? "" : ":\(existingPath)")
+        }
+        
+        process.environment = env
         
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -94,12 +155,15 @@ final class YabaiConfigManager {
             let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             
             if process.terminationStatus == 0 {
-                logger.info("Yabai command executed: \(command)", category: .app)
+                logger.info("✓ Command succeeded: \(command)", category: .app)
+                if !output.isEmpty {
+                    logger.info("  Output: \(output)", category: .app)
+                }
             } else {
-                logger.warning("Yabai command failed (\(process.terminationStatus)): \(output)", category: .app)
+                logger.error("✗ Command failed (exit code \(process.terminationStatus)): \(output)", category: .app)
             }
         } catch {
-            logger.error("Yabai command error: \(error.localizedDescription)", category: .app)
+            logger.error("✗ Command execution error: \(error.localizedDescription)", category: .app)
         }
     }
 }
