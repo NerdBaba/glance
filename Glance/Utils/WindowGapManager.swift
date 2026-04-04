@@ -43,7 +43,13 @@ final class WindowGapManager {
         // Delayed sweep: on reboot, macOS state restoration may reposition windows
         // after they are created. A second pass catches windows that were moved back
         // to their saved (overlapping) position after the initial scan.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+        // Increased delay for cold launch scenarios (Spotlight launch).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            self?.adjustAllRunningApps()
+        }
+        
+        // Additional sweep for very slow launches
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
             self?.adjustAllRunningApps()
         }
     }

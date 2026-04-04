@@ -45,6 +45,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Configure yabai external_bar based on bar position
         configureYabaiExternalBar()
+        
+        // Additional delayed yabai config update to handle cold launch timing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            self?.configureYabaiExternalBar()
+        }
 
         // Update panel frames when config changes (e.g., bar height)
         configCancellable = ConfigManager.shared.$config
