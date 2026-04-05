@@ -247,6 +247,31 @@ final class ConfigManager: ObservableObject {
             var newOthers = existing.others
             newOthers[widgetKey] = widgetConfig
             root.widgets = WidgetsSection(displayed: existing.displayed, others: newOthers)
+        } else if section.hasPrefix("widgets.") {
+            // Handle other widgets.* sections (like widgets.pywal)
+            let widgetKey = String(section.dropFirst("widgets.".count))
+            var widgetConfig: ConfigData = [:]
+            for line in lines {
+                if let eqIndex = line.firstIndex(of: "=") {
+                    let k = String(line[..<eqIndex]).trimmingCharacters(in: .whitespaces)
+                    let v = String(line[line.index(after: eqIndex)...]).trimmingCharacters(in: .whitespaces)
+                    if v.hasPrefix("\"") && v.hasSuffix("\"") {
+                        widgetConfig[k] = .string(String(v.dropFirst().dropLast()))
+                    } else if v == "true" {
+                        widgetConfig[k] = .bool(true)
+                    } else if v == "false" {
+                        widgetConfig[k] = .bool(false)
+                    } else if let num = Int(v) {
+                        widgetConfig[k] = .int(num)
+                    } else {
+                        widgetConfig[k] = .string(v)
+                    }
+                }
+            }
+            let existing = root.widgets ?? WidgetsSection(displayed: [], others: [:])
+            var newOthers = existing.others
+            newOthers[widgetKey] = widgetConfig
+            root.widgets = WidgetsSection(displayed: existing.displayed, others: newOthers)
         }
     }
 
@@ -447,6 +472,7 @@ final class ConfigManager: ObservableObject {
                 original: currentText, key: key, newValue: newValue)
             try updatedText.write(
                 toFile: path, atomically: true, encoding: .utf8)
+            logger.info("Updated config key '\(key)' to '\(newValue)'", category: .config)
             // Re-parse the file to update in-memory config
             parseConfigFile(at: path)
         } catch {

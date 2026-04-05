@@ -128,7 +128,7 @@ struct AppearanceConfig {
         )
     }
 
-    func applyingPywal(_ pywal: PywalColors) -> AppearanceConfig {
+    func applyingPywal(_ pywal: PywalColors, pywalConfig: PywalConfig = PywalConfig()) -> AppearanceConfig {
         return AppearanceConfig(
             renderingStyle: renderingStyle,
             roundness: roundness,
@@ -145,16 +145,13 @@ struct AppearanceConfig {
             blurMaterial: blurMaterial,
             popupDarkTint: popupDarkTint,
             popupRoundness: popupRoundness,
-            // Use varied Pywal colors instead of bland white
-            // Index 11 = bright accent color (most vibrant)
-            foregroundColor: pywal.colors[11],
-            // Index 4 = primary accent from wallpaper
-            accentColor: pywal.colors[4],
-            borderColor: pywal.colors[4],
-            borderColor2: pywal.colors[5],
-            // Index 0 = darkest color for widget backgrounds
-            widgetBackgroundColor: pywal.colors[0],
-            glowColor: pywal.colors[11],
+            // Use configurable Pywal color indices
+            foregroundColor: pywal.colors[pywalConfig.foregroundIndex],
+            accentColor: pywal.colors[pywalConfig.accentIndex],
+            borderColor: pywal.colors[pywalConfig.border1Index],
+            borderColor2: pywal.colors[pywalConfig.border2Index],
+            widgetBackgroundColor: pywal.colors[pywalConfig.backgroundIndex],
+            glowColor: pywal.colors[pywalConfig.foregroundIndex],
             barFont: barFont,
             widgetFont: widgetFont,
             useSingleFont: useSingleFont

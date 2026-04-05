@@ -35,6 +35,11 @@ struct GeneralSettingsTab: View {
     @State private var neonColor2: Color = Color(red: 0.27, green: 0.8, blue: 1)
     @State private var useGradient: Bool = false
     @State private var usePywal: Bool = false
+    @State private var pywalForegroundIndex: Int = -1
+    @State private var pywalAccentIndex: Int = -1
+    @State private var pywalBorder1Index: Int = -1
+    @State private var pywalBorder2Index: Int = -1
+    @State private var pywalBgIndex: Int = -1
     @State private var hotkeyString: String = "ctrl+option+b"
     @State private var hotkeyValid: Bool = true
     @State private var isSyncing: Bool = false
@@ -150,6 +155,69 @@ struct GeneralSettingsTab: View {
                             guard !isSyncing else { return }
                             configManager.updateConfigValue(key: "use-pywal", newValue: newValue ? "true" : "false")
                         }
+                    
+                    if usePywal {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Pywal Color Indices")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            HStack(spacing: 16) {
+                                PywalColorPicker(
+                                    label: "Foreground",
+                                    selectedIndex: $pywalForegroundIndex,
+                                    onChange: { index in
+                                        configManager.updateConfigValue(
+                                            key: "widgets.pywal.foreground-index",
+                                            newValue: String(index))
+                                    }
+                                )
+                                
+                                PywalColorPicker(
+                                    label: "Accent",
+                                    selectedIndex: $pywalAccentIndex,
+                                    onChange: { index in
+                                        configManager.updateConfigValue(
+                                            key: "widgets.pywal.accent-index",
+                                            newValue: String(index))
+                                    }
+                                )
+                            }
+                            
+                            HStack(spacing: 16) {
+                                PywalColorPicker(
+                                    label: "Border 1",
+                                    selectedIndex: $pywalBorder1Index,
+                                    onChange: { index in
+                                        configManager.updateConfigValue(
+                                            key: "widgets.pywal.border1-index",
+                                            newValue: String(index))
+                                    }
+                                )
+                                
+                                PywalColorPicker(
+                                    label: "Border 2",
+                                    selectedIndex: $pywalBorder2Index,
+                                    onChange: { index in
+                                        configManager.updateConfigValue(
+                                            key: "widgets.pywal.border2-index",
+                                            newValue: String(index))
+                                    }
+                                )
+                            }
+                            
+                            PywalColorPicker(
+                                label: "Widget Background",
+                                selectedIndex: $pywalBgIndex,
+                                onChange: { index in
+                                    configManager.updateConfigValue(
+                                        key: "widgets.pywal.background-index",
+                                        newValue: String(index))
+                                }
+                            )
+                        }
+                        .padding(.top, 8)
+                    }
                     SliderRow(label: "Roundness", value: $roundness, range: 0...50, step: 1, format: "%.0f") {
                         configManager.updateConfigValue(key: "appearance.roundness", newValue: String(Int(roundness)))
                     }
@@ -418,6 +486,18 @@ struct GeneralSettingsTab: View {
         formationMargin = exp.foreground.margin
         formationGap = exp.foreground.gap
         usePywal = root.usePywal ?? false
+        
+        // Sync Pywal color indices from config ONLY on first load (not on every config update)
+        // This prevents resetting user's picker selection during live updates
+        if pywalForegroundIndex == -1 {
+            let pywalConfig = config.buildPywalConfig()
+            pywalForegroundIndex = pywalConfig.foregroundIndex
+            pywalAccentIndex = pywalConfig.accentIndex
+            pywalBorder1Index = pywalConfig.border1Index
+            pywalBorder2Index = pywalConfig.border2Index
+            pywalBgIndex = pywalConfig.backgroundIndex
+        }
+        
         hotkeyString = root.hotkey ?? "ctrl+option+b"
         hotkeyValid = true
         syncNeonColors()
@@ -854,6 +934,70 @@ private struct FormationDiagram: View {
                 Circle()
                     .fill(Color.white.opacity(0.5))
                     .frame(width: 3, height: 3)
+            }
+        }
+    }
+}
+
+// MARK: - Pywal Color Index Picker
+
+private struct PywalColorPicker: View {
+    let label: String
+    @Binding var selectedIndex: Int
+    let onChange: (Int) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            
+            HStack(spacing: 8) {
+                // Show current color preview (larger)
+                if let pywalColors = ConfigManager.shared.pywalColors {
+                    Circle()
+                        .fill(pywalColors.colors[selectedIndex])
+                        .frame(width: 32, height: 32)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(Color.white.opacity(0.5), lineWidth: 2)
+                        )
+                        .shadow(color: pywalColors.colors[selectedIndex].opacity(0.5), radius: 4)
+                        .id("pywal-preview-\(label)-\(selectedIndex)")
+                    
+                    // Show all 16 colors as small swatches
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 3) {
+                            ForEach(0..<16, id: \.self) { index in
+                                Circle()
+                                    .fill(pywalColors.colors[index])
+                                    .frame(width: 12, height: 12)
+                                    .overlay(
+                                        Circle()
+                                            .strokeBorder(
+                                                selectedIndex == index ? Color.white : Color.clear,
+                                                lineWidth: 2
+                                            )
+                                    )
+                                    .onTapGesture {
+                                        selectedIndex = index
+                                        onChange(index)
+                                    }
+                            }
+                        }
+                    }
+                    .frame(height: 16)
+                }
+                
+                Spacer()
+                
+                // Stepper for increment/decrement
+                Stepper("", value: $selectedIndex, in: 0...15)
+                    .labelsHidden()
+                    .frame(width: 80)
+                    .onChange(of: selectedIndex) { _, newValue in
+                        onChange(newValue)
+                    }
             }
         }
     }

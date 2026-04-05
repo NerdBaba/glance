@@ -71,9 +71,38 @@ struct Config {
         }
         var config = base.defaults.applying(overrides: rootToml.appearanceOverrides)
         if let pywal = pywalColors, rootToml.usePywal == true {
-            config = config.applyingPywal(pywal)
+            let pywalConfig = buildPywalConfig()
+            AppLogger.shared.info("Applying Pywal colors with config: fg=\(pywalConfig.foregroundIndex), accent=\(pywalConfig.accentIndex), border1=\(pywalConfig.border1Index), border2=\(pywalConfig.border2Index), bg=\(pywalConfig.backgroundIndex)", category: .config)
+            config = config.applyingPywal(pywal, pywalConfig: pywalConfig)
         }
         return config
+    }
+    
+    func buildPywalConfig() -> PywalConfig {
+        var pywalConfig = PywalConfig()
+        
+        if let widgetsSection = rootToml.widgets,
+           let fgIndex = widgetsSection.others["pywal"]?["foreground-index"]?.intValue {
+            pywalConfig.foregroundIndex = fgIndex
+        }
+        if let widgetsSection = rootToml.widgets,
+           let accentIndex = widgetsSection.others["pywal"]?["accent-index"]?.intValue {
+            pywalConfig.accentIndex = accentIndex
+        }
+        if let widgetsSection = rootToml.widgets,
+           let border1Index = widgetsSection.others["pywal"]?["border1-index"]?.intValue {
+            pywalConfig.border1Index = border1Index
+        }
+        if let widgetsSection = rootToml.widgets,
+           let border2Index = widgetsSection.others["pywal"]?["border2-index"]?.intValue {
+            pywalConfig.border2Index = border2Index
+        }
+        if let widgetsSection = rootToml.widgets,
+           let bgIndex = widgetsSection.others["pywal"]?["background-index"]?.intValue {
+            pywalConfig.backgroundIndex = bgIndex
+        }
+        
+        return pywalConfig
     }
 
     var barStyle: BarStyle {
@@ -105,6 +134,15 @@ struct PywalColors {
         colors = lines.compactMap { AppearanceConfig.parseHex($0) }
         guard colors.count == 16 else { return nil }
     }
+}
+
+/// Configurable Pywal color indices
+struct PywalConfig {
+    var foregroundIndex: Int = 11
+    var accentIndex: Int = 4
+    var border1Index: Int = 4
+    var border2Index: Int = 5
+    var backgroundIndex: Int = 0
 }
 
 typealias ConfigData = [String: TOMLValue]
