@@ -8,6 +8,7 @@ struct SpacesSettingsTab: View {
     @State private var maxLength: Double = 50
     @State private var selectedDisplayMode: String = "icons"
     @State private var selectedHighlight: String = "opacity"
+    @State private var selectedNumeralSystem: String = "arabic"
 
     var body: some View {
         ScrollView {
@@ -41,6 +42,21 @@ struct SpacesSettingsTab: View {
                     .onChange(of: selectedHighlight) { _, newValue in
                         configManager.updateConfigValue(
                             key: "widgets.default.spaces.space.highlight",
+                            newValue: newValue)
+                    }
+                }
+
+                // MARK: - Numeral System
+                SettingsSection(title: "Numeral System") {
+                    Picker("Number Format", selection: $selectedNumeralSystem) {
+                        Text("Arabic (1, 2, 3)").tag("arabic")
+                        Text("Arabic-Indic (١, ٢, ٣)").tag("arabic-indic")
+                        Text("Japanese (一, 二, 三)").tag("japanese")
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedNumeralSystem) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.spaces.space.numeral-system",
                             newValue: newValue)
                     }
                 }
@@ -79,12 +95,13 @@ struct SpacesSettingsTab: View {
 
     private func syncFromConfig() {
         let spacesConfig = configManager.globalWidgetConfig(for: "default.spaces") ?? [:]
-        
+
         showKey = spacesConfig["space.show-key"]?.boolValue ?? true
         showTitle = spacesConfig["window.show-title"]?.boolValue ?? true
         maxLength = Double(spacesConfig["window.title.max-length"]?.intValue ?? 50)
         selectedDisplayMode = spacesConfig["space.display-mode"]?.stringValue ?? "icons"
         selectedHighlight = spacesConfig["space.highlight"]?.stringValue ?? "opacity"
+        selectedNumeralSystem = spacesConfig["space.numeral-system"]?.stringValue ?? "arabic"
     }
 }
 

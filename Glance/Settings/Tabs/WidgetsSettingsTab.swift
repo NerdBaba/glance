@@ -51,7 +51,6 @@ struct WidgetsSettingsTab: View {
         ("default.temperature", "Temperature", "thermometer"),
         ("default.fan", "Fan Speed", "fan"),
         ("default.energy", "Energy", "bolt.fill"),
-        ("default.hotcorners", "Hot Corners", "cursorarrow.rays"),
         ("default.time", "Time", "clock"),
         ("spacer", "Spacer", "arrow.left.and.right"),
         ("divider", "Divider", "minus"),

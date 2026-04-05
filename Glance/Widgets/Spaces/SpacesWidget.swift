@@ -17,6 +17,67 @@ enum SpacesHighlight: String {
     case glow      // Soft accent glow around focused
 }
 
+enum NumeralSystem: String {
+    case arabic     = "arabic"       // Western digits: 1, 2, 3
+    case arabicIndic = "arabic-indic" // Eastern Arabic-Indic: ١, ٢, ٣
+    case japanese   = "japanese"     // Japanese Kanji: 一, 二, 三
+}
+
+// MARK: - Numeral Conversion Utility
+
+extension String {
+    /// Convert a numeric string to the specified numeral system
+    func convertToNumeralSystem(_ system: NumeralSystem) -> String {
+        guard let number = Int(self) else { return self }
+
+        switch system {
+        case .arabic:
+            return self // Western digits (default)
+        case .arabicIndic:
+            return number.toArabicIndic()
+        case .japanese:
+            return number.toJapaneseKanji()
+        }
+    }
+}
+
+private extension Int {
+    /// Convert integer to Eastern Arabic-Indic numerals
+    func toArabicIndic() -> String {
+        let arabicIndicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"]
+        return String(abs(self)).map { char -> String in
+            if let digit = Int(String(char)), digit >= 0 && digit <= 9 {
+                return arabicIndicDigits[digit]
+            }
+            return String(char)
+        }.joined()
+    }
+
+    /// Convert integer to Japanese Kanji numerals (simple form, 1-10+)
+    func toJapaneseKanji() -> String {
+        let kanjiDigits = ["〇", "一", "二", "三", "四", "五", "六", "七", "八", "九"]
+
+        // For numbers 1-9, use single kanji
+        if self >= 1 && self <= 9 {
+            return kanjiDigits[self]
+        }
+
+        // For 10 and above, use compound form
+        if self == 10 { return "十" }
+        if self < 20 { return "十" + kanjiDigits[self % 10] }
+        if self < 100 {
+            let tens = self / 10
+            let ones = self % 10
+            let tensStr = tens == 1 ? "十" : kanjiDigits[tens] + "十"
+            let onesStr = ones == 0 ? "" : kanjiDigits[ones]
+            return tensStr + onesStr
+        }
+
+        // Fallback to regular digits for larger numbers
+        return String(self)
+    }
+}
+
 // MARK: - Spaces Widget
 
 struct SpacesWidget: View {
@@ -67,6 +128,11 @@ private struct SpaceView: View {
     var highlight: SpacesHighlight {
         guard let raw = config["space.highlight"]?.stringValue else { return .opacity }
         return SpacesHighlight(rawValue: raw) ?? .opacity
+    }
+
+    var numeralSystem: NumeralSystem {
+        guard let raw = config["space.numeral-system"]?.stringValue else { return .arabic }
+        return NumeralSystem(rawValue: raw) ?? .arabic
     }
 
     let space: AnySpace
@@ -121,7 +187,7 @@ private struct SpaceView: View {
     private func iconsContent(isFocused: Bool) -> some View {
         HStack(spacing: 4) {
             if showKey {
-                Text(space.id)
+                Text(space.id.convertToNumeralSystem(numeralSystem))
                     .font(.system(size: 12, weight: isFocused ? .bold : .regular))
                     .foregroundStyle(isFocused ? Color.white : Color.gray)
                     .frame(minWidth: 12)
@@ -141,7 +207,7 @@ private struct SpaceView: View {
 
     @ViewBuilder
     private func numbersContent(isFocused: Bool) -> some View {
-        Text(space.id)
+        Text(space.id.convertToNumeralSystem(numeralSystem))
             .font(.system(size: 12, weight: isFocused ? .bold : .medium, design: .rounded))
             .foregroundStyle(isFocused ? Color.white : Color.gray)
             .frame(minWidth: 20, minHeight: 20)
