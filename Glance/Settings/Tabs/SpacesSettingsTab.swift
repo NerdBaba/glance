@@ -10,6 +10,7 @@ struct SpacesSettingsTab: View {
     @State private var selectedHighlight: String = "opacity"
     @State private var selectedNumeralSystem: String = "arabic"
     @State private var tintIcons: Bool = false
+    @State private var selectedIconStyle: String = "app-icon"
 
     var body: some View {
         ScrollView {
@@ -64,12 +65,26 @@ struct SpacesSettingsTab: View {
 
                 // MARK: - Icon Styling
                 SettingsSection(title: "Icon Styling") {
-                    Toggle("Tint icons with foreground color", isOn: $tintIcons)
-                        .onChange(of: tintIcons) { _, newValue in
-                            configManager.updateConfigValue(
-                                key: "widgets.default.spaces.space.tint-icons",
-                                newValue: newValue ? "true" : "false")
-                        }
+                    Picker("Icon Style", selection: $selectedIconStyle) {
+                        Text("App Icons").tag("app-icon")
+                        Text("SF Symbols").tag("sf-symbol")
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedIconStyle) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.spaces.space.icon-style",
+                            newValue: newValue)
+                    }
+
+                    if selectedIconStyle == "app-icon" {
+                        Toggle("Tint icons with foreground color", isOn: $tintIcons)
+                            .padding(.top, 8)
+                            .onChange(of: tintIcons) { _, newValue in
+                                configManager.updateConfigValue(
+                                    key: "widgets.default.spaces.space.tint-icons",
+                                    newValue: newValue ? "true" : "false")
+                            }
+                    }
                 }
 
                 // MARK: - Space Indicators
@@ -114,6 +129,7 @@ struct SpacesSettingsTab: View {
         selectedHighlight = spacesConfig["space.highlight"]?.stringValue ?? "opacity"
         selectedNumeralSystem = spacesConfig["space.numeral-system"]?.stringValue ?? "arabic"
         tintIcons = spacesConfig["space.tint-icons"]?.boolValue ?? false
+        selectedIconStyle = spacesConfig["space.icon-style"]?.stringValue ?? "app-icon"
     }
 }
 

@@ -365,6 +365,10 @@ private struct WindowView: View {
     var maxLength: Int { titleConfig["max-length"]?.intValue ?? 50 }
     var alwaysDisplayAppTitleFor: [String] { titleConfig["always-display-app-name-for"]?.arrayValue?.filter({ $0.stringValue != nil }).map { $0.stringValue! } ?? [] }
     var tintIcons: Bool { config["space.tint-icons"]?.boolValue ?? false }
+    var iconStyle: IconStyle {
+        guard let raw = config["space.icon-style"]?.stringValue else { return .appIcon }
+        return IconStyle(rawValue: raw) ?? .appIcon
+    }
 
     let window: AnyWindow
     let space: AnySpace
@@ -380,7 +384,18 @@ private struct WindowView: View {
         let spaceIsFocused = space.windows.contains { $0.isFocused }
         HStack {
             ZStack {
-                if let icon = window.appIcon {
+                if iconStyle == .sfSymbol, let symbolName = AppIconMapper.symbolName(for: window.appName) {
+                    // Use SF Symbol
+                    Image(systemName: symbolName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: size * 0.7, height: size * 0.7)
+                        .foregroundStyle(appearance.foregroundColor)
+                        .shadow(
+                            color: .black.opacity(0.3),
+                            radius: 2
+                        )
+                } else if let icon = window.appIcon {
                     if tintIcons {
                         // Render as template with foreground color tint
                         Image(nsImage: icon.tinted(with: appearance.foregroundColor))
