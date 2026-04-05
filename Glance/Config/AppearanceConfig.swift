@@ -145,12 +145,16 @@ struct AppearanceConfig {
             blurMaterial: blurMaterial,
             popupDarkTint: popupDarkTint,
             popupRoundness: popupRoundness,
-            foregroundColor: pywal.colors[15],
+            // Use varied Pywal colors instead of bland white
+            // Index 11 = bright accent color (most vibrant)
+            foregroundColor: pywal.colors[11],
+            // Index 4 = primary accent from wallpaper
             accentColor: pywal.colors[4],
             borderColor: pywal.colors[4],
             borderColor2: pywal.colors[5],
+            // Index 0 = darkest color for widget backgrounds
             widgetBackgroundColor: pywal.colors[0],
-            glowColor: pywal.colors[4],
+            glowColor: pywal.colors[11],
             barFont: barFont,
             widgetFont: widgetFont,
             useSingleFont: useSingleFont
