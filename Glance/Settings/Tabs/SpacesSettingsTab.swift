@@ -9,6 +9,7 @@ struct SpacesSettingsTab: View {
     @State private var selectedDisplayMode: String = "icons"
     @State private var selectedHighlight: String = "opacity"
     @State private var selectedNumeralSystem: String = "arabic"
+    @State private var tintIcons: Bool = false
 
     var body: some View {
         ScrollView {
@@ -61,6 +62,16 @@ struct SpacesSettingsTab: View {
                     }
                 }
 
+                // MARK: - Icon Styling
+                SettingsSection(title: "Icon Styling") {
+                    Toggle("Tint icons with foreground color", isOn: $tintIcons)
+                        .onChange(of: tintIcons) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.spaces.space.tint-icons",
+                                newValue: newValue ? "true" : "false")
+                        }
+                }
+
                 // MARK: - Space Indicators
                 SettingsSection(title: "Space Indicators") {
                     Toggle("Show space number / key", isOn: $showKey)
@@ -102,6 +113,7 @@ struct SpacesSettingsTab: View {
         selectedDisplayMode = spacesConfig["space.display-mode"]?.stringValue ?? "icons"
         selectedHighlight = spacesConfig["space.highlight"]?.stringValue ?? "opacity"
         selectedNumeralSystem = spacesConfig["space.numeral-system"]?.stringValue ?? "arabic"
+        tintIcons = spacesConfig["space.tint-icons"]?.boolValue ?? false
     }
 }
 

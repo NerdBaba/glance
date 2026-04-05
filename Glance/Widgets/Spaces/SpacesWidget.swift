@@ -41,6 +41,40 @@ extension String {
     }
 }
 
+// MARK: - NSImage Tinting Extension
+
+extension NSImage {
+    /// Create a template version of this image tinted with the given color
+    func tinted(with color: Color) -> NSImage {
+        guard let cgImage = cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            return self
+        }
+        
+        let size = self.size
+        let rect = CGRect(origin: .zero, size: size)
+        
+        // Convert SwiftUI Color to NSColor
+        let nsColor = NSColor(color)
+        
+        let tinted = NSImage(size: size, flipped: false) { _ in
+            // Draw the original image as a mask
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            
+            // Set the tint color
+            nsColor.set()
+            
+            // Draw using the original image as a template
+            context.clip(to: rect, mask: cgImage)
+            context.fill(rect)
+            
+            return true
+        }
+        
+        tinted.isTemplate = false
+        return tinted
+    }
+}
+
 private extension Int {
     /// Convert integer to Eastern Arabic-Indic numerals
     func toArabicIndic() -> String {
@@ -329,6 +363,7 @@ private struct WindowView: View {
     var showTitle: Bool { windowConfig["show-title"]?.boolValue ?? true }
     var maxLength: Int { titleConfig["max-length"]?.intValue ?? 50 }
     var alwaysDisplayAppTitleFor: [String] { titleConfig["always-display-app-name-for"]?.arrayValue?.filter({ $0.stringValue != nil }).map { $0.stringValue! } ?? [] }
+    var tintIcons: Bool { config["space.tint-icons"]?.boolValue ?? false }
 
     let window: AnyWindow
     let space: AnySpace
@@ -345,13 +380,24 @@ private struct WindowView: View {
         HStack {
             ZStack {
                 if let icon = window.appIcon {
-                    Image(nsImage: icon)
-                        .resizable()
-                        .frame(width: size, height: size)
-                        .shadow(
-                            color: .black.opacity(0.3),
-                            radius: 2
-                        )
+                    if tintIcons {
+                        // Render as template with foreground color tint
+                        Image(nsImage: icon.tinted(with: appearance.foregroundColor))
+                            .resizable()
+                            .frame(width: size, height: size)
+                            .shadow(
+                                color: .black.opacity(0.3),
+                                radius: 2
+                            )
+                    } else {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .frame(width: size, height: size)
+                            .shadow(
+                                color: .black.opacity(0.3),
+                                radius: 2
+                            )
+                    }
                 } else {
                     Image(systemName: "questionmark.circle")
                         .resizable()
