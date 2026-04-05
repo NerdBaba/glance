@@ -2,8 +2,8 @@ import Foundation
 
 /// Maps application names to SF Symbol names for consistent icon rendering
 enum IconStyle: String, Decodable {
-    case appIcon      // Original NSApp icons (with backgrounds)
-    case sfSymbol    // SF Symbols (glyph-only, no background, tints properly)
+    case appIcon = "app-icon"  // Original NSApp icons (with backgrounds)
+    case sfSymbol = "sf-symbol"  // SF Symbols (glyph-only, no background, tints properly)
 }
 
 struct AppIconMapper {
