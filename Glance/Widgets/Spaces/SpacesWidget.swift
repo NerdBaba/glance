@@ -353,6 +353,7 @@ private extension View {
 private struct WindowView: View {
     @EnvironmentObject var configProvider: ConfigProvider
     @EnvironmentObject var viewModel: SpacesViewModel
+    @Environment(\.appearance) private var appearance
 
     var config: ConfigData { configProvider.config }
     var windowConfig: ConfigData { config["window"]?.dictionaryValue ?? [:] }
