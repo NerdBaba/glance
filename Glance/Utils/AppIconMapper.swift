@@ -65,7 +65,6 @@ struct AppIconMapper {
         "Replit": "rectangle.split.3x1.fill",
         "QGIS": "map.fill",
         "SnippetsLab": "doc.text.snippet",
-        "Repo Prompt": "terminal.fill",
         "Ollama": "brain.filled.head.profile",
 
         // Communication - specific app icons
@@ -97,14 +96,11 @@ struct AppIconMapper {
 
         // Music & Media - specific player icons
         "Music": "music.note.list",
-        "Spotify": "circle.grid.2x1",
-        "Apple Music": "music.quarternote.3",
         "iTunes": "music.note.tv",
         "QuickTime Player": "play.circle.fill",
         "VLC": "traffic.cone",
         "IINA": "play.rectangle.fill",
         "MPV": "play.circle.fill",
-        "Podcasts": "mic.fill",
         "Audacity": "waveform",
         "Logic Pro": "pianokeys",
         "GarageBand": "guitars.fill",
@@ -112,21 +108,6 @@ struct AppIconMapper {
         "FL Studio": "knob",
 
         // Productivity - specific app metaphors
-        "Notes": "note.text",
-        "Reminders": "list.bullet.clipboard.fill",
-        "Calendar": "calendar",
-        "Fantastical": "calendar.badge.clock",
-        "Things": "circle.hexagongrid.circle",
-        "Todoist": "checkmark.seal.fill",
-        "Notion": "doc.text.image",
-        "Obsidian": "sparkles",
-        "Bear": "bear.fill",
-        "Ulysses": "text.book.closed.fill",
-        "iA Writer": "pencil.line",
-        "Evernote": "notebook",
-        "OneNote": "notebook.square",
-        "GoodNotes": "hand.draw.fill",
-        "Notability": "pencil.and.ruler.fill",
 
         // Office - document metaphors
         "Word": "doc.text.below.ecg",
