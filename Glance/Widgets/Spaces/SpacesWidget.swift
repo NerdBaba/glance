@@ -137,6 +137,7 @@ struct SpacesWidget: View {
         .experimentalConfiguration(horizontalPadding: 5)
         .animation(.smooth(duration: 0.3), value: viewModel.spaces)
         .environmentObject(viewModel)
+        .widgetFontStyle()
     }
 }
 
@@ -223,7 +224,7 @@ private struct SpaceView: View {
             if showKey {
                 Text(space.id.convertToNumeralSystem(numeralSystem))
                     .font(.system(size: 12, weight: isFocused ? .bold : .regular))
-                    .foregroundStyle(isFocused ? Color.white : Color.gray)
+                    .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
                     .frame(minWidth: 12)
                     .fixedSize(horizontal: true, vertical: false)
             }
@@ -243,7 +244,7 @@ private struct SpaceView: View {
     private func numbersContent(isFocused: Bool) -> some View {
         Text(space.id.convertToNumeralSystem(numeralSystem))
             .font(.system(size: 12, weight: isFocused ? .bold : .medium, design: .rounded))
-            .foregroundStyle(isFocused ? Color.white : Color.gray)
+            .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
             .frame(minWidth: 20, minHeight: 20)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 4)
@@ -430,6 +431,7 @@ private struct WindowView: View {
                             ? String(title.prefix(titleMaxLength)) + "..."
                             : title
                     )
+                    .widgetFontStyle()
                     .fixedSize(horizontal: true, vertical: false)
                     .shadow(color: .black.opacity(0.3), radius: 3)
                     .fontWeight(.semibold)
