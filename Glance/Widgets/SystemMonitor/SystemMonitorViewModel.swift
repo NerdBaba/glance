@@ -22,7 +22,7 @@ final class SystemMonitorViewModel: ObservableObject {
     private var lastPublishedMemory: Double = -1
     private var lastPublishedPressure: String = ""
 
-    private let cpuThreshold: Double = 1.0
+    private let cpuThreshold: Double = 2.0
     private let memoryThreshold: Double = 0.1 * 1024 * 1024 * 1024 // 0.1 GB in bytes
 
     var memoryUsagePercent: Double {

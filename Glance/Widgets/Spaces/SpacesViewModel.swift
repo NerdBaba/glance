@@ -12,9 +12,11 @@ class SpacesViewModel: ObservableObject {
     private var activateObserver: NSObjectProtocol?
     private var spaceChangeObserver: NSObjectProtocol?
 
-    // Debounce: only fire loadSpaces after a quiet period to avoid redundant spawns
+    // Debounce: only fire loadSpaces after a quiet period to avoid redundant spawns.
+    // 2.0s — merges cascading events (space switch + app activate) into a single call.
+    // Menu bar users won't perceive the difference, but it eliminates spawn storms.
     private var loadWorkItem: DispatchWorkItem?
-    private let debounceInterval: TimeInterval = 0.5
+    private let debounceInterval: TimeInterval = 2.0
 
     init() {
         let runningApps = NSWorkspace.shared.runningApplications.compactMap {
