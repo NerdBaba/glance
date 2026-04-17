@@ -45,10 +45,6 @@ struct BatteryWidget: View {
                         .onAppear {
                             rect = geometry.frame(in: .global)
                         }
-                        .onChange(of: geometry.frame(in: .global)) {
-                            oldState, newState in
-                            rect = newState
-                        }
                 }
             )
         }

@@ -57,10 +57,6 @@ struct TimeWidget: View {
                     .onAppear {
                         rect = geometry.frame(in: .global)
                     }
-                    .onChange(of: geometry.frame(in: .global)) {
-                        oldState, newState in
-                        rect = newState
-                    }
             }
         )
         .experimentalConfiguration()

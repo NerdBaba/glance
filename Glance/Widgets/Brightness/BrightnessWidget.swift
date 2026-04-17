@@ -39,9 +39,6 @@ struct BrightnessWidget: View {
             GeometryReader { geo in
                 Color.clear
                     .onAppear { rect = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .background(.black.opacity(0.001))
