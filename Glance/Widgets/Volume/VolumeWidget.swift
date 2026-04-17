@@ -26,7 +26,6 @@ struct VolumeWidget: View {
             }
         }
         .barSingleLineAligned()
-        .shadow(color: .black.opacity(0.3), radius: 3)
             .background(
                 GeometryReader { geometry in
                     Color.clear

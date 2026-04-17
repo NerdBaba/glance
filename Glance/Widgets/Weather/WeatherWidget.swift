@@ -18,7 +18,6 @@ struct WeatherWidget: View {
                         .monospacedDigit()
                 }
                 .barSingleLineAligned()
-                .shadow(color: .black.opacity(0.3), radius: 3)
             } else if viewModel.isLoading {
                 Image(systemName: "cloud.sun.fill")
                     .barStatusSymbol(opticalYOffset: -0.15)

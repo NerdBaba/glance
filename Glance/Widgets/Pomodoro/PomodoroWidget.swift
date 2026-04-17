@@ -16,12 +16,10 @@ struct PomodoroWidget: View {
                         .font(.system(size: 12, weight: .medium))
                         .monospacedDigit()
                 }
-                .shadow(color: .black.opacity(0.3), radius: 3)
                 .experimentalConfiguration(horizontalPadding: 10)
             } else {
                 Image(systemName: "timer")
                     .font(.system(size: 13))
-                    .shadow(color: .black.opacity(0.3), radius: 3)
                     .experimentalConfiguration(horizontalPadding: 8)
             }
         }

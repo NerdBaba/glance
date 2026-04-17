@@ -48,7 +48,6 @@ struct TimeWidget: View {
             }
         }
         .font(widgetFont.toFont())
-        .shadow(color: .black.opacity(0.3), radius: 3)
         .onReceive(timer) { date in
             currentTime = date
         }

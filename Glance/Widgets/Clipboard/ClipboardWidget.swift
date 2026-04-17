@@ -9,7 +9,6 @@ struct ClipboardWidget: View {
         Image(systemName: viewModel.entryCount > 0 ? "doc.on.clipboard.fill" : "doc.on.clipboard")
             .barStatusSymbol(opticalYOffset: -0.1)
             .barSingleLineAligned()
-            .shadow(color: .black.opacity(0.3), radius: 3)
             .experimentalConfiguration(horizontalPadding: 8)
             .frame(maxHeight: .infinity)
             .background(
