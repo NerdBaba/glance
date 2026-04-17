@@ -24,9 +24,11 @@ final class MactopWatcher: ObservableObject {
     private var lastTemp: Double = -1
     private var lastFan: Int = -1
     private var lastPower: Double = -1
+    private var lastUpdateTime: Date = .distantPast
     private let tempThreshold: Double = 0.5
     private let fanThreshold: Int = 50
     private let powerThreshold: Double = 0.3
+    private let minUpdateInterval: TimeInterval = 2.0  // Skip parsing if less than 2s since last update
 
     private init() {}
 
@@ -94,6 +96,10 @@ final class MactopWatcher: ObservableObject {
 
     /// Parse only the specific fields Glance needs — no full JSON tree construction.
     private func parseAndPublish(_ line: String) {
+        // Throttle — skip if less than minUpdateInterval since last successful update
+        let now = Date()
+        guard now.timeIntervalSince(lastUpdateTime) >= minUpdateInterval else { return }
+
         guard let data = line.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return
@@ -138,6 +144,7 @@ final class MactopWatcher: ObservableObject {
 
         guard tempChanged || fanChanged || powerChanged else { return }
 
+        lastUpdateTime = now
         if tempChanged { lastTemp = newTemp }
         if fanChanged { lastFan = newFan }
         if powerChanged { lastPower = newPower }
