@@ -12,6 +12,7 @@ struct BluetoothWidget: View {
                 Text("\(viewModel.connectedCount)")
                     .font(.system(size: 11, weight: .medium))
                     .monospacedDigit()
+                    .frame(width: 24, alignment: .trailing)
             }
         }
         .barSingleLineAligned()
@@ -21,9 +22,6 @@ struct BluetoothWidget: View {
             GeometryReader { geo in
                 Color.clear
                     .onAppear { rect = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .background(.black.opacity(0.001))

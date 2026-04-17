@@ -4,6 +4,7 @@ import SwiftUI
 struct TimeWidget: View {
     @ObservedObject var configProvider: ConfigProvider
     @StateObject private var calendarManager: CalendarManager
+    @StateObject private var timeProvider = TimeProvider()
     var config: ConfigData { configProvider.config }
     var calendarConfig: ConfigData? { config["calendar"]?.dictionaryValue }
 
@@ -17,14 +18,7 @@ struct TimeWidget: View {
         calendarConfig?["show-events"]?.boolValue ?? true
     }
 
-    @State private var currentTime = Date()
     @State private var rect = CGRect()
-    @State private var cachedFormatter = DateFormatter()
-    @State private var cachedFormat: String = ""
-    @State private var cachedTimeZoneId: String?
-
-    private let timer = Timer.publish(every: 1, on: .main, in: .common)
-        .autoconnect()
 
     init(configProvider: ConfigProvider) {
         self.configProvider = configProvider
@@ -35,10 +29,10 @@ struct TimeWidget: View {
 
     @Environment(\.appearance) var appearance
     @Environment(\.widgetFont) var widgetFont
-    
+
     var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
-            Text(formattedTime(pattern: format, from: currentTime))
+            Text(timeProvider.formattedTime(pattern: format, timeZone: timeZone))
                 .fontWeight(.semibold)
                 .font(widgetFont.toFont())
             if let event = calendarManager.nextEvent, calendarShowEvents {
@@ -48,18 +42,12 @@ struct TimeWidget: View {
             }
         }
         .font(widgetFont.toFont())
-        .onReceive(timer) { date in
-            currentTime = date
-        }
+.fixedSize(horizontal: true, vertical: false)
         .background(
             GeometryReader { geometry in
                 Color.clear
                     .onAppear {
                         rect = geometry.frame(in: .global)
-                    }
-                    .onChange(of: geometry.frame(in: .global)) {
-                        oldState, newState in
-                        rect = newState
                     }
             }
         )
@@ -76,33 +64,68 @@ struct TimeWidget: View {
         }
     }
 
-    // Format the current time — reuses cached DateFormatter when format/timezone haven't changed.
-    private func formattedTime(pattern: String, from time: Date) -> String {
-        if pattern != cachedFormat || timeZone != cachedTimeZoneId {
-            cachedFormatter = DateFormatter()
-            cachedFormatter.dateFormat = pattern
-            if let timeZone = timeZone,
-               let tz = TimeZone(identifier: timeZone) {
-                cachedFormatter.timeZone = tz
-            } else {
-                cachedFormatter.timeZone = TimeZone.current
-            }
-            cachedFormat = pattern
-            cachedTimeZoneId = timeZone
-        }
-        return cachedFormatter.string(from: time)
-    }
-
     // Create text for the calendar event.
     private func eventText(for event: EKEvent) -> String {
         var text = event.title ?? ""
         if !event.isAllDay {
             text += " ("
-            text += formattedTime(
-                pattern: calendarFormat, from: event.startDate)
+            text += timeProvider.format(pattern: calendarFormat, date: event.startDate, timeZone: timeZone)
             text += ")"
         }
         return text
+    }
+}
+
+/// Background timer + time formatting — keeps timer work off main thread.
+class TimeProvider: ObservableObject {
+    @Published var formattedTime: String = ""
+
+    private var timer: Timer?
+    private var formatter = DateFormatter()
+    private var lastPattern: String = ""
+    private var lastTimeZone: String?
+    private let timerQueue = DispatchQueue(label: "com.glance.timeprovider", qos: .utility)
+
+    init() {
+        updateFormattedTime()
+        timerQueue.async { [weak self] in
+            self?.startTimer()
+            RunLoop.current.run()
+        }
+    }
+
+    deinit {
+        timer?.invalidate()
+    }
+
+    private func startTimer() {
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.updateFormattedTime()
+        }
+        timer?.tolerance = 0.1
+    }
+
+    private func updateFormattedTime() {
+        let now = Date()
+        let text = format(pattern: "E d, J:mm", date: now, timeZone: nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.formattedTime = text
+        }
+    }
+
+    func format(pattern: String, date: Date, timeZone: String?) -> String {
+        if pattern != lastPattern || timeZone != lastTimeZone {
+            formatter = DateFormatter()
+            formatter.dateFormat = pattern
+            if let timeZone = timeZone, let tz = TimeZone(identifier: timeZone) {
+                formatter.timeZone = tz
+            } else {
+                formatter.timeZone = TimeZone.current
+            }
+            lastPattern = pattern
+            lastTimeZone = timeZone
+        }
+        return formatter.string(from: date)
     }
 }
 

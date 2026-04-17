@@ -19,10 +19,12 @@ struct FanWidget: View {
                 Text("\(percent)%")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
+                    .frame(width: 42, alignment: .trailing)
             } else {
                 Text("\(thermalManager.fanSpeed)")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
+                    .frame(width: 42, alignment: .trailing)
             }
         }
         .barSingleLineAligned()
@@ -32,9 +34,6 @@ struct FanWidget: View {
             GeometryReader { geo in
                 Color.clear
                     .onAppear { rect = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .background(.black.opacity(0.001))

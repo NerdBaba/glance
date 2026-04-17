@@ -7,13 +7,23 @@ final class SystemMonitorViewModel: ObservableObject {
 
     @Published var cpuUsage: Double = 0
     @Published var memoryUsed: Double = 0
-    @Published var memoryTotal: Double = 0
     @Published var memoryPressure: String = "Normal"
+
+    /// Physical memory — constant, never @Published
+    let memoryTotal: Double
 
     private var timer: Timer?
     private var prevCPUInfo: host_cpu_load_info?
     private var wakeObserver: NSObjectProtocol?
     private let logger = AppLogger.shared
+
+    // Delta-based publishing thresholds
+    private var lastPublishedCPU: Double = -1
+    private var lastPublishedMemory: Double = -1
+    private var lastPublishedPressure: String = ""
+
+    private let cpuThreshold: Double = 2.0
+    private let memoryThreshold: Double = 0.1 * 1024 * 1024 * 1024 // 0.1 GB in bytes
 
     var memoryUsagePercent: Double {
         guard memoryTotal > 0 else { return 0 }
@@ -24,9 +34,10 @@ final class SystemMonitorViewModel: ObservableObject {
     var memoryTotalGB: Double { memoryTotal / (1024 * 1024 * 1024) }
 
     init() {
-        prevCPUInfo = readCPUTicks()
+        memoryTotal = Double(ProcessInfo.processInfo.physicalMemory)
+        prev_CPUInfo = readCPUTicks()
         update()
-        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             self?.update()
         }
         timer?.tolerance = 0.5
@@ -67,7 +78,11 @@ final class SystemMonitorViewModel: ObservableObject {
         let total = userDelta + sysDelta + idleDelta + niceDelta
 
         if total > 0 {
-            cpuUsage = ((userDelta + sysDelta + niceDelta) / total) * 100
+            let newCPU = ((userDelta + sysDelta + niceDelta) / total) * 100
+            if abs(newCPU - lastPublishedCPU) >= cpuThreshold {
+                cpuUsage = newCPU
+                lastPublishedCPU = newCPU
+            }
         }
         prevCPUInfo = current
     }
@@ -94,8 +109,6 @@ final class SystemMonitorViewModel: ObservableObject {
     // MARK: - Memory
 
     private func updateMemory() {
-        memoryTotal = Double(ProcessInfo.processInfo.physicalMemory)
-
         var stats = vm_statistics64_data_t()
         var count = mach_msg_type_number_t(
             MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
@@ -117,16 +130,26 @@ final class SystemMonitorViewModel: ObservableObject {
         let wired = Double(stats.wire_count) * pageSize
         let compressed = Double(stats.compressor_page_count) * pageSize
 
-        memoryUsed = active + wired + compressed
+        let newMemoryUsed = active + wired + compressed
 
-        // Memory pressure based on ratio
-        let ratio = memoryUsed / memoryTotal
+        if abs(newMemoryUsed - lastPublishedMemory) >= memoryThreshold {
+            memoryUsed = newMemoryUsed
+            lastPublishedMemory = newMemoryUsed
+        }
+
+        // Memory pressure based on ratio — only publish on state change
+        let ratio = newMemoryUsed / memoryTotal
+        let newPressure: String
         if ratio > 0.85 {
-            memoryPressure = "Critical"
+            newPressure = "Critical"
         } else if ratio > 0.7 {
-            memoryPressure = "Warning"
+            newPressure = "Warning"
         } else {
-            memoryPressure = "Normal"
+            newPressure = "Normal"
+        }
+        if newPressure != lastPublishedPressure {
+            memoryPressure = newPressure
+            lastPublishedPressure = newPressure
         }
     }
 }

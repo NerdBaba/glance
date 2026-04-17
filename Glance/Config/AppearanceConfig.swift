@@ -331,3 +331,28 @@ extension Font.Weight {
         }
     }
 }
+
+// MARK: - Resolved Foreground Config Environment
+
+/// Cached resolved foreground config to avoid per-widget ConfigManager reads.
+private struct ResolvedForegroundConfigKey: EnvironmentKey {
+    static let defaultValue: ResolvedForegroundConfig? = nil
+}
+
+/// Snapshot of ForegroundConfig values needed by widgets.
+struct ResolvedForegroundConfig: Equatable {
+    let formation: BarFormation
+    let height: CGFloat
+    let widgetsBackgroundDisplayed: Bool
+    let spacing: CGFloat
+    let horizontalPadding: CGFloat
+    let margin: CGFloat
+    let gap: CGFloat
+}
+
+extension EnvironmentValues {
+    var resolvedForegroundConfig: ResolvedForegroundConfig? {
+        get { self[ResolvedForegroundConfigKey.self] }
+        set { self[ResolvedForegroundConfigKey.self] = newValue }
+    }
+}

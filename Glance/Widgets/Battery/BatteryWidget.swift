@@ -45,10 +45,6 @@ struct BatteryWidget: View {
                         .onAppear {
                             rect = geometry.frame(in: .global)
                         }
-                        .onChange(of: geometry.frame(in: .global)) {
-                            oldState, newState in
-                            rect = newState
-                        }
                 }
             )
         }
@@ -102,6 +98,7 @@ private struct BatteryText: View {
             if showPercentage {
                 Text("\(level)")
                     .font(widgetFont.toFont())
+                    .monospacedDigit()
                     .transition(.blurReplace)
             }
 

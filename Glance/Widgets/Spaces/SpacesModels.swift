@@ -75,7 +75,11 @@ class AnySpacesProvider {
     private let _focusSpace: ((String, Bool) -> Void)?
     private let _focusWindow: ((String) -> Void)?
 
+    /// The underlying provider, for type checking.
+    let wrapped: Any
+
     init<P: SpacesProvider>(_ provider: P) {
+        wrapped = provider
         _getSpacesWithWindows = {
             provider.getSpacesWithWindows()?.map { AnySpace($0) }
         }

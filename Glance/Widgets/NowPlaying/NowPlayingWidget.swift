@@ -33,14 +33,12 @@ struct NowPlayingWidget: View {
                     }
             }
         }
+        .drawingGroup()
         .background(
             GeometryReader { geometry in
                 Color.clear
                     .onAppear {
                         widgetFrame = geometry.frame(in: .global)
-                    }
-                    .onChange(of: geometry.frame(in: .global)) { _, newFrame in
-                        widgetFrame = newFrame
                     }
             }
         )

@@ -35,6 +35,7 @@ struct EnergyWidget: View {
             Text(displayValue)
                 .font(widgetFont.toFont())
                 .monospacedDigit()
+                .frame(width: 62, alignment: .trailing)
         }
         .barSingleLineAligned()
         .experimentalConfiguration(horizontalPadding: 10)
@@ -43,9 +44,6 @@ struct EnergyWidget: View {
             GeometryReader { geo in
                 Color.clear
                     .onAppear { rect = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .background(.black.opacity(0.001))

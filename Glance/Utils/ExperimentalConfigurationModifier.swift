@@ -1,39 +1,40 @@
 import SwiftUI
 
 private struct ExperimentalConfigurationModifier: ViewModifier {
-    @ObservedObject var configManager = ConfigManager.shared
+    @Environment(\.resolvedForegroundConfig) private var resolvedFG
     @Environment(\.appearance) private var appearance
-
-    var foregroundHeight: CGFloat {
-        configManager.config.experimental.foreground.resolveHeight()
-    }
 
     let horizontalPadding: CGFloat
 
     func body(content: Content) -> some View {
-        let fg = configManager.config.experimental.foreground
-        let showIndividualBg = fg.formation == .islands && fg.widgetsBackground.displayed
+        guard let fg = resolvedFG else {
+            // Fallback: config not yet resolved, use defaults
+            return content
+                .padding(.horizontal, horizontalPadding)
+        }
+
+        let showIndividualBg = fg.formation == .islands && fg.widgetsBackgroundDisplayed
 
         Group {
             if showIndividualBg {
                 content
-                    .frame(height: foregroundHeight < 45 ? 30 : 38)
+                    .frame(height: fg.height < 45 ? 30 : 38)
                     .padding(
                         .horizontal,
-                        foregroundHeight < 45 && horizontalPadding != 15
+                        fg.height < 45 && horizontalPadding != 15
                             ? 0
-                            : foregroundHeight < 30
+                            : fg.height < 30
                                 ? 0 : horizontalPadding
                     )
                     .widgetStyle(
                         appearance,
-                        heightOverride: foregroundHeight < 45 ? 30 : 38
+                        heightOverride: fg.height < 45 ? 30 : 38
                     )
             } else {
                 content
                     .padding(.horizontal, horizontalPadding > 8 ? 4 : horizontalPadding)
             }
-        }.scaleEffect(foregroundHeight < 25 ? 0.9 : 1, anchor: .leading)
+        }.scaleEffect(fg.height < 25 ? 0.9 : 1, anchor: .leading)
     }
 }
 

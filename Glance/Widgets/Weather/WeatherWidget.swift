@@ -16,6 +16,7 @@ struct WeatherWidget: View {
                     Text(String(format: "%.0f°", temp))
                         .font(widgetFont.toFont())
                         .monospacedDigit()
+                        .frame(width: 38, alignment: .trailing)
                 }
                 .barSingleLineAligned()
             } else if viewModel.isLoading {
@@ -40,9 +41,6 @@ struct WeatherWidget: View {
             GeometryReader { geo in
                 Color.clear
                     .onAppear { rect = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .background(.black.opacity(0.001))

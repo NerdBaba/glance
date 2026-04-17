@@ -24,6 +24,7 @@ struct BrightnessWidget: View {
                         Text("\(viewModel.brightnessPercent)%")
                             .font(.system(size: 13, weight: .medium))
                             .monospacedDigit()
+                            .frame(width: 38, alignment: .trailing)
                     }
                 }
                 .barSingleLineAligned()
@@ -39,9 +40,6 @@ struct BrightnessWidget: View {
             GeometryReader { geo in
                 Color.clear
                     .onAppear { rect = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .background(.black.opacity(0.001))

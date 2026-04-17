@@ -47,7 +47,7 @@ struct RootToml: Decodable {
     }
 }
 
-struct Config {
+struct Config: Equatable {
     let rootToml: RootToml
     let pywalColors: PywalColors?
     /// Timestamp to ensure each Config update is seen as a new value by SwiftUI
@@ -119,6 +119,10 @@ struct Config {
     
     var experimental: ExperimentalConfig {
         rootToml.experimental ?? ExperimentalConfig()
+    }
+
+    static func == (lhs: Config, rhs: Config) -> Bool {
+        lhs.updatedAt == rhs.updatedAt
     }
 }
 
