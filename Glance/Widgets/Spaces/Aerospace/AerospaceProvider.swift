@@ -13,41 +13,55 @@ class AerospaceSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     }
 
     func getSpacesWithWindows() -> [AeroSpace]? {
-        // Use batch queries — 2 process spawns instead of 4
-        guard let results = runner.decodeBatch(
-            [[AeroSpace].self, [AeroWindow].self],
-            arguments: [
-                ["list-workspaces", "--all", "--json"],
-                ["list-windows", "--all", "--json", "--format", "%{window-id} %{app-name} %{window-title} %{workspace}"],
-            ]
-        ) else { return nil }
-        guard let spaces = results[0], let windows = results[1] else { return nil }
+        let semaphore = DispatchSemaphore(value: 0)
+        var result: [AeroSpace]? = nil
 
-        // Fetch focused space and window in a second batch
-        let focusedResults = runner.decodeBatch(
-            [[AeroSpace].self, [AeroWindow].self],
-            arguments: [
-                ["list-workspaces", "--focused", "--json"],
-                ["list-windows", "--focused", "--json"],
-            ]
-        )
-        let focusedSpaceId = focusedResults?[0]?.first?.id
-        let focusedWindowId = (focusedResults?[1] as? [AeroWindow])?.first?.id
+        Task {
+            // Two concurrent batch queries — replaces 4 sequential spawns
+            async let batch1 = runner.decodeTwo(
+                [AeroSpace].self, argsA: ["list-workspaces", "--all", "--json"],
+                [AeroWindow].self, argsB: ["list-windows", "--all", "--json", "--format", "%{window-id} %{app-name} %{window-title} %{workspace}"]
+            )
+            async let batch2 = runner.decodeTwo(
+                [AeroSpace].self, argsA: ["list-workspaces", "--focused", "--json"],
+                [AeroWindow].self, argsB: ["list-windows", "--focused", "--json"]
+            )
 
-        return merge(
-            spaces: spaces,
-            windows: windows,
-            focusedSpaceId: focusedSpaceId,
-            focusedWindowId: focusedWindowId
-        )
+            let (allResult, focusedResult) = await (batch1, batch2)
+            let spaces = allResult.0
+            let windows = allResult.1
+            let focusedSpaceId = focusedResult.0?.first?.id
+            let focusedWindowId = (focusedResult.1 as? [AeroWindow])?.first?.id
+
+            guard let spaces = spaces, let windows = windows else {
+                result = nil
+                semaphore.signal()
+                return
+            }
+
+            result = merge(
+                spaces: spaces,
+                windows: windows,
+                focusedSpaceId: focusedSpaceId,
+                focusedWindowId: focusedWindowId
+            )
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+        return result
     }
 
     func focusSpace(spaceId: String, needWindowFocus: Bool) {
-        runner.run(arguments: ["workspace", spaceId])
+        Task {
+            _ = await runner.run(arguments: ["workspace", spaceId])
+        }
     }
 
     func focusWindow(windowId: String) {
-        runner.run(arguments: ["focus", "--window-id", windowId])
+        Task {
+            _ = await runner.run(arguments: ["focus", "--window-id", windowId])
+        }
     }
 
     private func merge(
@@ -96,30 +110,5 @@ class AerospaceSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
         }
 
         return focusedSpaceId
-    }
-
-    private func fetchSpaces() -> [AeroSpace]? {
-        runner.decode([AeroSpace].self, arguments: [
-            "list-workspaces", "--all", "--json",
-        ])
-    }
-
-    private func fetchWindows() -> [AeroWindow]? {
-        runner.decode([AeroWindow].self, arguments: [
-            "list-windows", "--all", "--json", "--format",
-            "%{window-id} %{app-name} %{window-title} %{workspace}",
-        ])
-    }
-
-    private func fetchFocusedSpace() -> AeroSpace? {
-        runner.decode([AeroSpace].self, arguments: [
-            "list-workspaces", "--focused", "--json",
-        ])?.first
-    }
-
-    private func fetchFocusedWindow() -> AeroWindow? {
-        runner.decode([AeroWindow].self, arguments: [
-            "list-windows", "--focused", "--json",
-        ])?.first
     }
 }

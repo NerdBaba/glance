@@ -12,37 +12,30 @@ class YabaiSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
         )
     }
 
-    private func fetchSpaces() -> [YabaiSpace]? {
-        runner.decode([YabaiSpace].self, arguments: ["-m", "query", "--spaces"])
-    }
-
-    private func fetchWindows() -> [YabaiWindow]? {
-        runner.decode([YabaiWindow].self, arguments: ["-m", "query", "--windows"])
-    }
-
-    /// Fetch spaces and windows in a single process spawn (2x faster)
-    private func fetchSpacesAndWindows() -> ([YabaiSpace], [YabaiWindow])? {
-        guard let results = runner.decodeBatch(
-            [[YabaiSpace].self, [YabaiWindow].self],
-            arguments: [
-                ["-m", "query", "--spaces"],
-                ["-m", "query", "--windows"],
-            ]
-        ) else { return nil }
-        guard let spaces = results[0], let windows = results[1] else { return nil }
-        return (spaces, windows)
-    }
-
+    /// Fetch spaces and windows concurrently via async/await — 1 spawn window instead of sequential
     func getSpacesWithWindows() -> [YabaiSpace]? {
-        // Use batch query when possible — single process spawn instead of two
-        if let (spaces, windows) = fetchSpacesAndWindows() {
-            return mergeSpaces(spaces: spaces, windows: windows)
+        // Use a semaphore to bridge async to the synchronous caller interface
+        let semaphore = DispatchSemaphore(value: 0)
+        var result: [YabaiSpace]? = nil
+
+        Task {
+            let (spaces, windows) = await runner.decodeTwo(
+                [YabaiSpace].self, argsA: ["-m", "query", "--spaces"],
+                [YabaiWindow].self, argsB: ["-m", "query", "--windows"]
+            )
+
+            guard let spaces = spaces, let windows = windows else {
+                result = nil
+                semaphore.signal()
+                return
+            }
+
+            result = mergeSpaces(spaces: spaces, windows: windows)
+            semaphore.signal()
         }
-        // Fallback to individual queries
-        guard let spaces = fetchSpaces(), let windows = fetchWindows() else {
-            return nil
-        }
-        return mergeSpaces(spaces: spaces, windows: windows)
+
+        semaphore.wait()
+        return result
     }
 
     private func mergeSpaces(spaces: [YabaiSpace], windows: [YabaiWindow]) -> [YabaiSpace] {
@@ -67,15 +60,15 @@ class YabaiSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     }
 
     func focusSpace(spaceId: String, needWindowFocus: Bool) {
-        runner.run(arguments: ["-m", "space", "--focus", spaceId])
-        if !needWindowFocus { return }
+        Task {
+            _ = await runner.run(arguments: ["-m", "space", "--focus", spaceId])
+            guard needWindowFocus else { return }
 
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(
-            deadline: .now() + 0.1
-        ) {
+            try? await Task.sleep(for: .milliseconds(100))
+
             guard
                 let requestedSpaceId = Int(spaceId),
-                let spaces = self.getSpacesWithWindows(),
+                let spaces = getSpacesWithWindows(),
                 let space = spaces.first(where: { $0.id == requestedSpaceId }),
                 !space.windows.contains(where: { $0.isFocused }),
                 let firstWindow = space.windows.first
@@ -83,14 +76,16 @@ class YabaiSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
                 return
             }
 
-            self.runner.run(arguments: [
+            _ = await runner.run(arguments: [
                 "-m", "window", "--focus", String(firstWindow.id),
             ])
         }
     }
 
     func focusWindow(windowId: String) {
-        runner.run(arguments: ["-m", "window", "--focus", windowId])
+        Task {
+            _ = await runner.run(arguments: ["-m", "window", "--focus", windowId])
+        }
     }
 
     private func visibleWindows(from windows: [YabaiWindow]) -> [YabaiWindow] {

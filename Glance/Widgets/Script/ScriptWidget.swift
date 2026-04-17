@@ -11,8 +11,9 @@ struct ScriptWidget: View {
     var body: some View {
         if !viewModel.output.isEmpty {
             Text(viewModel.output)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 13, weight: .medium, design: .monospaced))
                 .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .experimentalConfiguration(horizontalPadding: 10)
                 .frame(maxHeight: .infinity)
                 .animation(.smooth(duration: 0.2), value: viewModel.output)

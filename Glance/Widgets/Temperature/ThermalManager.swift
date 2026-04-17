@@ -11,6 +11,12 @@ final class ThermalManager: ObservableObject {
 
     private var cancellable: AnyCancellable?
 
+    // Delta-based publishing thresholds
+    private var lastPublishedTemp: Double = -1
+    private var lastPublishedFan: Int = -1
+    private let tempThreshold: Double = 1.0
+    private let fanThreshold: Int = 100
+
     private init() {
         MactopWatcher.shared.start()
 
@@ -55,8 +61,15 @@ final class ThermalManager: ObservableObject {
             }
         }
 
-        cpuTemperature = newTemp
-        fanSpeed = newFan
+        // Only publish if values changed beyond threshold
+        if abs(newTemp - lastPublishedTemp) >= tempThreshold {
+            cpuTemperature = newTemp
+            lastPublishedTemp = newTemp
+        }
+        if abs(newFan - lastPublishedFan) >= fanThreshold {
+            fanSpeed = newFan
+            lastPublishedFan = newFan
+        }
     }
 
     func refresh() {

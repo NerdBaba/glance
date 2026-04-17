@@ -15,6 +15,10 @@ final class EnergyManager: ObservableObject {
     private var cancellable: AnyCancellable?
     private var lastUpdateTime: Date = Date()
 
+    // Delta-based publishing threshold (0.5W)
+    private var lastPublishedPower: Double = -1
+    private let powerThreshold: Double = 0.5
+
     private init() {
         MactopWatcher.shared.start()
 
@@ -35,8 +39,12 @@ final class EnergyManager: ObservableObject {
             return
         }
 
-        currentPower = totalPower
-        accumulateEnergy()
+        // Only publish if power changed beyond threshold
+        if abs(totalPower - lastPublishedPower) >= powerThreshold {
+            currentPower = totalPower
+            lastPublishedPower = totalPower
+            accumulateEnergy()
+        }
     }
 
     private func accumulateEnergy() {

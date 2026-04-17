@@ -48,6 +48,7 @@ struct TimeWidget: View {
             }
         }
         .font(widgetFont.toFont())
+        .fixedSize(horizontal: true, vertical: false)
         .onReceive(timer) { date in
             currentTime = date
         }

@@ -15,6 +15,7 @@ struct PomodoroWidget: View {
                     Text(viewModel.timeString)
                         .font(.system(size: 12, weight: .medium))
                         .monospacedDigit()
+                        .frame(width: 36, alignment: .leading)
                 }
                 .experimentalConfiguration(horizontalPadding: 10)
             } else {
