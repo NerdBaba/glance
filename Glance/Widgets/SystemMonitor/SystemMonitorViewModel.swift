@@ -15,6 +15,14 @@ final class SystemMonitorViewModel: ObservableObject {
     private var wakeObserver: NSObjectProtocol?
     private let logger = AppLogger.shared
 
+    // Delta-based publishing thresholds
+    private var lastPublishedCPU: Double = -1
+    private var lastPublishedMemory: Double = -1
+    private var lastPublishedPressure: String = ""
+
+    private let cpuThreshold: Double = 1.0
+    private let memoryThreshold: Double = 0.1 * 1024 * 1024 * 1024 // 0.1 GB in bytes
+
     var memoryUsagePercent: Double {
         guard memoryTotal > 0 else { return 0 }
         return (memoryUsed / memoryTotal) * 100
@@ -67,7 +75,11 @@ final class SystemMonitorViewModel: ObservableObject {
         let total = userDelta + sysDelta + idleDelta + niceDelta
 
         if total > 0 {
-            cpuUsage = ((userDelta + sysDelta + niceDelta) / total) * 100
+            let newCPU = ((userDelta + sysDelta + niceDelta) / total) * 100
+            if abs(newCPU - lastPublishedCPU) >= cpuThreshold {
+                cpuUsage = newCPU
+                lastPublishedCPU = newCPU
+            }
         }
         prevCPUInfo = current
     }
@@ -117,16 +129,26 @@ final class SystemMonitorViewModel: ObservableObject {
         let wired = Double(stats.wire_count) * pageSize
         let compressed = Double(stats.compressor_page_count) * pageSize
 
-        memoryUsed = active + wired + compressed
+        let newMemoryUsed = active + wired + compressed
 
-        // Memory pressure based on ratio
+        if abs(newMemoryUsed - lastPublishedMemory) >= memoryThreshold {
+            memoryUsed = newMemoryUsed
+            lastPublishedMemory = newMemoryUsed
+        }
+
+        // Memory pressure based on ratio — only publish on state change
         let ratio = memoryUsed / memoryTotal
+        let newPressure: String
         if ratio > 0.85 {
-            memoryPressure = "Critical"
+            newPressure = "Critical"
         } else if ratio > 0.7 {
-            memoryPressure = "Warning"
+            newPressure = "Warning"
         } else {
-            memoryPressure = "Normal"
+            newPressure = "Normal"
+        }
+        if newPressure != lastPublishedPressure {
+            memoryPressure = newPressure
+            lastPublishedPressure = newPressure
         }
     }
 }
