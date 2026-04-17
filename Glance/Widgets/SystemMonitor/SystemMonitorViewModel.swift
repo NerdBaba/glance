@@ -7,8 +7,10 @@ final class SystemMonitorViewModel: ObservableObject {
 
     @Published var cpuUsage: Double = 0
     @Published var memoryUsed: Double = 0
-    @Published var memoryTotal: Double = 0
     @Published var memoryPressure: String = "Normal"
+
+    /// Physical memory — constant, never @Published
+    let memoryTotal: Double
 
     private var timer: Timer?
     private var prevCPUInfo: host_cpu_load_info?
@@ -32,7 +34,8 @@ final class SystemMonitorViewModel: ObservableObject {
     var memoryTotalGB: Double { memoryTotal / (1024 * 1024 * 1024) }
 
     init() {
-        prevCPUInfo = readCPUTicks()
+        memoryTotal = Double(ProcessInfo.processInfo.physicalMemory)
+        prev_CPUInfo = readCPUTicks()
         update()
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             self?.update()
@@ -106,8 +109,6 @@ final class SystemMonitorViewModel: ObservableObject {
     // MARK: - Memory
 
     private func updateMemory() {
-        memoryTotal = Double(ProcessInfo.processInfo.physicalMemory)
-
         var stats = vm_statistics64_data_t()
         var count = mach_msg_type_number_t(
             MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
@@ -137,7 +138,7 @@ final class SystemMonitorViewModel: ObservableObject {
         }
 
         // Memory pressure based on ratio — only publish on state change
-        let ratio = memoryUsed / memoryTotal
+        let ratio = newMemoryUsed / memoryTotal
         let newPressure: String
         if ratio > 0.85 {
             newPressure = "Critical"
