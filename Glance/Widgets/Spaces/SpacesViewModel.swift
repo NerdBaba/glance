@@ -10,6 +10,13 @@ class SpacesViewModel: ObservableObject {
     private var appLaunchObserver: NSObjectProtocol?
     private var appTerminateObserver: NSObjectProtocol?
     private var activateObserver: NSObjectProtocol?
+    private var spaceChangeObserver: NSObjectProtocol?
+
+    // Debounce: only fire loadSpaces after a quiet period to avoid redundant spawns.
+    // 2.0s — merges cascading events (space switch + app activate) into a single call.
+    // Menu bar users won't perceive the difference, but it eliminates spawn storms.
+    private var loadWorkItem: DispatchWorkItem?
+    private let debounceInterval: TimeInterval = 2.0
 
     init() {
         let runningApps = NSWorkspace.shared.runningApplications.compactMap {
@@ -30,44 +37,77 @@ class SpacesViewModel: ObservableObject {
     }
 
     private func startMonitoring() {
-        // Poll at 1s — spaces don't change that fast; event-driven refresh handles responsiveness
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
-            [weak self] _ in
-            self?.loadSpaces()
-        }
-        timer?.tolerance = 0.2
+        // For native macOS, use workspace notifications as primary trigger.
+        // For yabai/AeroSpace, keep a slow poll as fallback since their event system
+        // isn't directly observable from a third-party app.
+        let isThirdParty = provider?.isYabai == true || provider?.isAerospace == true
+        let pollInterval: TimeInterval = isThirdParty ? 5.0 : 3.0
 
-        // Immediately refresh on app activation (space switch) for responsiveness
+        timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) {
+            [weak self] _ in
+            self?.debounceLoadSpaces()
+        }
+        timer?.tolerance = 0.5
+
         let center = NSWorkspace.shared.notificationCenter
+
+        // Listen for space changes — most reliable trigger for native macOS
+        spaceChangeObserver = center.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.debounceLoadSpaces()
+        }
+
+        // App activation may change focused space
         activateObserver = center.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.loadSpaces()
+            self?.debounceLoadSpaces()
         }
+
         appLaunchObserver = center.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.loadSpaces()
+            self?.debounceLoadSpaces()
         }
+
         appTerminateObserver = center.addObserver(
             forName: NSWorkspace.didTerminateApplicationNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.loadSpaces()
+            self?.debounceLoadSpaces()
         }
 
-        loadSpaces()
+        debounceLoadSpaces()
     }
 
     private func stopMonitoring() {
         timer?.invalidate()
         timer = nil
+        loadWorkItem?.cancel()
+        loadWorkItem = nil
+
         let center = NSWorkspace.shared.notificationCenter
+        if let obs = spaceChangeObserver { center.removeObserver(obs) }
         if let obs = activateObserver { center.removeObserver(obs) }
         if let obs = appLaunchObserver { center.removeObserver(obs) }
         if let obs = appTerminateObserver { center.removeObserver(obs) }
+    }
+
+    /// Debounced load — cancels any pending load and schedules a new one.
+    /// This prevents the cascade of redundant spawns when multiple events fire close together.
+    private func debounceLoadSpaces() {
+        loadWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.loadSpaces()
+        }
+        loadWorkItem = workItem
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
     }
 
     private func loadSpaces() {
@@ -81,7 +121,7 @@ class SpacesViewModel: ObservableObject {
                 return
             }
 
-            guard let spaces = provider.getSpacesWithWindows() else {
+            guard let newSpaces = provider.getSpacesWithWindows() else {
                 DispatchQueue.main.async {
                     self.spaces = []
                     self.isUnavailable = true
@@ -89,7 +129,7 @@ class SpacesViewModel: ObservableObject {
                 return
             }
 
-            let sortedSpaces = spaces.sorted { $0.id < $1.id }
+            let sortedSpaces = newSpaces.sorted { $0.id < $1.id }
             DispatchQueue.main.async {
                 if self.isUnavailable { self.isUnavailable = false }
                 // Only publish if spaces actually changed — avoids unnecessary SwiftUI re-renders
@@ -112,6 +152,11 @@ class SpacesViewModel: ObservableObject {
             self.provider?.focusWindow(windowId: String(window.id))
         }
     }
+}
+
+extension AnySpacesProvider {
+    var isYabai: Bool { self.wrapped is YabaiSpacesProvider }
+    var isAerospace: Bool { self.wrapped is AerospaceSpacesProvider }
 }
 
 class IconCache {

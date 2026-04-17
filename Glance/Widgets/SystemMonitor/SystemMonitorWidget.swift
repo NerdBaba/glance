@@ -14,6 +14,7 @@ struct SystemMonitorWidget: View {
                 Text(String(format: "%.0f%%", viewModel.cpuUsage))
                     .font(widgetFont.toFont())
                     .monospacedDigit()
+                    .frame(width: 42, alignment: .trailing)
             }
 
             // Memory
@@ -23,19 +24,17 @@ struct SystemMonitorWidget: View {
                 Text(String(format: "%.1f", viewModel.memoryUsedGB) + "G")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
+                    .frame(width: 52, alignment: .trailing)
             }
         }
+        .drawingGroup()
         .barSingleLineAligned()
-        .shadow(color: .black.opacity(0.3), radius: 3)
         .experimentalConfiguration(horizontalPadding: 10)
         .frame(maxHeight: .infinity)
         .background(
             GeometryReader { geo in
                 Color.clear
                     .onAppear { rect = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .background(.black.opacity(0.001))

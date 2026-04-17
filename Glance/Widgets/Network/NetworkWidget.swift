@@ -19,9 +19,6 @@ struct NetworkWidget: View {
             GeometryReader { geometry in
                 Color.clear
                     .onAppear { rect = geometry.frame(in: .global) }
-                    .onChange(of: geometry.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .contentShape(Rectangle())

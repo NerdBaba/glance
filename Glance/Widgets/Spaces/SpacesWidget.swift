@@ -224,8 +224,9 @@ private struct SpaceView: View {
             if showKey {
                 Text(space.id.convertToNumeralSystem(numeralSystem))
                     .font(.system(size: 12, weight: isFocused ? .bold : .regular))
+                    .monospacedDigit()
                     .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
-                    .frame(minWidth: 12)
+                    .frame(width: 16, alignment: .center)
                     .fixedSize(horizontal: true, vertical: false)
             }
             HStack(spacing: 2) {
@@ -244,8 +245,9 @@ private struct SpaceView: View {
     private func numbersContent(isFocused: Bool) -> some View {
         Text(space.id.convertToNumeralSystem(numeralSystem))
             .font(.system(size: 12, weight: isFocused ? .bold : .medium, design: .rounded))
+            .monospacedDigit()
             .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
-            .frame(minWidth: 20, minHeight: 20)
+            .frame(width: 24, alignment: .center)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 4)
             .frame(height: 30)

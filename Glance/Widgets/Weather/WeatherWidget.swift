@@ -16,9 +16,9 @@ struct WeatherWidget: View {
                     Text(String(format: "%.0f°", temp))
                         .font(widgetFont.toFont())
                         .monospacedDigit()
+                        .frame(width: 38, alignment: .trailing)
                 }
                 .barSingleLineAligned()
-                .shadow(color: .black.opacity(0.3), radius: 3)
             } else if viewModel.isLoading {
                 Image(systemName: "cloud.sun.fill")
                     .barStatusSymbol(opticalYOffset: -0.15)
@@ -41,9 +41,6 @@ struct WeatherWidget: View {
             GeometryReader { geo in
                 Color.clear
                     .onAppear { rect = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .background(.black.opacity(0.001))

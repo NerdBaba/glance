@@ -15,13 +15,12 @@ struct PomodoroWidget: View {
                     Text(viewModel.timeString)
                         .font(.system(size: 12, weight: .medium))
                         .monospacedDigit()
+                        .frame(width: 36, alignment: .leading)
                 }
-                .shadow(color: .black.opacity(0.3), radius: 3)
                 .experimentalConfiguration(horizontalPadding: 10)
             } else {
                 Image(systemName: "timer")
                     .font(.system(size: 13))
-                    .shadow(color: .black.opacity(0.3), radius: 3)
                     .experimentalConfiguration(horizontalPadding: 8)
             }
         }
@@ -30,9 +29,6 @@ struct PomodoroWidget: View {
             GeometryReader { geo in
                 Color.clear
                     .onAppear { rect = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, newValue in
-                        rect = newValue
-                    }
             }
         )
         .background(.black.opacity(0.001))

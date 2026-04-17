@@ -15,13 +15,18 @@ final class EnergyManager: ObservableObject {
     private var cancellable: AnyCancellable?
     private var lastUpdateTime: Date = Date()
 
+    // Delta-based publishing threshold (0.5W)
+    private var lastPublishedPower: Double = -1
+    private let powerThreshold: Double = 0.5
+
     private init() {
         MactopWatcher.shared.start()
 
-        cancellable = MactopWatcher.shared.$latestData
+        cancellable = MactopWatcher.shared.$snapshot
+            .compactMap { $0 }
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] data in
-                self?.parseMactopData(data)
+            .sink { [weak self] snapshot in
+                self?.updateFromSnapshot(snapshot)
             }
     }
 
@@ -29,14 +34,15 @@ final class EnergyManager: ObservableObject {
         cancellable?.cancel()
     }
 
-    private func parseMactopData(_ data: [String: Any]) {
-        guard let soc = data["soc_metrics"] as? [String: Any],
-              let totalPower = soc["total_power"] as? Double else {
-            return
-        }
+    private func updateFromSnapshot(_ snapshot: MactopSnapshot) {
+        let totalPower = snapshot.totalPowerWatts
 
-        currentPower = totalPower
-        accumulateEnergy()
+        // Only publish if power changed beyond threshold
+        if abs(totalPower - lastPublishedPower) >= powerThreshold {
+            currentPower = totalPower
+            lastPublishedPower = totalPower
+            accumulateEnergy()
+        }
     }
 
     private func accumulateEnergy() {

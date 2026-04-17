@@ -23,17 +23,14 @@ struct VolumeWidget: View {
                 Text(viewModel.isMuted ? "Mute" : "\(viewModel.volumePercent)%")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
+                    .frame(width: 38, alignment: .trailing)
             }
         }
         .barSingleLineAligned()
-        .shadow(color: .black.opacity(0.3), radius: 3)
             .background(
                 GeometryReader { geometry in
                     Color.clear
                         .onAppear { rect = geometry.frame(in: .global) }
-                        .onChange(of: geometry.frame(in: .global)) { _, newValue in
-                            rect = newValue
-                        }
                 }
             )
             .contentShape(Rectangle())
