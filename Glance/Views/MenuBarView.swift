@@ -10,6 +10,17 @@ struct MenuBarView: View {
         let fg = configManager.config.experimental.foreground
         let formation = fg.formation
 
+        // Cache resolved foreground config for child widgets
+        let resolvedFG = ResolvedForegroundConfig(
+            formation: fg.formation,
+            height: fg.resolveHeight(),
+            widgetsBackgroundDisplayed: fg.widgetsBackground.displayed,
+            spacing: fg.spacing,
+            horizontalPadding: fg.horizontalPadding,
+            margin: fg.margin,
+            gap: fg.gap
+        )
+
         Group {
             switch formation {
             case .full:
@@ -40,6 +51,7 @@ struct MenuBarView: View {
         .environment(\.appearance, appearance)
         .environment(\.barFont, appearance.barFont)
         .environment(\.widgetFont, appearance.barFont)
+        .environment(\.resolvedForegroundConfig, resolvedFG)
         .preferredColorScheme(.dark)
     }
 
