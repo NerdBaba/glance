@@ -35,6 +35,7 @@ struct EnergyWidget: View {
             Text(displayValue)
                 .font(widgetFont.toFont())
                 .monospacedDigit()
+                .frame(width: 62, alignment: .trailing)
         }
         .barSingleLineAligned()
         .experimentalConfiguration(horizontalPadding: 10)

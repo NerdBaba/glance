@@ -19,10 +19,12 @@ struct FanWidget: View {
                 Text("\(percent)%")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
+                    .frame(width: 42, alignment: .trailing)
             } else {
                 Text("\(thermalManager.fanSpeed)")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
+                    .frame(width: 42, alignment: .trailing)
             }
         }
         .barSingleLineAligned()

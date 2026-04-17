@@ -25,6 +25,7 @@ struct TemperatureWidget: View {
             Text("\(Int(round(displayTemp)))\(displayUnit)")
                 .font(widgetFont.toFont())
                 .monospacedDigit()
+                .frame(width: 48, alignment: .trailing)
         }
         .barSingleLineAligned()
         .experimentalConfiguration(horizontalPadding: 10)

@@ -12,6 +12,7 @@ struct BluetoothWidget: View {
                 Text("\(viewModel.connectedCount)")
                     .font(.system(size: 11, weight: .medium))
                     .monospacedDigit()
+                    .frame(width: 24, alignment: .trailing)
             }
         }
         .barSingleLineAligned()

@@ -14,6 +14,7 @@ struct SystemMonitorWidget: View {
                 Text(String(format: "%.0f%%", viewModel.cpuUsage))
                     .font(widgetFont.toFont())
                     .monospacedDigit()
+                    .frame(width: 42, alignment: .trailing)
             }
 
             // Memory
@@ -23,6 +24,7 @@ struct SystemMonitorWidget: View {
                 Text(String(format: "%.1f", viewModel.memoryUsedGB) + "G")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
+                    .frame(width: 52, alignment: .trailing)
             }
         }
         .barSingleLineAligned()

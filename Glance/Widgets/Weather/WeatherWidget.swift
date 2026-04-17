@@ -16,6 +16,7 @@ struct WeatherWidget: View {
                     Text(String(format: "%.0f°", temp))
                         .font(widgetFont.toFont())
                         .monospacedDigit()
+                        .frame(width: 38, alignment: .trailing)
                 }
                 .barSingleLineAligned()
             } else if viewModel.isLoading {

@@ -11,6 +11,7 @@ struct DiskWidget: View {
             Text(String(format: "%.0f GB", viewModel.freeGB))
                 .font(.system(size: 12, weight: .medium))
                 .monospacedDigit()
+                .frame(width: 60, alignment: .trailing)
         }
         .barSingleLineAligned()
         .experimentalConfiguration(horizontalPadding: 10)

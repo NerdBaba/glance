@@ -24,6 +24,7 @@ struct BrightnessWidget: View {
                         Text("\(viewModel.brightnessPercent)%")
                             .font(.system(size: 13, weight: .medium))
                             .monospacedDigit()
+                            .frame(width: 38, alignment: .trailing)
                     }
                 }
                 .barSingleLineAligned()
