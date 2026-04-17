@@ -27,6 +27,7 @@ struct SystemMonitorWidget: View {
                     .frame(width: 52, alignment: .trailing)
             }
         }
+        .drawingGroup()
         .barSingleLineAligned()
         .experimentalConfiguration(horizontalPadding: 10)
         .frame(maxHeight: .infinity)

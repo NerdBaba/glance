@@ -20,11 +20,32 @@ class YabaiSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
         runner.decode([YabaiWindow].self, arguments: ["-m", "query", "--windows"])
     }
 
+    /// Fetch spaces and windows in a single process spawn (2x faster)
+    private func fetchSpacesAndWindows() -> ([YabaiSpace], [YabaiWindow])? {
+        guard let results = runner.decodeBatch(
+            [[YabaiSpace].self, [YabaiWindow].self],
+            arguments: [
+                ["-m", "query", "--spaces"],
+                ["-m", "query", "--windows"],
+            ]
+        ) else { return nil }
+        guard let spaces = results[0], let windows = results[1] else { return nil }
+        return (spaces, windows)
+    }
+
     func getSpacesWithWindows() -> [YabaiSpace]? {
+        // Use batch query when possible — single process spawn instead of two
+        if let (spaces, windows) = fetchSpacesAndWindows() {
+            return mergeSpaces(spaces: spaces, windows: windows)
+        }
+        // Fallback to individual queries
         guard let spaces = fetchSpaces(), let windows = fetchWindows() else {
             return nil
         }
+        return mergeSpaces(spaces: spaces, windows: windows)
+    }
 
+    private func mergeSpaces(spaces: [YabaiSpace], windows: [YabaiWindow]) -> [YabaiSpace] {
         var indexedSpaces = Dictionary(
             uniqueKeysWithValues: spaces.map { ($0.id, $0) }
         )

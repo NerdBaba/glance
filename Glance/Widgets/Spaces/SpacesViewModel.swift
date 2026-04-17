@@ -30,8 +30,8 @@ class SpacesViewModel: ObservableObject {
     }
 
     private func startMonitoring() {
-        // Poll at 1s — spaces don't change that fast; event-driven refresh handles responsiveness
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
+        // Poll at 3s — spaces don't change that fast; event-driven refresh handles responsiveness
+        timer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) {
             [weak self] _ in
             self?.loadSpaces()
         }

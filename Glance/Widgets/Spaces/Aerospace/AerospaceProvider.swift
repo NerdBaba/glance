@@ -13,15 +13,26 @@ class AerospaceSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     }
 
     func getSpacesWithWindows() -> [AeroSpace]? {
-        guard
-            let spaces = fetchSpaces(),
-            let windows = fetchWindows()
-        else {
-            return nil
-        }
+        // Use batch queries — 2 process spawns instead of 4
+        guard let results = runner.decodeBatch(
+            [[AeroSpace].self, [AeroWindow].self],
+            arguments: [
+                ["list-workspaces", "--all", "--json"],
+                ["list-windows", "--all", "--json", "--format", "%{window-id} %{app-name} %{window-title} %{workspace}"],
+            ]
+        ) else { return nil }
+        guard let spaces = results[0], let windows = results[1] else { return nil }
 
-        let focusedSpaceId = fetchFocusedSpace()?.id
-        let focusedWindowId = fetchFocusedWindow()?.id
+        // Fetch focused space and window in a second batch
+        let focusedResults = runner.decodeBatch(
+            [[AeroSpace].self, [AeroWindow].self],
+            arguments: [
+                ["list-workspaces", "--focused", "--json"],
+                ["list-windows", "--focused", "--json"],
+            ]
+        )
+        let focusedSpaceId = focusedResults?[0]?.first?.id
+        let focusedWindowId = (focusedResults?[1] as? [AeroWindow])?.first?.id
 
         return merge(
             spaces: spaces,

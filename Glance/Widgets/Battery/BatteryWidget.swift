@@ -98,6 +98,7 @@ private struct BatteryText: View {
             if showPercentage {
                 Text("\(level)")
                     .font(widgetFont.toFont())
+                    .monospacedDigit()
                     .transition(.blurReplace)
             }
 

@@ -33,6 +33,7 @@ struct NowPlayingWidget: View {
                     }
             }
         }
+        .drawingGroup()
         .background(
             GeometryReader { geometry in
                 Color.clear

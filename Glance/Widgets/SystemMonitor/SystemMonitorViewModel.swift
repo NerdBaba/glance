@@ -37,7 +37,7 @@ final class SystemMonitorViewModel: ObservableObject {
         memoryTotal = Double(ProcessInfo.processInfo.physicalMemory)
         prev_CPUInfo = readCPUTicks()
         update()
-        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             self?.update()
         }
         timer?.tolerance = 0.5
