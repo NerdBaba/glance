@@ -27,12 +27,10 @@ struct BrightnessWidget: View {
                     }
                 }
                 .barSingleLineAligned()
-                .shadow(color: .black.opacity(0.3), radius: 3)
             } else {
                 Image(systemName: "sun.max")
                     .barStatusSymbol(opticalYOffset: -0.15)
                     .foregroundStyle(.secondary)
-                    .shadow(color: .black.opacity(0.3), radius: 3)
             }
         }
         .experimentalConfiguration(horizontalPadding: 8)

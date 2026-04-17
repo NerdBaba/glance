@@ -13,7 +13,6 @@ struct ScriptWidget: View {
             Text(viewModel.output)
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(1)
-                .shadow(color: .black.opacity(0.3), radius: 3)
                 .experimentalConfiguration(horizontalPadding: 10)
                 .frame(maxHeight: .infinity)
                 .animation(.smooth(duration: 0.2), value: viewModel.output)

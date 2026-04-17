@@ -9,7 +9,6 @@ struct ActiveAppWidget: View {
         Text(viewModel.appName)
             .font(widgetFont.toFont())
             .lineLimit(1)
-            .shadow(color: .black.opacity(0.3), radius: 3)
             .experimentalConfiguration(horizontalPadding: 10)
             .frame(maxHeight: .infinity)
             .animation(.smooth(duration: 0.2), value: viewModel.appName)

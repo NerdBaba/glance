@@ -13,7 +13,6 @@ struct DiskWidget: View {
                 .monospacedDigit()
         }
         .barSingleLineAligned()
-        .shadow(color: .black.opacity(0.3), radius: 3)
         .experimentalConfiguration(horizontalPadding: 10)
         .frame(maxHeight: .infinity)
         .background(

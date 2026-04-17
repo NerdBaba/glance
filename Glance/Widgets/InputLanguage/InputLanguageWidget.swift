@@ -8,7 +8,6 @@ struct InputLanguageWidget: View {
     var body: some View {
         Text(viewModel.languageCode)
             .font(widgetFont.toFont())
-            .shadow(color: .black.opacity(0.3), radius: 3)
             .experimentalConfiguration(horizontalPadding: 8)
             .frame(maxHeight: .infinity)
             .background(
