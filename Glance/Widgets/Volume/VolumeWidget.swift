@@ -23,7 +23,7 @@ struct VolumeWidget: View {
                 Text(viewModel.isMuted ? "Mute" : "\(viewModel.volumePercent)%")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
-                    .frame(width: 38, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
             }
         }
         .barSingleLineAligned()

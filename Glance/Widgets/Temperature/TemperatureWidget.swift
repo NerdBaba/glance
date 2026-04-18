@@ -19,13 +19,13 @@ struct TemperatureWidget: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Image(systemName: "thermometer")
                 .barStatusSymbol(size: 12, opticalYOffset: -0.1)
             Text("\(Int(round(displayTemp)))\(displayUnit)")
                 .font(widgetFont.toFont())
                 .monospacedDigit()
-                .frame(width: 48, alignment: .trailing)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .barSingleLineAligned()
         .experimentalConfiguration(horizontalPadding: 10)

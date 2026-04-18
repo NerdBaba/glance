@@ -9,14 +9,14 @@ struct WeatherWidget: View {
     var body: some View {
         Group {
             if let temp = viewModel.temperature {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: viewModel.currentCondition.symbolName)
                         .barStatusSymbol(opticalYOffset: -0.15)
                         .symbolRenderingMode(.hierarchical)
                     Text(String(format: "%.0f°", temp))
                         .font(widgetFont.toFont())
                         .monospacedDigit()
-                        .frame(width: 38, alignment: .trailing)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 .barSingleLineAligned()
             } else if viewModel.isLoading {

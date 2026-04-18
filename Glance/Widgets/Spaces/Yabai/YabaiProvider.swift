@@ -12,25 +12,30 @@ class YabaiSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
         )
     }
 
-    /// Fetch spaces and windows concurrently via async/await — 1 spawn window instead of sequential
+    /// Fetch spaces and windows concurrently via async/await — bypasses output cache
+    /// since yabai space/window data changes constantly and cache hits return nil.
     func getSpacesWithWindows() -> [YabaiSpace]? {
-        // Use a semaphore to bridge async to the synchronous caller interface
         let semaphore = DispatchSemaphore(value: 0)
         var result: [YabaiSpace]? = nil
 
         Task {
-            let (spaces, windows) = await runner.decodeTwo(
-                [YabaiSpace].self, argsA: ["-m", "query", "--spaces"],
-                [YabaiWindow].self, argsB: ["-m", "query", "--windows"]
-            )
+            async let spacesData = runner.run(arguments: ["-m", "query", "--spaces"])
+            async let windowsData = runner.run(arguments: ["-m", "query", "--windows"])
 
-            guard let spaces = spaces, let windows = windows else {
+            guard let spacesData = await spacesData,
+                  let windowsData = await windowsData else {
                 result = nil
                 semaphore.signal()
                 return
             }
 
-            result = mergeSpaces(spaces: spaces, windows: windows)
+            do {
+                let spaces = try runner.decode([YabaiSpace].self, from: spacesData)
+                let windows = try runner.decode([YabaiWindow].self, from: windowsData)
+                result = mergeSpaces(spaces: spaces, windows: windows)
+            } catch {
+                result = nil
+            }
             semaphore.signal()
         }
 

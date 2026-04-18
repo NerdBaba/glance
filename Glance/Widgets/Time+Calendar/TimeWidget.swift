@@ -80,6 +80,11 @@ struct TimeWidget: View {
 class TimeProvider: ObservableObject {
     @Published var formattedTime: String = ""
 
+    /// Wrapper for widget use — formats with custom pattern/timeZone.
+    func formattedTime(pattern: String, timeZone: String?) -> String {
+        format(pattern: pattern, date: Date(), timeZone: timeZone)
+    }
+
     private var timer: Timer?
     private var formatter = DateFormatter()
     private var lastPattern: String = ""

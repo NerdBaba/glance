@@ -1,3 +1,17 @@
+/// Thread-safe output cache — class wrapper so async struct methods can mutate.
+private final class OutputCache {
+    private var cache: [String: UInt64] = [:]
+    private let queue = DispatchQueue(label: "com.glance.spaces.cache")
+
+    func get(_ key: String) -> UInt64? {
+        queue.sync { cache[key] }
+    }
+
+    func set(_ key: String, _ value: UInt64) {
+        queue.sync { cache[key] = value }
+    }
+}
+
 import Foundation
 
 /// Async, non-blocking shell command runner for yabai/AeroSpace.
@@ -12,8 +26,8 @@ struct SpacesCommandRunner {
 
     // Output cache: keyed by argument string hash -> last stdout hash
     // If the same command returns identical output, we skip JSON decoding entirely.
-    private var outputCache: [String: UInt64] = [:]
-    private let cacheQueue = DispatchQueue(label: "com.glance.spaces.cache")
+    // Uses a class holder so async struct methods can mutate it.
+    private let outputCacheHolder = OutputCache()
 
     /// Async run — returns Data via continuation, never blocks a thread.
     func run(arguments: [String]) async -> Data? {
@@ -60,11 +74,12 @@ struct SpacesCommandRunner {
         let currentHash = simpleHash(data)
 
         // Check cache — skip expensive JSONDecoder if output hasn't changed
-        let unchanged = cacheQueue.sync { outputCache[cacheKey] == currentHash }
-        if unchanged { return nil }
+        if let cached = outputCacheHolder.get(cacheKey), cached == currentHash {
+            return nil
+        }
 
         // Update cache
-        cacheQueue.sync { outputCache[cacheKey] = currentHash }
+        outputCacheHolder.set(cacheKey, currentHash)
 
         do {
             return try decoder.decode(type, from: data)
@@ -72,6 +87,11 @@ struct SpacesCommandRunner {
             log("decode \(String(describing: type)) failed: \(error)")
             return nil
         }
+    }
+
+    /// Direct decode from pre-fetched Data — no caching, no process spawning.
+    func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
+        try decoder.decode(type, from: data)
     }
 
     /// Run two queries concurrently and return both results.

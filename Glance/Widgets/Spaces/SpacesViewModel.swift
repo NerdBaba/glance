@@ -16,7 +16,7 @@ class SpacesViewModel: ObservableObject {
     // 2.0s — merges cascading events (space switch + app activate) into a single call.
     // Menu bar users won't perceive the difference, but it eliminates spawn storms.
     private var loadWorkItem: DispatchWorkItem?
-    private let debounceInterval: TimeInterval = 2.0
+    private let debounceInterval: TimeInterval = 0.75
 
     init() {
         let runningApps = NSWorkspace.shared.runningApplications.compactMap {

@@ -29,13 +29,13 @@ struct EnergyWidget: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Image(systemName: "bolt.fill")
                 .barStatusSymbol(size: 12, opticalYOffset: -0.1)
             Text(displayValue)
                 .font(widgetFont.toFont())
                 .monospacedDigit()
-                .frame(width: 62, alignment: .trailing)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .barSingleLineAligned()
         .experimentalConfiguration(horizontalPadding: 10)

@@ -10,7 +10,7 @@ struct FanWidget: View {
     private var showPercentage: Bool { config["show-percentage"]?.boolValue ?? false }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Image(systemName: "fan")
                 .barStatusSymbol(size: 12, opticalYOffset: -0.1)
             if showPercentage {
@@ -19,12 +19,12 @@ struct FanWidget: View {
                 Text("\(percent)%")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
-                    .frame(width: 42, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
             } else {
                 Text("\(thermalManager.fanSpeed)")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
-                    .frame(width: 42, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
             }
         }
         .barSingleLineAligned()

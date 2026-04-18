@@ -8,23 +8,23 @@ struct SystemMonitorWidget: View {
     var body: some View {
         HStack(spacing: 6) {
             // CPU
-            HStack(spacing: 3) {
+            HStack(spacing: 4) {
                 Image(systemName: "cpu")
                     .barStatusSymbol(size: 11, opticalYOffset: -0.1)
                 Text(String(format: "%.0f%%", viewModel.cpuUsage))
                     .font(widgetFont.toFont())
                     .monospacedDigit()
-                    .frame(width: 42, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
             }
 
             // Memory
-            HStack(spacing: 3) {
+            HStack(spacing: 4) {
                 Image(systemName: "memorychip")
                     .barStatusSymbol(size: 11, opticalYOffset: -0.1)
                 Text(String(format: "%.1f", viewModel.memoryUsedGB) + "G")
                     .font(widgetFont.toFont())
                     .monospacedDigit()
-                    .frame(width: 52, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
             }
         }
         .drawingGroup()
