@@ -7,34 +7,33 @@ private struct ExperimentalConfigurationModifier: ViewModifier {
     let horizontalPadding: CGFloat
 
     func body(content: Content) -> some View {
-        guard let fg = resolvedFG else {
-            // Fallback: config not yet resolved, use defaults
-            return content
+        if let fg = resolvedFG {
+            let showIndividualBg = fg.formation == .islands && fg.widgetsBackgroundDisplayed
+
+            Group {
+                if showIndividualBg {
+                    content
+                        .frame(height: fg.height < 45 ? 30 : 38)
+                        .padding(
+                            .horizontal,
+                            fg.height < 45 && horizontalPadding != 15
+                                ? 0
+                                : fg.height < 30
+                                    ? 0 : horizontalPadding
+                        )
+                        .widgetStyle(
+                            appearance,
+                            heightOverride: fg.height < 45 ? 30 : 38
+                        )
+                } else {
+                    content
+                        .padding(.horizontal, horizontalPadding > 8 ? 4 : horizontalPadding)
+                }
+            }.scaleEffect(fg.height < 25 ? 0.9 : 1, anchor: .leading)
+        } else {
+            content
                 .padding(.horizontal, horizontalPadding)
         }
-
-        let showIndividualBg = fg.formation == .islands && fg.widgetsBackgroundDisplayed
-
-        Group {
-            if showIndividualBg {
-                content
-                    .frame(height: fg.height < 45 ? 30 : 38)
-                    .padding(
-                        .horizontal,
-                        fg.height < 45 && horizontalPadding != 15
-                            ? 0
-                            : fg.height < 30
-                                ? 0 : horizontalPadding
-                    )
-                    .widgetStyle(
-                        appearance,
-                        heightOverride: fg.height < 45 ? 30 : 38
-                    )
-            } else {
-                content
-                    .padding(.horizontal, horizontalPadding > 8 ? 4 : horizontalPadding)
-            }
-        }.scaleEffect(fg.height < 25 ? 0.9 : 1, anchor: .leading)
     }
 }
 

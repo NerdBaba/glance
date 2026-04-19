@@ -2,25 +2,26 @@ import AppKit
 import Combine
 import Foundation
 
-/// Selectively parsed mactop data — only the fields Glance actually uses.
+/// Sensor snapshot — the three values Glance widgets consume.
 struct MactopSnapshot {
-    let cpuTemperatureCelsius: Double  // Average of CPU E-Core, P-Core, Die
+    let cpuTemperatureCelsius: Double
     let fanRPM: Int
     let totalPowerWatts: Double
 }
 
+/// Native SMC sensor watcher — polls AppleSMC keys via IOKit.
+/// No subprocess, no sudo required.
 final class MactopWatcher: ObservableObject {
     static let shared = MactopWatcher()
 
-    /// Published snapshot — only updates when parsed values actually change.
     @Published var snapshot: MactopSnapshot?
     @Published var isRunning = false
 
-    private var mactopProcess: Process?
-    private var outputPipe: Pipe?
-    private let queue = DispatchQueue(label: "com.glance.mactop", qos: .userInitiated)
+    private var nativeSensor: NativeSensorReader?
+    private var nativeTimer: Timer?
+    private let logger = AppLogger.shared
 
-    // Last parsed values — used for dedup to avoid firing @Published unnecessarily
+    // Dedup state
     private var lastTemp: Double = -1
     private var lastFan: Int = -1
     private var lastPower: Double = -1
@@ -28,7 +29,7 @@ final class MactopWatcher: ObservableObject {
     private let tempThreshold: Double = 0.5
     private let fanThreshold: Int = 50
     private let powerThreshold: Double = 0.3
-    private let minUpdateInterval: TimeInterval = 2.0  // Skip parsing if less than 2s since last update
+    private let minUpdateInterval: TimeInterval = 2.0
 
     private init() {}
 
@@ -36,124 +37,69 @@ final class MactopWatcher: ObservableObject {
         guard !isRunning else { return }
         isRunning = true
 
-        queue.async { [weak self] in
-            self?.runMactopLoop()
+        // Create native SMC sensor
+        if let sensor = NativeSensorReader(), sensor.isAvailable {
+            nativeSensor = sensor
+            logger.info("NativeSensorReader initialized — using IOKit SMC", category: .temperature)
+        } else {
+            logger.error("NativeSensorReader failed to initialize — SMC not available", category: .temperature)
+            return
+        }
+
+        // Initial read
+        pollSensors()
+
+        // Set up 2-second poll timer
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.nativeTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+                self?.pollSensors()
+            }
+            self.nativeTimer?.tolerance = 0.5
         }
     }
 
     func stop() {
         isRunning = false
-        mactopProcess?.terminate()
-        mactopProcess = nil
-        outputPipe = nil
+        nativeTimer?.invalidate()
+        nativeTimer = nil
+        nativeSensor = nil
     }
 
-    private func runMactopLoop() {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/mactop")
-        process.arguments = ["--headless", "--format", "json"]
+    private func pollSensors() {
+        guard let sensor = nativeSensor, isRunning else { return }
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-
-        mactopProcess = process
-        outputPipe = pipe
-
-        do {
-            try process.run()
-
-            let handle = pipe.fileHandleForReading
-            var buffer = Data()
-
-            while isRunning {
-                let available = handle.availableData
-                if available.isEmpty {
-                    if process.terminationStatus != 0 {
-                        break
-                    }
-                    usleep(100000)
-                    continue
-                }
-
-                buffer.append(available)
-
-                if let newlineRange = buffer.range(of: Data([0x0A])) {
-                    let lineData = buffer[buffer.startIndex..<newlineRange.lowerBound]
-                    buffer = Data(buffer[newlineRange.upperBound...])
-
-                    if let line = String(data: lineData, encoding: .utf8) {
-                        parseAndPublish(line)
-                    }
-                }
-            }
-
-            process.terminate()
-        } catch {
-            isRunning = false
-        }
-    }
-
-    /// Parse only the specific fields Glance needs — no full JSON tree construction.
-    private func parseAndPublish(_ line: String) {
-        // Throttle — skip if less than minUpdateInterval since last successful update
         let now = Date()
         guard now.timeIntervalSince(lastUpdateTime) >= minUpdateInterval else { return }
 
-        guard let data = line.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return
+        let snapshot = sensor.readAll()
+
+        if snapshot.cpuTemperatureCelsius > 0 {
+            logger.info(
+                String(format: "SMC sensors — Temp: %.1f°C  Fan: %d RPM  Power: %.1fW",
+                       snapshot.cpuTemperatureCelsius,
+                       snapshot.fanRPM,
+                       snapshot.totalPowerWatts),
+                category: .temperature
+            )
+        } else {
+            logger.warning("SMC returned zero temperature — sensor may have failed", category: .temperature)
         }
 
-        var newTemp: Double = 0
-        var newFan: Int = 0
-        var newPower: Double = 0
+        publishIfChanged(snapshot: snapshot, now: now)
+    }
 
-        // Extract CPU temperature average
-        if let temps = json["temperatures"] as? [[String: Any]] {
-            var totalTemp: Double = 0
-            var count = 0
-            for group in temps {
-                if let groupName = group["group"] as? String,
-                   (groupName == "CPU E-Core" || groupName == "CPU P-Core" || groupName == "CPU Die"),
-                   let avg = group["avg_celsius"] as? Double {
-                    totalTemp += avg
-                    count += 1
-                }
-            }
-            if count > 0 { newTemp = totalTemp / Double(count) }
-        }
-
-        // Extract fan RPM
-        if let fans = json["fans"] as? [[String: Any]],
-           let firstFan = fans.first,
-           let rpm = firstFan["rpm"] as? Int {
-            newFan = rpm
-        }
-
-        // Extract power
-        if let soc = json["soc_metrics"] as? [String: Any],
-           let power = soc["total_power"] as? Double {
-            newPower = power
-        }
-
-        // Dedup — only fire @Published if values changed meaningfully
-        let tempChanged = abs(newTemp - lastTemp) >= tempThreshold
-        let fanChanged = abs(newFan - lastFan) >= fanThreshold
-        let powerChanged = abs(newPower - lastPower) >= powerThreshold
+    private func publishIfChanged(snapshot: MactopSnapshot, now: Date) {
+        let tempChanged = abs(snapshot.cpuTemperatureCelsius - lastTemp) >= tempThreshold
+        let fanChanged = abs(snapshot.fanRPM - lastFan) >= fanThreshold
+        let powerChanged = abs(snapshot.totalPowerWatts - lastPower) >= powerThreshold
 
         guard tempChanged || fanChanged || powerChanged else { return }
 
         lastUpdateTime = now
-        if tempChanged { lastTemp = newTemp }
-        if fanChanged { lastFan = newFan }
-        if powerChanged { lastPower = newPower }
-
-        let snapshot = MactopSnapshot(
-            cpuTemperatureCelsius: newTemp,
-            fanRPM: newFan,
-            totalPowerWatts: newPower
-        )
+        if tempChanged { lastTemp = snapshot.cpuTemperatureCelsius }
+        if fanChanged { lastFan = snapshot.fanRPM }
+        if powerChanged { lastPower = snapshot.totalPowerWatts }
 
         DispatchQueue.main.async { [weak self] in
             self?.snapshot = snapshot
