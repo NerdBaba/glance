@@ -247,6 +247,26 @@ final class ConfigManager: ObservableObject {
             var newOthers = existing.others
             newOthers[widgetKey] = widgetConfig
             root.widgets = WidgetsSection(displayed: existing.displayed, others: newOthers)
+        } else if section == "widgets.widget-colors" {
+            // Handle per-widget foreground colors section
+            var config = WidgetColorsConfig()
+            for line in lines {
+                if let eqIndex = line.firstIndex(of: "=") {
+                    let k = String(line[..<eqIndex]).trimmingCharacters(in: .whitespaces)
+                    let v = String(line[line.index(after: eqIndex)...]).trimmingCharacters(in: .whitespaces)
+                    if k == "mode" {
+                        let modeStr = v.hasPrefix("\"") && v.hasSuffix("\"") ? String(v.dropFirst().dropLast()) : v
+                        config.mode = WidgetColorMode(rawValue: modeStr) ?? .disabled
+                    } else if let idx = Int(v) {
+                        let widgetId = k.hasPrefix("\"") && k.hasSuffix("\"") ? String(k.dropFirst().dropLast()) : k
+                        config.indices[widgetId] = idx
+                    }
+                }
+            }
+            let existing = root.widgets ?? WidgetsSection(displayed: [], others: [:])
+            var updated = existing
+            updated.widgetColors = config
+            root.widgets = updated
         } else if section.hasPrefix("widgets.") {
             // Handle other widgets.* sections (like widgets.pywal)
             let widgetKey = String(section.dropFirst("widgets.".count))
@@ -742,5 +762,62 @@ final class ConfigManager: ObservableObject {
             merged[key] = value
         }
         return merged
+    }
+
+    func updateWidgetColors(mode: WidgetColorMode, indices: [String: Int]) {
+        guard let path = configFilePath else { return }
+        do {
+            var text = try String(contentsOfFile: path, encoding: .utf8)
+            text = rewriteWidgetColorsSection(in: text, mode: mode, indices: indices)
+            try text.write(toFile: path, atomically: true, encoding: .utf8)
+            parseConfigFile(at: path)
+        } catch {
+            logger.error("Error updating widget colors: \(error.localizedDescription)", category: .config)
+        }
+    }
+
+    private func rewriteWidgetColorsSection(in original: String, mode: WidgetColorMode, indices: [String: Int]) -> String {
+        let lines = original.components(separatedBy: "\n")
+        var newLines: [String] = []
+        var inSection = false
+        var found = false
+        var wrote = false
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed == "[widgets.widget-colors]" {
+                if !wrote {
+                    writeWidgetColors(to: &newLines, mode: mode, indices: indices)
+                    wrote = true
+                }
+                inSection = true
+                found = true
+                continue
+            } else if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") && !trimmed.hasPrefix("[[") {
+                if inSection && !wrote {
+                    writeWidgetColors(to: &newLines, mode: mode, indices: indices)
+                    wrote = true
+                }
+                inSection = false
+            } else if inSection {
+                continue
+            }
+            newLines.append(line)
+        }
+
+        if !found {
+            newLines.append("")
+            writeWidgetColors(to: &newLines, mode: mode, indices: indices)
+        }
+
+        return newLines.joined(separator: "\n")
+    }
+
+    private func writeWidgetColors(to lines: inout [String], mode: WidgetColorMode, indices: [String: Int]) {
+        lines.append("[widgets.widget-colors]")
+        lines.append("mode = \"\(mode.rawValue)\"")
+        for (widgetId, index) in indices.sorted(by: { $0.key < $1.key }) {
+            lines.append("\"\(widgetId)\" = \(index)")
+        }
     }
 }

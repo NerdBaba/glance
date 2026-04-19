@@ -121,6 +121,19 @@ struct Config: Equatable {
         rootToml.experimental ?? ExperimentalConfig()
     }
 
+    var widgetForegroundColors: [String: Color] {
+        guard let wc = rootToml.widgets?.widgetColors,
+              wc.mode != .disabled,
+              let pywal = pywalColors else { return [:] }
+        var result: [String: Color] = [:]
+        for (widgetId, index) in wc.indices {
+            if index >= 0, index < pywal.colors.count {
+                result[widgetId] = pywal.colors[index]
+            }
+        }
+        return result
+    }
+
     static func == (lhs: Config, rhs: Config) -> Bool {
         lhs.updatedAt == rhs.updatedAt
     }
@@ -149,6 +162,18 @@ struct PywalConfig {
     var backgroundIndex: Int = 0
 }
 
+/// Per-widget foreground color mode
+enum WidgetColorMode: String {
+    case disabled
+    case pywalIndex = "pywal-index"
+}
+
+/// Configuration for per-widget foreground colors under [widgets.widget-colors]
+struct WidgetColorsConfig {
+    var mode: WidgetColorMode = .disabled
+    var indices: [String: Int] = [:]
+}
+
 typealias ConfigData = [String: TOMLValue]
 
 class ConfigProvider: ObservableObject {
@@ -162,6 +187,7 @@ class ConfigProvider: ObservableObject {
 struct WidgetsSection: Decodable {
     let displayed: [TomlWidgetItem]
     let others: [String: ConfigData]
+    var widgetColors: WidgetColorsConfig?
 
     private struct DynamicKey: CodingKey {
         var stringValue: String
@@ -173,10 +199,12 @@ struct WidgetsSection: Decodable {
 
     init(
         displayed: [TomlWidgetItem],
-        others: [String: ConfigData]
+        others: [String: ConfigData],
+        widgetColors: WidgetColorsConfig? = nil
     ) {
         self.displayed = displayed
         self.others = others
+        self.widgetColors = widgetColors
     }
 
     init(from decoder: Decoder) throws {
@@ -191,6 +219,23 @@ struct WidgetsSection: Decodable {
 
         for key in container.allKeys {
             guard key.stringValue != "displayed" else { continue }
+
+            if key.stringValue == "widget-colors" {
+                let nested = try container.nestedContainer(
+                    keyedBy: DynamicKey.self, forKey: key)
+                var config = WidgetColorsConfig()
+                for nestedKey in nested.allKeys {
+                    if nestedKey.stringValue == "mode" {
+                        if let modeStr = try? nested.decode(String.self, forKey: nestedKey) {
+                            config.mode = WidgetColorMode(rawValue: modeStr) ?? .disabled
+                        }
+                    } else if let idx = try? nested.decode(Int.self, forKey: nestedKey) {
+                        config.indices[nestedKey.stringValue] = idx
+                    }
+                }
+                self.widgetColors = config
+                continue
+            }
 
             let nested = try container.nestedContainer(
                 keyedBy: DynamicKey.self, forKey: key)

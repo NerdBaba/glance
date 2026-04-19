@@ -4,13 +4,12 @@ struct MenuBarView: View {
     @ObservedObject var configManager = ConfigManager.shared
 
     var body: some View {
-        let _ = configManager.config // ensure body recomputes when config changes
+        let _ = configManager.config
         let items = configManager.config.rootToml.widgets?.displayed ?? []
         let appearance = configManager.config.appearance
         let fg = configManager.config.experimental.foreground
         let formation = fg.formation
 
-        // Cache resolved foreground config for child widgets
         let resolvedFG = ResolvedForegroundConfig(
             formation: fg.formation,
             height: fg.resolveHeight(),
@@ -55,7 +54,7 @@ struct MenuBarView: View {
         .preferredColorScheme(.dark)
     }
 
-    // MARK: - Full Monobar (flat menubar — no rounding, no border)
+    // MARK: - Full Monobar
 
     @ViewBuilder
     private func fullBar(items: [TomlWidgetItem], appearance: AppearanceConfig, fg: ForegroundConfig) -> some View {
@@ -82,7 +81,7 @@ struct MenuBarView: View {
         .widgetStyle(appearance, heightOverride: capsuleHeight(fg), showBackground: showBg)
     }
 
-    // MARK: - Islands (Current Behavior)
+    // MARK: - Islands
 
     @ViewBuilder
     private func islandsBar(items: [TomlWidgetItem], appearance: AppearanceConfig, fg: ForegroundConfig) -> some View {
@@ -99,13 +98,11 @@ struct MenuBarView: View {
                         }
                         Spacer(minLength: 0)
                     }
-
                     HStack(spacing: fg.spacing) {
                         ForEach(Array(sections[1].enumerated()), id: \.offset) { _, item in
                             islandItem(item, appearance: appearance, fg: fg, showBg: showBg)
                         }
                     }
-
                     HStack(spacing: fg.spacing) {
                         Spacer(minLength: 0)
                         ForEach(Array(sections[2].enumerated()), id: \.offset) { _, item in
@@ -150,7 +147,7 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Pills (Grouped by Spacers)
+    // MARK: - Pills
 
     @ViewBuilder
     private func pillsBar(items: [TomlWidgetItem], appearance: AppearanceConfig, fg: ForegroundConfig) -> some View {
@@ -167,11 +164,9 @@ struct MenuBarView: View {
                         pillCapsule(nonSpacerGroups[0], height: height, appearance: appearance, fg: fg)
                         Spacer(minLength: 0)
                     }
-
                     HStack(spacing: fg.gap) {
                         pillCapsule(nonSpacerGroups[1], height: height, appearance: appearance, fg: fg)
                     }
-
                     HStack(spacing: fg.gap) {
                         Spacer(minLength: 0)
                         pillCapsule(nonSpacerGroups[2], height: height, appearance: appearance, fg: fg)
@@ -218,7 +213,6 @@ struct MenuBarView: View {
         max(fg.resolveHeight() - 4, 24)
     }
 
-    /// Splits widget items into sections separated by spacers.
     private func splitBySpacer(_ items: [TomlWidgetItem]) -> [[TomlWidgetItem]] {
         var sections: [[TomlWidgetItem]] = [[]]
         for item in items {
@@ -245,17 +239,14 @@ struct MenuBarView: View {
         let hasBanner = items.contains(where: { $0.id == "system-banner" })
 
         if sections.count == 3 {
-            // True center: left pushes left, center stays centered, right pushes right
             ZStack {
                 HStack(spacing: fg.spacing) {
                     widgetRow(sections[0])
                     Spacer(minLength: 0)
                 }
-
                 HStack(spacing: fg.spacing) {
                     widgetRow(sections[1])
                 }
-
                 HStack(spacing: fg.spacing) {
                     Spacer(minLength: 0)
                     widgetRow(sections[2])
@@ -273,19 +264,17 @@ struct MenuBarView: View {
                 }
             }
             .animation(.smooth(duration: 0.3), value: items.map(\.id))
-
             if !hasBanner {
                 SystemBannerWidget(withLeftPadding: true)
             }
         }
     }
 
-    // MARK: - Group Splitting (for Pills)
+    // MARK: - Group Splitting
 
     private struct WidgetGroup {
         let items: [TomlWidgetItem]
         let isSpacer: Bool
-
         static func spacer() -> WidgetGroup {
             WidgetGroup(items: [], isSpacer: true)
         }
@@ -294,7 +283,6 @@ struct MenuBarView: View {
     private func splitIntoGroups(_ items: [TomlWidgetItem]) -> [WidgetGroup] {
         var groups: [WidgetGroup] = []
         var currentGroup: [TomlWidgetItem] = []
-
         for item in items {
             if item.id == "spacer" {
                 if !currentGroup.isEmpty {
@@ -303,17 +291,14 @@ struct MenuBarView: View {
                 }
                 groups.append(.spacer())
             } else if item.id == "divider" {
-                // Dividers become thin separators within a pill group
                 currentGroup.append(item)
             } else {
                 currentGroup.append(item)
             }
         }
-
         if !currentGroup.isEmpty {
             groups.append(WidgetGroup(items: currentGroup, isSpacer: false))
         }
-
         return groups
     }
 
@@ -321,77 +306,64 @@ struct MenuBarView: View {
 
     @ViewBuilder
     private func buildView(for item: TomlWidgetItem) -> some View {
-        let config = ConfigProvider(
-            config: configManager.resolvedWidgetConfig(for: item))
+        let config = ConfigProvider(config: configManager.resolvedWidgetConfig(for: item))
+        let fgColor = configManager.config.widgetForegroundColors[item.id]
+        let widget = widgetView(for: item, config: config)
+        if let fgColor {
+            widget.foregroundStyle(fgColor)
+        } else {
+            widget
+        }
+    }
 
+    @ViewBuilder
+    private func widgetView(for item: TomlWidgetItem, config: ConfigProvider) -> some View {
         switch item.id {
         case "default.spaces":
             SpacesWidget().environmentObject(config)
-
         case "default.network":
             NetworkWidget().environmentObject(config)
-
         case "default.battery":
             BatteryWidget().environmentObject(config)
-
         case "default.time":
             TimeWidget(configProvider: config)
-
         case "default.nowplaying":
-            NowPlayingWidget()
-                .environmentObject(config)
-
+            NowPlayingWidget().environmentObject(config)
         case "default.volume":
             VolumeWidget().environmentObject(config)
-
         case "default.activeapp":
             ActiveAppWidget().environmentObject(config)
-
         case "default.weather":
             WeatherWidget().environmentObject(config)
-
         case "default.systemmonitor":
             SystemMonitorWidget().environmentObject(config)
-
         case "default.disk":
             DiskWidget().environmentObject(config)
-
         case "default.fan":
             FanWidget().environmentObject(config)
-
         case "default.energy":
             EnergyWidget().environmentObject(config)
-
         case "default.pomodoro":
             PomodoroWidget().environmentObject(config)
-
         case "default.inputlanguage":
             InputLanguageWidget()
-
         case "default.brightness":
             BrightnessWidget().environmentObject(config)
-
         case "default.clipboard":
             ClipboardWidget().environmentObject(config)
-
         case "default.bluetooth":
             BluetoothWidget().environmentObject(config)
-
         case "default.temperature":
             TemperatureWidget().environmentObject(config)
-
         case "spacer":
             Spacer().frame(minWidth: 50, maxWidth: .infinity)
-
         case "divider":
             Rectangle()
                 .fill(configManager.config.appearance.accentColor.opacity(0.4))
                 .frame(width: 2, height: 15)
                 .clipShape(Capsule())
-
         case "system-banner":
             SystemBannerWidget()
-
         default:
             if item.id.hasPrefix("script.") {
                 let command = config.config["command"]?.stringValue ?? ""

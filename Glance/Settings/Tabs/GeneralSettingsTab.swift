@@ -40,6 +40,9 @@ struct GeneralSettingsTab: View {
     @State private var pywalBorder1Index: Int = -1
     @State private var pywalBorder2Index: Int = -1
     @State private var pywalBgIndex: Int = -1
+    @State private var widgetColorMode: WidgetColorMode = .disabled
+    @State private var widgetColorIndices: [String: Int] = [:]
+    @State private var widgetColorsFirstSync: Bool = true
     @State private var hotkeyString: String = "ctrl+option+b"
     @State private var hotkeyValid: Bool = true
     @State private var isSyncing: Bool = false
@@ -218,6 +221,65 @@ struct GeneralSettingsTab: View {
                         }
                         .padding(.top, 8)
                     }
+
+                    // Per-widget foreground colors
+                    if usePywal, configManager.pywalColors != nil {
+                        Divider().padding(.vertical, 4)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Per-Widget Foreground Colors")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                                Picker("", selection: $widgetColorMode) {
+                                    Text("Disabled").tag(WidgetColorMode.disabled)
+                                    Text("Pywal Index").tag(WidgetColorMode.pywalIndex)
+                                }
+                                .pickerStyle(.segmented)
+                                .frame(width: 160)
+                                .onChange(of: widgetColorMode) { _, newValue in
+                                    guard !isSyncing else { return }
+                                    commitWidgetColors(mode: newValue)
+                                }
+                            }
+
+                            if widgetColorMode == .pywalIndex {
+                                HStack {
+                                    Button(action: randomizeWidgetColors) {
+                                        Label("Randomize", systemImage: "dice")
+                                    }
+                                }
+
+                                let widgetIds = configManager.config.rootToml.widgets?.displayed
+                                    .map(\.id)
+                                    .filter { $0 != "spacer" && $0 != "divider" && $0 != "system-banner" }
+                                    ?? []
+
+                                if !widgetIds.isEmpty {
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 12) {
+                                            ForEach(widgetIds, id: \.self) { wid in
+                                                WidgetColorSwatch(
+                                                    widgetId: wid,
+                                                    index: Binding(
+                                                        get: { widgetColorIndices[wid, default: 0] },
+                                                        set: { widgetColorIndices[wid] = $0 }
+                                                    ),
+                                                    onChange: { idx in
+                                                        widgetColorIndices[wid] = idx
+                                                        commitWidgetColors(mode: .pywalIndex)
+                                                    }
+                                                )
+                                            }
+                                        }
+                                        .padding(.vertical, 4)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     SliderRow(label: "Roundness", value: $roundness, range: 0...50, step: 1, format: "%.0f") {
                         configManager.updateConfigValue(key: "appearance.roundness", newValue: String(Int(roundness)))
                     }
@@ -501,6 +563,19 @@ struct GeneralSettingsTab: View {
         hotkeyString = root.hotkey ?? "ctrl+option+b"
         hotkeyValid = true
         syncNeonColors()
+        syncWidgetColors()
+    }
+
+    private func syncWidgetColors() {
+        guard widgetColorsFirstSync else { return }
+        widgetColorsFirstSync = false
+        if let wc = configManager.config.rootToml.widgets?.widgetColors {
+            widgetColorMode = wc.mode
+            widgetColorIndices = wc.indices
+        } else {
+            widgetColorMode = .disabled
+            widgetColorIndices = [:]
+        }
     }
 
     private func syncNeonColors() {
@@ -514,6 +589,24 @@ struct GeneralSettingsTab: View {
         } else {
             useGradient = false
         }
+    }
+
+    private func commitWidgetColors(mode: WidgetColorMode) {
+        configManager.updateWidgetColors(mode: mode, indices: widgetColorIndices)
+    }
+
+    private func randomizeWidgetColors() {
+        guard configManager.pywalColors != nil else { return }
+        let ids = configManager.config.rootToml.widgets?.displayed
+            .map(\.id)
+            .filter { $0 != "spacer" && $0 != "divider" && $0 != "system-banner" }
+            ?? []
+        var newIndices: [String: Int] = [:]
+        for wid in ids {
+            newIndices[wid] = Int.random(in: 0...15)
+        }
+        widgetColorIndices = newIndices
+        commitWidgetColors(mode: .pywalIndex)
     }
 
     // MARK: - Preset apply/save helpers
@@ -1000,5 +1093,70 @@ private struct PywalColorPicker: View {
                     }
             }
         }
+    }
+}
+
+private struct WidgetColorSwatch: View {
+    let widgetId: String
+    @Binding var index: Int
+    let onChange: (Int) -> Void
+
+    private var displayName: String {
+        if widgetId.hasPrefix("default.") {
+            return String(widgetId.dropFirst(8)).capitalized
+                .replacingOccurrences(of: "-", with: " ")
+        }
+        if widgetId.hasPrefix("script.") {
+            return "Script: \(String(widgetId.dropFirst(7)))"
+        }
+        return widgetId
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(displayName)
+                .font(.caption)
+                .lineLimit(1)
+                .frame(width: 90, alignment: .leading)
+
+            if let pywal = ConfigManager.shared.pywalColors {
+                Circle()
+                    .fill(pywal.colors[index])
+                    .frame(width: 28, height: 28)
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.5), lineWidth: 1.5))
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 2) {
+                        ForEach(0..<16, id: \.self) { i in
+                            Circle()
+                                .fill(pywal.colors[i])
+                                .frame(width: 10, height: 10)
+                                .overlay(
+                                    Circle().strokeBorder(
+                                        index == i ? Color.white : Color.clear,
+                                        lineWidth: 1.5
+                                    )
+                                )
+                                .onTapGesture {
+                                    index = i
+                                    onChange(i)
+                                }
+                        }
+                    }
+                }
+                .frame(height: 14)
+
+                Stepper("", value: $index, in: 0...15)
+                    .labelsHidden()
+                    .frame(width: 70)
+                    .onChange(of: index) { _, newValue in
+                        onChange(newValue)
+                    }
+            }
+        }
+        .padding(8)
+        .background(.quaternary.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .frame(width: 110)
     }
 }
