@@ -8,6 +8,7 @@ enum SpacesDisplayMode: String {
     case dots          = "dots"         // Small circles: filled/hollow/focused
     case iconsOnly     = "icons-only"   // App icons only, no numbers
     case focusedOnly   = "focused-only" // Only show the focused space
+    case customIcons   = "custom-icons" // Custom SF Symbol icon per space
 }
 
 enum SpacesHighlight: String {
@@ -213,6 +214,8 @@ private struct SpaceView: View {
             dotsContent(isFocused: isFocused, isOccupied: isOccupied)
         case .iconsOnly:
             iconsOnlyContent(isFocused: isFocused)
+        case .customIcons:
+            customIconsContent(isFocused: isFocused)
         }
     }
 
@@ -284,6 +287,29 @@ private struct SpaceView: View {
             }
         }
         .padding(.horizontal, 4)
+        .frame(height: 30)
+    }
+
+    // MARK: - Custom Icons Mode (SF Symbol icon)
+
+    @ViewBuilder
+    private func customIconsContent(isFocused: Bool) -> some View {
+        let iconSymbol = config["space.global-icon"]?.stringValue ?? "desktopcomputer"
+
+        HStack(spacing: 4) {
+            if showKey {
+                Text(space.id.convertToNumeralSystem(numeralSystem))
+                    .font(.system(size: 12, weight: isFocused ? .bold : .regular))
+                    .monospacedDigit()
+                    .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
+                    .frame(width: 16, alignment: .center)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            Image(systemName: iconSymbol)
+                .font(.system(size: 14))
+                .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
+        }
+        .padding(.horizontal, 6)
         .frame(height: 30)
     }
 }

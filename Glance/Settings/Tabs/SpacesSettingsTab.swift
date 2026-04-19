@@ -11,6 +11,8 @@ struct SpacesSettingsTab: View {
     @State private var selectedNumeralSystem: String = "arabic"
     @State private var tintIcons: Bool = false
     @State private var selectedIconStyle: String = "app-icon"
+    @State private var customIcon: String = "desktopcomputer"
+    @State private var showingIconPicker = false
 
     var body: some View {
         ScrollView {
@@ -23,6 +25,7 @@ struct SpacesSettingsTab: View {
                         Text("Dots").tag("dots")
                         Text("Icons Only").tag("icons-only")
                         Text("Focused Only").tag("focused-only")
+                        Text("Custom Icons").tag("custom-icons")
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: selectedDisplayMode) { _, newValue in
@@ -97,6 +100,42 @@ struct SpacesSettingsTab: View {
                         }
                 }
 
+                // MARK: - Custom Icons
+                SettingsSection(title: "Custom Icons") {
+                    HStack {
+                        Image(systemName: customIcon)
+                            .font(.system(size: 24))
+                            .frame(width: 40, height: 40)
+                            .background(Color.accentColor.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Global icon for all spaces")
+                                .font(.system(size: 13))
+                            Text("Used when icon style is 'SF Symbols'")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Pick") {
+                            showingIconPicker = true
+                        }
+                    }
+                    .sheet(isPresented: $showingIconPicker) {
+                        IconPickerView(
+                            selectedIcon: Binding(
+                                get: { customIcon },
+                                set: { customIcon = $0 }
+                            ),
+                            recentIcons: loadRecentIcons(),
+                            onIconSelected: { icon in
+                                customIcon = icon
+                                saveCustomIcon(icon)
+                            },
+                            onDismiss: { showingIconPicker = false }
+                        )
+                    }
+                }
+
                 // MARK: - Window Titles
                 SettingsSection(title: "Window Titles") {
                     Toggle("Show focused window title", isOn: $showTitle)
@@ -130,6 +169,19 @@ struct SpacesSettingsTab: View {
         selectedNumeralSystem = spacesConfig["space.numeral-system"]?.stringValue ?? "arabic"
         tintIcons = spacesConfig["space.tint-icons"]?.boolValue ?? false
         selectedIconStyle = spacesConfig["space.icon-style"]?.stringValue ?? "app-icon"
+        customIcon = spacesConfig["space.global-icon"]?.stringValue ?? "desktopcomputer"
+    }
+
+    private func saveCustomIcon(_ icon: String) {
+        configManager.updateConfigValue(
+            key: "widgets.default.spaces.space.global-icon",
+            newValue: icon)
+    }
+
+    private func loadRecentIcons() -> [String] {
+        let spacesConfig = configManager.globalWidgetConfig(for: "default.spaces") ?? [:]
+        guard let array = spacesConfig["space.recent-icons"]?.arrayValue else { return [] }
+        return array.compactMap { $0.stringValue }
     }
 }
 
