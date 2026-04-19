@@ -263,7 +263,7 @@ struct GeneralSettingsTab: View {
                                                 WidgetColorSwatch(
                                                     widgetId: wid,
                                                     index: Binding(
-                                                        get: { widgetColorIndices[wid, default: 0] },
+                                                        get: { widgetColorIndices[wid, default: 8] },
                                                         set: { widgetColorIndices[wid] = $0 }
                                                     ),
                                                     onChange: { idx in
@@ -603,7 +603,7 @@ struct GeneralSettingsTab: View {
             ?? []
         var newIndices: [String: Int] = [:]
         for wid in ids {
-            newIndices[wid] = Int.random(in: 0...15)
+            newIndices[wid] = Int.random(in: 8...15)
         }
         widgetColorIndices = newIndices
         commitWidgetColors(mode: .pywalIndex)
@@ -1127,7 +1127,7 @@ private struct WidgetColorSwatch: View {
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 2) {
-                        ForEach(0..<16, id: \.self) { i in
+                        ForEach(8..<16, id: \.self) { i in
                             Circle()
                                 .fill(pywal.colors[i])
                                 .frame(width: 10, height: 10)
@@ -1146,7 +1146,7 @@ private struct WidgetColorSwatch: View {
                 }
                 .frame(height: 14)
 
-                Stepper("", value: $index, in: 0...15)
+                Stepper("", value: $index, in: 8...15)
                     .labelsHidden()
                     .frame(width: 70)
                     .onChange(of: index) { _, newValue in
