@@ -20,7 +20,10 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     /// Cached windows per space ID — updated each time a space is focused.
     private var windowCache: [Int: [NativeWindow]] = [:]
 
-    /// Tracks the previous poll's space ID to detect transitions.
+    /// Tracks spaces that have already been bootstrapped — never re-bootstrap these.
+    private var bootstrappedSpaces: Set<Int> = []
+
+    /// Tracks the previous poll's space ID to skip redundant scans.
     private var lastSeenSpaceID: Int?
 
     /// Serializes access to windowCache — called from concurrent GCD threads.
@@ -68,9 +71,6 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     func getSpacesWithWindows() -> [NativeSpace]? {
         guard cgsAvailable else { return nil }
 
-        lock.lock()
-        defer { lock.unlock() }
-
         let conn = CGSMainConnectionID()
         guard conn != 0 else {
             cgsAvailable = false
@@ -101,38 +101,67 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
             return t == 0 || t == 4
         }
 
-        let onScreenWindows = getOnScreenWindows()
+        // Fast path: if space hasn't changed and cache is complete, skip entirely.
+        let spaceChanged = lastSeenSpaceID != currentSpaceID
 
-        // Cache the focused space's windows — but only after verifying
-        // that on-screen windows actually belong to this space.
-        // During a space transition, CGS reports the new space before
-        // the on-screen window list updates, causing a mismatch.
+        if !spaceChanged {
+            lock.lock()
+            let allCached = userSpaces.allSatisfy { space in
+                guard let sid = intValue(space["ManagedSpaceID"]) else { return false }
+                if sid == currentSpaceID { return true }
+                return windowCache[sid] != nil
+            }
+            lock.unlock()
+            if allCached {
+                return buildResultFromCache(userSpaces: userSpaces, currentSpaceID: currentSpaceID)
+            }
+        }
+
+        lastSeenSpaceID = currentSpaceID
+
+        // Full scan — capture window list once, reuse for everything.
+        guard
+            let fullWindowList = CGWindowListCopyWindowInfo(
+                [.optionOnScreenOnly, .excludeDesktopElements],
+                kCGNullWindowID) as? [[String: Any]]
+        else {
+            return nil
+        }
+
+        let onScreenWindows = parseOnScreenWindows(from: fullWindowList)
+
+        // Cache focused space windows (with verification during transitions).
         if let cid = currentSpaceID {
             if let firstWindow = onScreenWindows.first {
                 let wSpaces = CGSCopySpacesForWindows(
                     conn, 0x7, [firstWindow.id] as CFArray)
                     as? [NSNumber] ?? []
                 if wSpaces.contains(where: { $0.intValue == cid }) {
+                    lock.lock()
                     windowCache[cid] = onScreenWindows
+                    lock.unlock()
                 }
             } else {
-                // No windows — safe to cache empty.
+                lock.lock()
                 windowCache[cid] = []
+                lock.unlock()
             }
         }
 
-        // Collect all user space IDs for cache bootstrapping.
+        // Remove stale cache entries.
         let allSpaceIDs = Set(
             userSpaces.compactMap { intValue($0["ManagedSpaceID"]) })
-        // Remove stale cache entries for spaces that no longer exist.
+        lock.lock()
         for key in windowCache.keys where !allSpaceIDs.contains(key) {
             windowCache.removeValue(forKey: key)
         }
+        lock.unlock()
 
-        // Bootstrap: for spaces we've never visited, do a one-time lookup.
+        // Bootstrap uncached spaces (one-time, uses shared windowList).
         bootstrapUncachedSpaces(
             conn: conn, userSpaces: userSpaces,
-            currentSpaceID: currentSpaceID)
+            currentSpaceID: currentSpaceID,
+            windowList: fullWindowList)
 
         var result: [NativeSpace] = []
         for (index, space) in userSpaces.enumerated() {
@@ -146,10 +175,11 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
             if isFocused {
                 spaceWindows = onScreenWindows
             } else if let pid = intValue(space["pid"]) {
-                // Fullscreen space — get the owning app via its PID.
                 spaceWindows = windowFromPid(pid_t(pid))
             } else {
+                lock.lock()
                 spaceWindows = windowCache[spaceID] ?? []
+                lock.unlock()
             }
 
             result.append(
@@ -161,6 +191,42 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
                 ))
         }
 
+        return result
+    }
+
+    /// Build result entirely from cache — no CGS window enumeration.
+    private func buildResultFromCache(
+        userSpaces: [[String: Any]], currentSpaceID: Int?
+    ) -> [NativeSpace]? {
+        var result: [NativeSpace] = []
+        for (index, space) in userSpaces.enumerated() {
+            let spaceID = intValue(space["ManagedSpaceID"])
+            guard let spaceID else { continue }
+
+            let isFocused = spaceID == currentSpaceID
+            let spaceNumber = index + 1
+
+            let spaceWindows: [NativeWindow]
+            if isFocused {
+                lock.lock()
+                spaceWindows = windowCache[spaceID] ?? []
+                lock.unlock()
+            } else if let pid = intValue(space["pid"]) {
+                spaceWindows = windowFromPid(pid_t(pid))
+            } else {
+                lock.lock()
+                spaceWindows = windowCache[spaceID] ?? []
+                lock.unlock()
+            }
+
+            result.append(
+                NativeSpace(
+                    id: spaceID,
+                    spaceNumber: spaceNumber,
+                    isFocused: isFocused,
+                    windows: spaceWindows
+                ))
+        }
         return result
     }
 
@@ -282,21 +348,18 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     /// One-time lookup for spaces we haven't visited yet.
     /// Uses CGSCopySpacesForWindows with strict filtering:
     /// only windows exclusively on ONE space (not sticky/global).
+    /// Accepts a pre-captured windowList to avoid redundant CGS calls.
     private func bootstrapUncachedSpaces(
-        conn: Int, userSpaces: [[String: Any]], currentSpaceID: Int?
+        conn: Int, userSpaces: [[String: Any]], currentSpaceID: Int?,
+        windowList: [[String: Any]]
     ) {
+        // Only consider spaces never bootstrapped before.
         let uncachedIDs = userSpaces.compactMap {
             intValue($0["ManagedSpaceID"])
         }.filter {
-            $0 != currentSpaceID && windowCache[$0] == nil
+            $0 != currentSpaceID && !bootstrappedSpaces.contains($0)
         }
         guard !uncachedIDs.isEmpty else { return }
-
-        guard
-            let windowList = CGWindowListCopyWindowInfo(
-                [.excludeDesktopElements], kCGNullWindowID)
-                as? [[String: Any]]
-        else { return }
 
         let allowed = regularAppNames()
         let systemApps: Set<String> = [
@@ -346,27 +409,22 @@ class NativeSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
             )
             window.appIcon = IconCache.shared.icon(for: ownerName)
 
+            lock.lock()
             if windowCache[sid] == nil { windowCache[sid] = [] }
             windowCache[sid]!.append(window)
+            lock.unlock()
         }
 
-        // Mark remaining uncached spaces as empty (so bootstrap doesn't retry).
-        for sid in uncachedIDs where windowCache[sid] == nil {
-            windowCache[sid] = []
-        }
+        // Mark all uncached spaces as bootstrapped (even if empty) so we never retry.
+        lock.lock()
+        for sid in uncachedIDs { bootstrappedSpaces.insert(sid) }
+        lock.unlock()
     }
 
     // MARK: - Window List
 
-    private func getOnScreenWindows() -> [NativeWindow] {
-        guard
-            let windowList = CGWindowListCopyWindowInfo(
-                [.optionOnScreenOnly, .excludeDesktopElements],
-                kCGNullWindowID) as? [[String: Any]]
-        else {
-            return []
-        }
-
+    /// Parse on-screen windows from a pre-captured window list.
+    private func parseOnScreenWindows(from windowList: [[String: Any]]) -> [NativeWindow] {
         let focusedApp = NSWorkspace.shared.frontmostApplication
         let allowed = regularAppNames()
 

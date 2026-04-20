@@ -13,10 +13,11 @@ class SpacesViewModel: ObservableObject {
     private var spaceChangeObserver: NSObjectProtocol?
 
     // Debounce: only fire loadSpaces after a quiet period to avoid redundant spawns.
-    // 2.0s — merges cascading events (space switch + app activate) into a single call.
-    // Menu bar users won't perceive the difference, but it eliminates spawn storms.
+    // 0.15s — just enough to merge the immediate event cascade (space switch fires
+    // activeSpaceDidChange + didActivateApplication within ~50-100ms of each other).
+    // Native mode is fully event-driven; yabai/AeroSpace use a slow poll fallback.
     private var loadWorkItem: DispatchWorkItem?
-    private let debounceInterval: TimeInterval = 0.75
+    private let debounceInterval: TimeInterval = 0.15
 
     init() {
         let runningApps = NSWorkspace.shared.runningApplications.compactMap {
@@ -37,17 +38,18 @@ class SpacesViewModel: ObservableObject {
     }
 
     private func startMonitoring() {
-        // For native macOS, use workspace notifications as primary trigger.
+        // For native macOS, use workspace notifications as primary trigger — no polling needed.
         // For yabai/AeroSpace, keep a slow poll as fallback since their event system
         // isn't directly observable from a third-party app.
         let isThirdParty = provider?.isYabai == true || provider?.isAerospace == true
-        let pollInterval: TimeInterval = isThirdParty ? 5.0 : 3.0
-
-        timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) {
-            [weak self] _ in
-            self?.debounceLoadSpaces()
+        if isThirdParty {
+            timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) {
+                [weak self] _ in
+                self?.debounceLoadSpaces()
+            }
+            timer?.tolerance = 0.5
         }
-        timer?.tolerance = 0.5
+        // Native mode: no timer — fully event-driven via notifications below.
 
         let center = NSWorkspace.shared.notificationCenter
 
@@ -111,7 +113,7 @@ class SpacesViewModel: ObservableObject {
     }
 
     private func loadSpaces() {
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        DispatchQueue.global(qos: .userInteractive).async { [weak self] in
             guard let self = self,
                 let provider = self.provider
             else {
