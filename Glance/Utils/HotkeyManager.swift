@@ -27,7 +27,7 @@ final class HotkeyManager {
 
         let handler: EventHandlerUPP = { _, event, _ -> OSStatus in
             var hotKeyID = EventHotKeyID()
-            GetEventParameter(event, EventHotKeyID(), typeEventHotKeyID, nil, MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
+            GetEventParameter(event, UInt32(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil, MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
             HotkeyManager.instance?.hotkeys[hotKeyID.id]?.handler()
             return noErr
         }

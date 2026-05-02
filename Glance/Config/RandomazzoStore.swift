@@ -1,4 +1,5 @@
 import Foundation
+import TOMLDecoder
 
 /// A single saved configuration in the randomazzo container.
 struct RandomazzoEntry: Identifiable, Equatable, Codable {

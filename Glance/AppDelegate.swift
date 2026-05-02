@@ -14,7 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private let updaterController = SPUStandardUpdaterController(
         startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
-    private var hotkeyManager: HotkeyManager?
+    private var hotkeyManager = HotkeyManager()
+    private var toggleHotkeyID: UInt32?
     private var fullscreenDetector: FullscreenDetector?
     private var fullscreenCancellable: AnyCancellable?
     private var configCancellable: AnyCancellable?
@@ -279,12 +280,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         guard let parsed = HotkeyManager.parse(hotkeyString) else { return }
 
-        let manager = HotkeyManager()
-        manager.onToggle = { [weak self] in
+        toggleHotkeyID = hotkeyManager.register(
+            modifiers: parsed.modifiers,
+            keyCode: parsed.keyCode
+        ) { [weak self] in
             self?.toggleBarVisibility()
         }
-        manager.register(modifiers: parsed.modifiers, keyCode: parsed.keyCode)
-        hotkeyManager = manager
     }
 
     private func toggleBarVisibility() {
