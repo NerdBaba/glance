@@ -53,7 +53,9 @@ final class RandomazzoStore: ObservableObject {
 
     private func saveMetadata() {
         let metadata = RandomazzoMetadata(entries: entries)
-        try? JSONEncoder().encode(metadata).write(to: metadataURL)
+        if let data = try? JSONEncoder().encode(metadata) {
+            try? data.write(to: metadataURL, options: .atomic)
+        }
     }
 
     // MARK: - Path helpers
@@ -63,10 +65,12 @@ final class RandomazzoStore: ObservableObject {
     }
 
     private func sanitized(_ name: String) -> String {
-        (name as NSString).lastPathComponent
+        let s = (name as NSString).lastPathComponent
             .replacingOccurrences(of: "/", with: "")
             .replacingOccurrences(of: "\0", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty, s != ".", s != ".." else { return "_" }
+        return s
     }
 
     // MARK: - Existence check
