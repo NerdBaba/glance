@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     private var hotkeyManager = HotkeyManager()
     private var toggleHotkeyID: UInt32?
+    private var randomazzoHotkeyID: UInt32?
     private var fullscreenDetector: FullscreenDetector?
     private var fullscreenCancellable: AnyCancellable?
     private var configCancellable: AnyCancellable?
@@ -41,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupPanels()
         setupStatusItem()
         setupHotkey()
+        setupRandomazzoHotkey()
         setupFullscreenDetection()
         WindowGapManager.shared.start()
         
@@ -296,6 +298,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menuBarPanel?.animator().alphaValue = barVisible ? 1 : 0
             backgroundPanel?.animator().alphaValue = barVisible ? 1 : 0
         }
+    }
+
+    // MARK: - Randomazzo Hotkey
+
+    private func setupRandomazzoHotkey() {
+        let hotkeyString = UserDefaults.standard.randomazzoHotkey
+        guard let parsed = HotkeyManager.parse(hotkeyString) else { return }
+
+        // Conflict check: if same as toggle hotkey, skip
+        if let toggleConfig = ConfigManager.shared.config.rootToml.hotkey,
+           let toggleParsed = HotkeyManager.parse(toggleConfig),
+           toggleParsed.modifiers == parsed.modifiers && toggleParsed.keyCode == parsed.keyCode {
+            AppLogger.shared.warning("Randomazzo hotkey conflicts with toggle hotkey, disabling", category: .app)
+            return
+        }
+
+        randomazzoHotkeyID = hotkeyManager.register(
+            modifiers: parsed.modifiers,
+            keyCode: parsed.keyCode
+        ) { [weak self] in
+            self?.rollRandomazzo()
+        }
+    }
+
+    private func rollRandomazzo() {
+        _ = RandomazzoStore.shared.roll(excludeCurrent: nil)
     }
 
     // MARK: - Fullscreen Auto-Hide
