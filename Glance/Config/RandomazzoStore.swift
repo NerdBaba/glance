@@ -112,8 +112,62 @@ final class RandomazzoStore: ObservableObject {
 
     private func defaultName() -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        formatter.dateFormat = "yyyy-MM-dd HH-mm"
         return formatter.string(from: Date())
+    }
+
+    // MARK: - Roll / Apply
+
+    /// Pick a random config and apply it. Returns the name of the applied config.
+    func roll(excludeCurrent: String?) -> String? {
+        var pool = entries
+        if let exclude = excludeCurrent {
+            pool = pool.filter { $0.name != exclude }
+        }
+        guard !pool.isEmpty else { return nil }
+
+        let chosen = pool.randomElement()!
+        return applyConfig(named: chosen.name)
+    }
+
+    /// Apply a specific config by name. Returns the name on success.
+    func applyConfig(named name: String) -> String? {
+        guard let entry = entries.first(where: { $0.name == name }) else { return nil }
+
+        let url = tomlURL(for: name)
+        guard let tomlContent = try? String(contentsOf: url, encoding: .utf8) else {
+            AppLogger.shared.error("Randomazzo: failed to read config '\(name)'", category: .app)
+            return nil
+        }
+
+        guard let configPath = ConfigManager.shared.configFilePath else { return nil }
+
+        // Pause watcher, write, resume
+        ConfigManager.shared.pauseWatching()
+        do {
+            try tomlContent.write(toFile: configPath, atomically: true, encoding: .utf8)
+        } catch {
+            AppLogger.shared.error("Randomazzo: failed to write config: \(error.localizedDescription)", category: .app)
+            ConfigManager.shared.resumeWatching()
+            return nil
+        }
+        ConfigManager.shared.resumeWatching()
+
+        // Update lastRolled
+        if let index = entries.firstIndex(where: { $0.name == name }) {
+            entries[index].lastRolled = Date()
+            saveMetadata()
+        }
+
+        return name
+    }
+
+    /// Check if a TOML file is valid (can be parsed).
+    func isCorrupted(_ name: String) -> Bool {
+        let url = tomlURL(for: name)
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return true }
+        let decoder = TOMLDecoder()
+        return (try? decoder.decode(RootToml.self, from: content)) == nil
     }
 
     // MARK: - Delete

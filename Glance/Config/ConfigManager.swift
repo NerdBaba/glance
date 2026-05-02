@@ -481,6 +481,21 @@ final class ConfigManager: ObservableObject {
         pywalWatchSource = nil
     }
 
+    /// Temporarily stop watching the config file.
+    func pauseWatching() {
+        stopWatchingFile()
+        stopWatchingPywal()
+    }
+
+    /// Resume watching the config file and re-parse.
+    func resumeWatching() {
+        if let path = configFilePath {
+            parseConfigFile(at: path)
+            startWatchingFile(at: path)
+        }
+        startWatchingPywal()
+    }
+
     func updateConfigValue(key: String, newValue: String) {
         guard let path = configFilePath else {
             logger.warning("Config file path is not set while updating \(key)", category: .config)
