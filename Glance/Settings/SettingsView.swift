@@ -50,5 +50,8 @@ struct SettingsView: View {
                 AboutSettingsTab()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("SwitchToRandomazzoTab"))) { _ in
+            selectedTab = .randomazzo
+        }
     }
 }
