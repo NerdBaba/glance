@@ -6,6 +6,7 @@ enum SettingsTab: String, CaseIterable {
     case spaces = "Spaces"
     case time = "Time"
     case fonts = "Fonts"
+    case randomazzo = "Randomazzo"
     case about = "About"
 
     var icon: String {
@@ -15,6 +16,7 @@ enum SettingsTab: String, CaseIterable {
         case .spaces: return "rectangle.3.group"
         case .time: return "clock"
         case .fonts: return "textformat"
+        case .randomazzo: return "dice.fill"
         case .about: return "info.circle"
         }
     }
@@ -42,6 +44,8 @@ struct SettingsView: View {
                 TimeSettingsTab()
             case .fonts:
                 FontSettingsTab()
+            case .randomazzo:
+                RandomazzoSettingsTab()
             case .about:
                 AboutSettingsTab()
             }
