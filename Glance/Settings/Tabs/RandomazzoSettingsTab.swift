@@ -4,7 +4,7 @@ struct RandomazzoSettingsTab: View {
     @ObservedObject var store = RandomazzoStore.shared
     @ObservedObject var configManager = ConfigManager.shared
 
-    @State private var selectedEntry: RandomazzoEntry?
+    @State private var selectedName: String?
     @State private var hotkeyString: String = "ctrl+option+r"
     @State private var hotkeyValid: Bool = true
     @State private var excludeCurrent: Bool = false
@@ -30,7 +30,7 @@ struct RandomazzoSettingsTab: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 24)
                     } else {
-                        List(store.entries, selection: $selectedEntry) { entry in
+                        List(store.entries, selection: $selectedName) { entry in
                             HStack(spacing: 12) {
                                 if store.isCorrupted(entry.name) {
                                     Image(systemName: "exclamationmark.circle.fill")
@@ -55,7 +55,7 @@ struct RandomazzoSettingsTab: View {
                                 }
                             }
                             .padding(.vertical, 4)
-                            .tag(entry as RandomazzoEntry?)
+                            .tag(entry.name as String?)
                         }
                         .frame(minHeight: 160)
                         .listStyle(.bordered(alternatesRowBackgrounds: true))
@@ -90,39 +90,42 @@ struct RandomazzoSettingsTab: View {
                         .disabled(store.entries.count < 1)
 
                         Button("Apply") {
-                            if let selected = selectedEntry {
-                                _ = store.applyConfig(named: selected.name)
+                            if let name = selectedName {
+                                _ = store.applyConfig(named: name)
                             }
                         }
-                        .disabled(selectedEntry == nil)
+                        .disabled(selectedName == nil)
 
                         Button("Rename...") {
-                            guard let selected = selectedEntry else { return }
-                            promptForName(initial: selected.name) { name in
-                                if let name = name, name != selected.name {
-                                    if store.exists(name) {
+                            guard let name = selectedName,
+                                  let entry = store.entries.first(where: { $0.name == name }) else { return }
+                            promptForName(initial: entry.name) { newName in
+                                if let newName = newName, newName != entry.name {
+                                    if store.exists(newName) {
                                         let alert = NSAlert()
-                                        alert.messageText = "A config named '\(name)' already exists."
+                                        alert.messageText = "A config named '\(newName)' already exists."
                                         alert.addButton(withTitle: "Overwrite")
                                         alert.addButton(withTitle: "Cancel")
                                         if alert.runModal() == .alertFirstButtonReturn {
-                                            store.rename(from: selected.name, to: name)
+                                            store.rename(from: entry.name, to: newName)
+                                            selectedName = newName
                                         }
                                     } else {
-                                        store.rename(from: selected.name, to: name)
+                                        store.rename(from: entry.name, to: newName)
+                                        selectedName = newName
                                     }
                                 }
                             }
                         }
-                        .disabled(selectedEntry == nil)
+                        .disabled(selectedName == nil)
 
                         Button("Delete") {
-                            guard let selected = selectedEntry else { return }
-                            store.delete(name: selected.name)
-                            selectedEntry = nil
+                            guard let name = selectedName else { return }
+                            store.delete(name: name)
+                            selectedName = nil
                         }
                         .foregroundStyle(.red)
-                        .disabled(selectedEntry == nil)
+                        .disabled(selectedName == nil)
                     }
                 }
 
