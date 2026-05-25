@@ -55,7 +55,7 @@ struct RandomazzoSettingsTab: View {
                                 }
                             }
                             .padding(.vertical, 4)
-                            .tag(entry.name as String?)
+                            .tag(entry.name)
                         }
                         .frame(minHeight: 160)
                         .listStyle(.bordered(alternatesRowBackgrounds: true))
@@ -91,7 +91,14 @@ struct RandomazzoSettingsTab: View {
 
                         Button("Apply") {
                             if let name = selectedName {
-                                _ = store.applyConfig(named: name)
+                                AppLogger.shared.info("Apply button pressed for: '\(name)'", category: .app)
+                                if let result = store.applyConfig(named: name) {
+                                    AppLogger.shared.info("Applied config: \(result)", category: .app)
+                                } else {
+                                    AppLogger.shared.error("Failed to apply config: '\(name)'", category: .app)
+                                }
+                            } else {
+                                AppLogger.shared.warning("Apply button pressed but selectedName is nil", category: .app)
                             }
                         }
                         .disabled(selectedName == nil)

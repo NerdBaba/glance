@@ -2,14 +2,14 @@ import Foundation
 import TOMLDecoder
 
 /// A single saved configuration in the randomazzo container.
-struct RandomazzoEntry: Identifiable, Equatable, Hashable, Codable {
-    var id: String
+struct RandomazzoEntry: Equatable, Hashable, Codable, Identifiable {
     var name: String
     var savedAt: Date
     var lastRolled: Date?
 
-    init(id: String = UUID().uuidString, name: String, savedAt: Date = Date(), lastRolled: Date? = nil) {
-        self.id = id
+    var id: String { name }
+
+    init(name: String, savedAt: Date = Date(), lastRolled: Date? = nil) {
         self.name = name
         self.savedAt = savedAt
         self.lastRolled = lastRolled
@@ -133,15 +133,24 @@ final class RandomazzoStore: ObservableObject {
 
     /// Apply a specific config by name. Returns the name on success.
     func applyConfig(named name: String) -> String? {
-        guard let entry = entries.first(where: { $0.name == name }) else { return nil }
+        AppLogger.shared.info("applyConfig called for: '\(name)'", category: .app)
+        guard let entry = entries.first(where: { $0.name == name }) else {
+            AppLogger.shared.error("Randomazzo: entry '\(name)' not found in entries", category: .app)
+            return nil
+        }
 
         let url = tomlURL(for: name)
+        AppLogger.shared.info("TOML URL: \(url.path)", category: .app)
         guard let tomlContent = try? String(contentsOf: url, encoding: .utf8) else {
             AppLogger.shared.error("Randomazzo: failed to read config '\(name)'", category: .app)
             return nil
         }
 
-        guard let configPath = ConfigManager.shared.configFilePath else { return nil }
+        guard let configPath = ConfigManager.shared.configFilePath else {
+            AppLogger.shared.error("Randomazzo: configFilePath is nil", category: .app)
+            return nil
+        }
+        AppLogger.shared.info("Writing to config path: \(configPath)", category: .app)
 
         // Pause watcher, write, resume
         ConfigManager.shared.pauseWatching()
