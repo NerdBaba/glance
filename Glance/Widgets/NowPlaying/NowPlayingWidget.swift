@@ -10,10 +10,9 @@ struct NowPlayingWidget: View {
     @State private var animatedWidth: CGFloat = 0
 
     var body: some View {
-        ZStack(alignment: .trailing) {
+        ZStack {
             if let song = playingManager.nowPlaying {
-                // Hidden view for measuring the intrinsic width.
-                MeasurableNowPlayingContent(song: song) { measuredWidth in
+                MeasurableNowPlayingContent(song: song, showCava: showCava, showTitle: showTitle, barCount: barCount, barWidth: barWidth, barGap: barGap, barHeight: barHeight) { measuredWidth in
                     if animatedWidth == 0 {
                         animatedWidth = measuredWidth
                     } else if animatedWidth != measuredWidth {
@@ -24,11 +23,10 @@ struct NowPlayingWidget: View {
                 }
                 .hidden()
 
-                // Visible content with fixed animated width.
-                VisibleNowPlayingContent(song: song, width: animatedWidth)
+                VisibleNowPlayingContent(song: song, width: animatedWidth, showCava: showCava, showTitle: showTitle, barCount: barCount, barWidth: barWidth, barGap: barGap, barHeight: barHeight)
                     .onTapGesture {
                         MenuBarPopup.show(rect: widgetFrame, id: "nowplaying") {
-                            NowPlayingPopup(configProvider: configProvider)
+                            NowPlayingPopup()
                         }
                     }
             }
@@ -37,63 +35,102 @@ struct NowPlayingWidget: View {
         .background(
             GeometryReader { geometry in
                 Color.clear
-                    .onAppear {
-                        widgetFrame = geometry.frame(in: .global)
-                    }
+                    .onAppear { widgetFrame = geometry.frame(in: .global) }
             }
         )
+    }
+
+    private var showCava: Bool { configProvider.config["show-cava"]?.boolValue ?? true }
+    private var showTitle: Bool { configProvider.config["show-title"]?.boolValue ?? true }
+    private var barCount: Int { configProvider.config["bar-count"]?.intValue ?? 12 }
+    private var barWidth: CGFloat { CGFloat(configProvider.config["bar-width"]?.intValue ?? 2) }
+    private var barGap: CGFloat { CGFloat(configProvider.config["bar-gap"]?.intValue ?? 2) }
+    private var barHeight: CGFloat { CGFloat(configProvider.config["bar-height"]?.intValue ?? 16) }
+}
+
+// MARK: - Cava Bars View (TimelineView-based, no @State timers)
+
+struct CavaBarsView: View {
+    let isPlaying: Bool
+    let barCount: Int
+    let barWidth: CGFloat
+    let barGap: CGFloat
+    let barHeight: CGFloat
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.2)) { timeline in
+            HStack(spacing: barGap) {
+                ForEach(0..<barCount, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(isPlaying ? Color.primary.opacity(0.8) : Color.primary.opacity(0.2))
+                        .frame(width: barWidth, height: isPlaying ? barHeight(at: timeline.date, index: index) : 1)
+                }
+            }
+            .frame(height: barHeight)
+            .animation(.easeInOut(duration: 0.2), value: isPlaying)
+        }
+    }
+
+    private func barHeight(at date: Date, index: Int) -> CGFloat {
+        let t = Int(CFAbsoluteTimeGetCurrent() * 5)
+        let v = abs((index * 31 + t * 17).hashValue)
+        return CGFloat(v % 1000) / 1000.0 * (barHeight - 2) + 2
     }
 }
 
 // MARK: - Now Playing Content
 
-/// A view that composes the album art and song text into a capsule-shaped content view.
 struct NowPlayingContent: View {
     let song: NowPlayingSong
-    @ObservedObject var configManager = ConfigManager.shared
-    @Environment(\.appearance) private var appearance
-    var foregroundHeight: CGFloat { configManager.config.experimental.foreground.resolveHeight() }
+    let showCava: Bool
+    let showTitle: Bool
+    let barCount: Int
+    let barWidth: CGFloat
+    let barGap: CGFloat
+    let barHeight: CGFloat
+
+    @Environment(\.widgetFont) var widgetFont
 
     var body: some View {
-        let formation = configManager.config.experimental.foreground.formation
-        let useOwnBackground = formation == .islands
-
-        Group {
-            if foregroundHeight < 38 || !useOwnBackground {
-                HStack(spacing: 8) {
-                    AlbumArtView(song: song)
-                    SongTextView(song: song)
-                }
-                .padding(.horizontal, 4)
-            } else {
-                let h: CGFloat = foregroundHeight < 45 ? 30 : 38
-                HStack(spacing: 8) {
-                    AlbumArtView(song: song)
-                    SongTextView(song: song)
-                }
-                .padding(.horizontal, foregroundHeight < 45 ? 8 : 12)
-                .frame(height: h)
-                .widgetStyle(appearance, heightOverride: h)
+        HStack(spacing: 6) {
+            if showCava {
+                CavaBarsView(
+                    isPlaying: song.state == .playing,
+                    barCount: barCount,
+                    barWidth: barWidth,
+                    barGap: barGap,
+                    barHeight: barHeight
+                )
+            }
+            if showTitle, !song.title.isEmpty {
+                Text(song.title)
+                    .font(widgetFont.toFont())
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
         }
+        .padding(.horizontal, 4)
     }
 }
 
-// MARK: - Measurable Now Playing Content
+// MARK: - Measurable / Visible wrappers
 
-/// A wrapper view that measures the intrinsic width of the now playing content.
 struct MeasurableNowPlayingContent: View {
     let song: NowPlayingSong
+    let showCava: Bool
+    let showTitle: Bool
+    let barCount: Int
+    let barWidth: CGFloat
+    let barGap: CGFloat
+    let barHeight: CGFloat
     let onSizeChange: (CGFloat) -> Void
 
     var body: some View {
-        NowPlayingContent(song: song)
+        NowPlayingContent(song: song, showCava: showCava, showTitle: showTitle, barCount: barCount, barWidth: barWidth, barGap: barGap, barHeight: barHeight)
             .background(
                 GeometryReader { geometry in
                     Color.clear
-                        .onAppear {
-                            onSizeChange(geometry.size.width)
-                        }
+                        .onAppear { onSizeChange(geometry.size.width) }
                         .onChange(of: geometry.size.width) { _, newWidth in
                             onSizeChange(newWidth)
                         }
@@ -102,79 +139,21 @@ struct MeasurableNowPlayingContent: View {
     }
 }
 
-// MARK: - Visible Now Playing Content
-
-/// A view that displays now playing content with a fixed, animated width and transition.
 struct VisibleNowPlayingContent: View {
     let song: NowPlayingSong
     let width: CGFloat
-    @ObservedObject var configManager = ConfigManager.shared
+    let showCava: Bool
+    let showTitle: Bool
+    let barCount: Int
+    let barWidth: CGFloat
+    let barGap: CGFloat
+    let barHeight: CGFloat
 
     var body: some View {
-        let formation = configManager.config.experimental.foreground.formation
-        NowPlayingContent(song: song)
-            .frame(width: width, height: formation == .islands ? 38 : nil)
+        NowPlayingContent(song: song, showCava: showCava, showTitle: showTitle, barCount: barCount, barWidth: barWidth, barGap: barGap, barHeight: barHeight)
+            .frame(width: width)
             .animation(.smooth(duration: 0.1), value: song)
             .transition(.blurReplace)
-    }
-}
-
-// MARK: - Album Art View
-
-/// A view that displays the album art with a fade animation and a pause indicator if needed.
-struct AlbumArtView: View {
-    let song: NowPlayingSong
-
-    var body: some View {
-        ZStack {
-            FadeAnimatedCachedImage(
-                url: song.albumArtURL,
-                targetSize: CGSize(width: 20, height: 20)
-            )
-            .frame(width: 20, height: 20)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .scaleEffect(song.state == .paused ? 0.9 : 1)
-            .brightness(song.state == .paused ? -0.3 : 0)
-
-            if song.state == .paused {
-                Image(systemName: "pause.fill")
-                    .opacity(0.8)
-                    .transition(.blurReplace)
-            }
-        }
-        .animation(.smooth(duration: 0.1), value: song.state == .paused)
-    }
-}
-
-// MARK: - Song Text View
-
-/// A view that displays the song title and artist.
-struct SongTextView: View {
-    let song: NowPlayingSong
-    @ObservedObject var configManager = ConfigManager.shared
-    @Environment(\.widgetFont) var widgetFont
-    var foregroundHeight: CGFloat { configManager.config.experimental.foreground.resolveHeight() }
-
-    var body: some View {
-
-        VStack(alignment: .leading, spacing: -1) {
-            if foregroundHeight >= 30 {
-                Text(song.title)
-                    .font(widgetFont.toFont())
-                    .padding(.trailing, 2)
-                Text(song.artist)
-                    .opacity(0.8)
-                    .font(widgetFont.toFont())
-                    .padding(.trailing, 2)
-            } else {
-                Text(song.artist + " — " + song.title)
-                    .font(widgetFont.toFont())
-            }
-        }
-        // Disable animations for text changes.
-        .transaction { transaction in
-            transaction.animation = nil
-        }
     }
 }
 
@@ -182,9 +161,6 @@ struct SongTextView: View {
 
 struct NowPlayingWidget_Previews: PreviewProvider {
     static var previews: some View {
-        ZStack {
-            NowPlayingWidget()
-        }
-        .frame(width: 500, height: 100)
+        ZStack { NowPlayingWidget() }.frame(width: 500, height: 100)
     }
 }
