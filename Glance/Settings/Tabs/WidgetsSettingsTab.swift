@@ -37,6 +37,61 @@ struct WidgetsSettingsTab: View {
     @State private var nowPlayingShowTitle = true
     @State private var nowPlayingTitleMaxLength = 30
 
+    // Volume display mode settings
+    @State private var volumeDisplayMode = "icon-value"
+    @State private var volumeLabel = ""
+    @State private var volumeMaxLength = 10
+
+    // System Monitor CPU settings
+    @State private var systemMonitorCpuDisplayMode = "icon-value"
+    @State private var systemMonitorCpuLabel = ""
+    @State private var systemMonitorCpuMaxLength = 10
+
+    // System Monitor Memory settings
+    @State private var systemMonitorMemDisplayMode = "icon-value"
+    @State private var systemMonitorMemLabel = ""
+    @State private var systemMonitorMemMaxLength = 10
+
+    // Temperature settings
+    @State private var temperatureDisplayMode = "icon-value"
+    @State private var temperatureLabel = ""
+    @State private var temperatureMaxLength = 10
+
+    // Fan settings
+    @State private var fanDisplayMode = "icon-value"
+    @State private var fanLabel = ""
+    @State private var fanMaxLength = 10
+
+    // Energy settings
+    @State private var energyDisplayMode = "icon-value"
+    @State private var energyLabel = ""
+    @State private var energyMaxLength = 10
+
+    // Battery display mode settings
+    @State private var batteryDisplayMode = "icon-value"
+    @State private var batteryLabel = ""
+    @State private var batteryMaxLength = 10
+
+    // Bluetooth settings
+    @State private var bluetoothDisplayMode = "icon-value"
+    @State private var bluetoothLabel = ""
+    @State private var bluetoothMaxLength = 10
+
+    // Brightness display mode settings
+    @State private var brightnessDisplayMode = "icon-value"
+    @State private var brightnessLabel = ""
+    @State private var brightnessMaxLength = 10
+
+    // Network WiFi settings
+    @State private var networkWifiDisplayMode = "icon-value"
+    @State private var networkWifiLabel = ""
+    @State private var networkWifiMaxLength = 10
+
+    // Network Ethernet settings
+    @State private var networkEthDisplayMode = "icon-value"
+    @State private var networkEthLabel = ""
+    @State private var networkEthMaxLength = 10
+
     private let allAvailableWidgets: [(id: String, label: String, icon: String)] = [
         ("default.spaces", "Spaces", "rectangle.3.group"),
         ("default.activeapp", "Active App", "app.badge.fill"),
@@ -207,6 +262,44 @@ struct WidgetsSettingsTab: View {
                         .foregroundStyle(.secondary)
                 }
 
+                SettingsSection(title: "Volume Display") {
+                    Picker("Display mode", selection: $volumeDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Value").tag("value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: volumeDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.volume.display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $volumeLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: volumeLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.volume.label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $volumeMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.volume.max-length",
+                            newValue: String(volumeMaxLength)
+                        )
+                    }
+                }
+
                 SettingsSection(title: "Brightness") {
                     Toggle("Show percentage in bar", isOn: $brightnessShowPercentage)
                         .onChange(of: brightnessShowPercentage) { _, newValue in
@@ -337,6 +430,376 @@ struct WidgetsSettingsTab: View {
                         .foregroundStyle(.secondary)
                 }
 
+                SettingsSection(title: "System Monitor (CPU)") {
+                    Picker("Display mode", selection: $systemMonitorCpuDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: systemMonitorCpuDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.systemmonitor.cpu-display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $systemMonitorCpuLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: systemMonitorCpuLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.systemmonitor.cpu-label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $systemMonitorCpuMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.systemmonitor.cpu-max-length",
+                            newValue: String(systemMonitorCpuMaxLength)
+                        )
+                    }
+                }
+
+                SettingsSection(title: "System Monitor (Memory)") {
+                    Picker("Display mode", selection: $systemMonitorMemDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: systemMonitorMemDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.systemmonitor.mem-display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $systemMonitorMemLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: systemMonitorMemLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.systemmonitor.mem-label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $systemMonitorMemMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.systemmonitor.mem-max-length",
+                            newValue: String(systemMonitorMemMaxLength)
+                        )
+                    }
+                }
+
+                SettingsSection(title: "Temperature") {
+                    Picker("Display mode", selection: $temperatureDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: temperatureDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.temperature.display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $temperatureLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: temperatureLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.temperature.label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $temperatureMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.temperature.max-length",
+                            newValue: String(temperatureMaxLength)
+                        )
+                    }
+                }
+
+                SettingsSection(title: "Fan") {
+                    Picker("Display mode", selection: $fanDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: fanDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.fan.display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $fanLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: fanLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.fan.label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $fanMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.fan.max-length",
+                            newValue: String(fanMaxLength)
+                        )
+                    }
+                }
+
+                SettingsSection(title: "Energy") {
+                    Picker("Display mode", selection: $energyDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: energyDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.energy.display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $energyLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: energyLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.energy.label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $energyMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.energy.max-length",
+                            newValue: String(energyMaxLength)
+                        )
+                    }
+                }
+
+                SettingsSection(title: "Battery Display") {
+                    Picker("Display mode", selection: $batteryDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: batteryDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.battery.display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $batteryLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: batteryLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.battery.label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $batteryMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.battery.max-length",
+                            newValue: String(batteryMaxLength)
+                        )
+                    }
+                }
+
+                SettingsSection(title: "Bluetooth") {
+                    Picker("Display mode", selection: $bluetoothDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: bluetoothDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.bluetooth.display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $bluetoothLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: bluetoothLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.bluetooth.label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $bluetoothMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.bluetooth.max-length",
+                            newValue: String(bluetoothMaxLength)
+                        )
+                    }
+                }
+
+                SettingsSection(title: "Brightness Display") {
+                    Picker("Display mode", selection: $brightnessDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: brightnessDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.brightness.display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $brightnessLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: brightnessLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.brightness.label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $brightnessMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.brightness.max-length",
+                            newValue: String(brightnessMaxLength)
+                        )
+                    }
+                }
+
+                SettingsSection(title: "Network (WiFi)") {
+                    Picker("Display mode", selection: $networkWifiDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: networkWifiDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.network.wifi-display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $networkWifiLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: networkWifiLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.network.wifi-label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $networkWifiMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.network.wifi-max-length",
+                            newValue: String(networkWifiMaxLength)
+                        )
+                    }
+                }
+
+                SettingsSection(title: "Network (Ethernet)") {
+                    Picker("Display mode", selection: $networkEthDisplayMode) {
+                        Text("Icon").tag("icon")
+                        Text("Text").tag("text")
+                        Text("Both").tag("both")
+                        Text("Off").tag("off")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: networkEthDisplayMode) { _, newValue in
+                        configManager.updateConfigValue(
+                            key: "widgets.default.network.eth-display-mode",
+                            newValue: newValue
+                        )
+                    }
+
+                    TextField("Label", text: $networkEthLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: networkEthLabel) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.network.eth-label",
+                                newValue: newValue
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Max text length",
+                        value: $networkEthMaxLength,
+                        range: 3...40,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.network.eth-max-length",
+                            newValue: String(networkEthMaxLength)
+                        )
+                    }
+                }
+
                 Text("Time and Spaces keep their own dedicated settings tabs. Any new configurable widget should get a section here instead of staying TOML-only.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -398,6 +861,68 @@ struct WidgetsSettingsTab: View {
         nowPlayingShowIcon = nowPlayingConfig["show-icon"]?.boolValue ?? true
         nowPlayingShowTitle = nowPlayingConfig["show-title"]?.boolValue ?? true
         nowPlayingTitleMaxLength = nowPlayingConfig["title-max-length"]?.intValue ?? 30
+
+        // Volume display mode settings
+        let volumeConfig2 = configManager.globalWidgetConfig(for: "default.volume")
+        volumeDisplayMode = volumeConfig2["display-mode"]?.stringValue ?? "icon-value"
+        volumeLabel = volumeConfig2["label"]?.stringValue ?? ""
+        volumeMaxLength = volumeConfig2["max-length"]?.intValue ?? 10
+
+        // System Monitor CPU settings
+        let systemMonitorConfig = configManager.globalWidgetConfig(for: "default.systemmonitor")
+        systemMonitorCpuDisplayMode = systemMonitorConfig["cpu-display-mode"]?.stringValue ?? "icon-value"
+        systemMonitorCpuLabel = systemMonitorConfig["cpu-label"]?.stringValue ?? ""
+        systemMonitorCpuMaxLength = systemMonitorConfig["cpu-max-length"]?.intValue ?? 10
+
+        // System Monitor Memory settings
+        systemMonitorMemDisplayMode = systemMonitorConfig["mem-display-mode"]?.stringValue ?? "icon-value"
+        systemMonitorMemLabel = systemMonitorConfig["mem-label"]?.stringValue ?? ""
+        systemMonitorMemMaxLength = systemMonitorConfig["mem-max-length"]?.intValue ?? 10
+
+        // Temperature settings
+        let temperatureConfig = configManager.globalWidgetConfig(for: "default.temperature")
+        temperatureDisplayMode = temperatureConfig["display-mode"]?.stringValue ?? "icon-value"
+        temperatureLabel = temperatureConfig["label"]?.stringValue ?? ""
+        temperatureMaxLength = temperatureConfig["max-length"]?.intValue ?? 10
+
+        // Fan settings
+        let fanConfig = configManager.globalWidgetConfig(for: "default.fan")
+        fanDisplayMode = fanConfig["display-mode"]?.stringValue ?? "icon-value"
+        fanLabel = fanConfig["label"]?.stringValue ?? ""
+        fanMaxLength = fanConfig["max-length"]?.intValue ?? 10
+
+        // Energy settings
+        let energyConfig = configManager.globalWidgetConfig(for: "default.energy")
+        energyDisplayMode = energyConfig["display-mode"]?.stringValue ?? "icon-value"
+        energyLabel = energyConfig["label"]?.stringValue ?? ""
+        energyMaxLength = energyConfig["max-length"]?.intValue ?? 10
+
+        // Battery display mode settings
+        let batteryConfig2 = configManager.globalWidgetConfig(for: "default.battery")
+        batteryDisplayMode = batteryConfig2["display-mode"]?.stringValue ?? "icon-value"
+        batteryLabel = batteryConfig2["label"]?.stringValue ?? ""
+        batteryMaxLength = batteryConfig2["max-length"]?.intValue ?? 10
+
+        // Bluetooth settings
+        let bluetoothConfig = configManager.globalWidgetConfig(for: "default.bluetooth")
+        bluetoothDisplayMode = bluetoothConfig["display-mode"]?.stringValue ?? "icon-value"
+        bluetoothLabel = bluetoothConfig["label"]?.stringValue ?? ""
+        bluetoothMaxLength = bluetoothConfig["max-length"]?.intValue ?? 10
+
+        // Brightness display mode settings
+        let brightnessConfig2 = configManager.globalWidgetConfig(for: "default.brightness")
+        brightnessDisplayMode = brightnessConfig2["display-mode"]?.stringValue ?? "icon-value"
+        brightnessLabel = brightnessConfig2["label"]?.stringValue ?? ""
+        brightnessMaxLength = brightnessConfig2["max-length"]?.intValue ?? 10
+
+        // Network WiFi/Ethernet settings
+        let networkConfig = configManager.globalWidgetConfig(for: "default.network")
+        networkWifiDisplayMode = networkConfig["wifi-display-mode"]?.stringValue ?? "icon-value"
+        networkWifiLabel = networkConfig["wifi-label"]?.stringValue ?? ""
+        networkWifiMaxLength = networkConfig["wifi-max-length"]?.intValue ?? 10
+        networkEthDisplayMode = networkConfig["eth-display-mode"]?.stringValue ?? "icon-value"
+        networkEthLabel = networkConfig["eth-label"]?.stringValue ?? ""
+        networkEthMaxLength = networkConfig["eth-max-length"]?.intValue ?? 10
     }
 
     // MARK: - Widget list operations

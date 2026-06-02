@@ -8,23 +8,59 @@ struct FanWidget: View {
 
     private var config: ConfigData { configProvider.config }
     private var showPercentage: Bool { config["show-percentage"]?.boolValue ?? false }
+    private var displayMode: String { config["display-mode"]?.stringValue ?? "icon-value" }
+    private var label: String { config["label"]?.stringValue ?? "" }
+    private var maxLength: Int { config["max-length"]?.intValue ?? 10 }
 
+    private var valueText: String {
+        if showPercentage {
+            let percent = min(100, Int((Double(thermalManager.fanSpeed) / 3000.0) * 100))
+            return "\(percent)%"
+        } else {
+            return "\(thermalManager.fanSpeed)"
+        }
+    }
+
+    private var displayText: String {
+        let full = label.isEmpty ? valueText : label + " " + valueText
+        if full.count > maxLength, maxLength > 3 {
+            return String(full.prefix(maxLength - 3)) + "..."
+        }
+        return full
+    }
+
+    @ViewBuilder
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "fan")
-                .barStatusSymbol(size: 12, opticalYOffset: -0.1)
-            if showPercentage {
-                // Estimate percentage based on typical max ~3000 RPM
-                let percent = min(100, Int((Double(thermalManager.fanSpeed) / 3000.0) * 100))
-                Text("\(percent)%")
+        Group {
+            switch displayMode {
+            case "icon":
+                Image(systemName: "fan")
+                    .barStatusSymbol(size: 12, opticalYOffset: -0.1)
+            case "value":
+                Text(valueText)
                     .font(widgetFont.toFont())
                     .monospacedDigit()
                     .fixedSize(horizontal: true, vertical: false)
-            } else {
-                Text("\(thermalManager.fanSpeed)")
-                    .font(widgetFont.toFont())
-                    .monospacedDigit()
-                    .fixedSize(horizontal: true, vertical: false)
+            case "icon-label-value":
+                HStack(spacing: 6) {
+                    Image(systemName: "fan")
+                        .barStatusSymbol(size: 12, opticalYOffset: -0.1)
+                    Text(displayText)
+                        .font(widgetFont.toFont())
+                        .monospacedDigit()
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+            case "off":
+                EmptyView()
+            default: // "icon-value"
+                HStack(spacing: 6) {
+                    Image(systemName: "fan")
+                        .barStatusSymbol(size: 12, opticalYOffset: -0.1)
+                    Text(valueText)
+                        .font(widgetFont.toFont())
+                        .monospacedDigit()
+                        .fixedSize(horizontal: true, vertical: false)
+                }
             }
         }
         .barSingleLineAligned()

@@ -6,26 +6,63 @@ struct VolumeWidget: View {
     @StateObject private var viewModel = VolumeViewModel()
     @State private var rect: CGRect = .zero
 
-    private var showPercentage: Bool {
-        configProvider.config["show-percentage"]?.boolValue ?? false
-    }
+    private var displayMode: String { configProvider.config["display-mode"]?.stringValue ?? "icon-value" }
+    private var label: String { configProvider.config["label"]?.stringValue ?? "" }
+    private var maxLength: Int { configProvider.config["max-length"]?.intValue ?? 10 }
 
     private var scrollStep: Float {
         let configuredStep = configProvider.config["scroll-step"]?.doubleValue ?? 3
         return Float(max(1, min(15, configuredStep))) / 100
     }
 
-    var body: some View {
-        HStack(spacing: 5) {
+    private var valueText: String {
+        viewModel.isMuted ? "Mute" : "\(viewModel.volumePercent)%"
+    }
+
+    private var displayText: String {
+        let full = label.isEmpty ? valueText : label + " " + valueText
+        if full.count > maxLength, maxLength > 3 {
+            return String(full.prefix(maxLength - 3)) + "..."
+        }
+        return full
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch displayMode {
+        case "icon":
             Image(systemName: viewModel.volumeIconName)
                 .barStatusSymbol(opticalYOffset: -0.2)
-            if showPercentage {
-                Text(viewModel.isMuted ? "Mute" : "\(viewModel.volumePercent)%")
+        case "value":
+            Text(valueText)
+                .font(widgetFont.toFont())
+                .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
+        case "icon-label-value":
+            HStack(spacing: 5) {
+                Image(systemName: viewModel.volumeIconName)
+                    .barStatusSymbol(opticalYOffset: -0.2)
+                Text(displayText)
+                    .font(widgetFont.toFont())
+                    .monospacedDigit()
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+        case "off":
+            EmptyView()
+        default: // "icon-value"
+            HStack(spacing: 5) {
+                Image(systemName: viewModel.volumeIconName)
+                    .barStatusSymbol(opticalYOffset: -0.2)
+                Text(valueText)
                     .font(widgetFont.toFont())
                     .monospacedDigit()
                     .fixedSize(horizontal: true, vertical: false)
             }
         }
+    }
+
+    var body: some View {
+        content
         .barSingleLineAligned()
             .background(
                 GeometryReader { geometry in
@@ -72,7 +109,6 @@ final class VolumeScrollNSView: NSView {
         onScroll?(event.deltaY)
     }
 
-    // Forward mouse events to the responder chain so SwiftUI gestures work.
     override func mouseDown(with event: NSEvent) {
         nextResponder?.mouseDown(with: event)
     }
