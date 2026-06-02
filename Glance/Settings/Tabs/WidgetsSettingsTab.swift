@@ -41,6 +41,8 @@ struct WidgetsSettingsTab: View {
     @State private var nowPlayingArtistMaxLength = 20
     @State private var nowPlayingAlbumMaxLength = 20
     @State private var nowPlayingSeparator = " - "
+    @State private var nowPlayingShowVisualizer = true
+    @State private var nowPlayingVisualizerPosition = "right"
 
     // Volume display mode settings
     @State private var volumeDisplayMode = "icon-value"
@@ -483,6 +485,34 @@ struct WidgetsSettingsTab: View {
                                 )
                             }
                     }
+
+                    Divider()
+
+                    Toggle("Show visualizer bars", isOn: $nowPlayingShowVisualizer)
+                        .onChange(of: nowPlayingShowVisualizer) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.nowplaying.show-visualizer",
+                                newValue: newValue ? "true" : "false"
+                            )
+                        }
+
+                    HStack {
+                        Text("Visualizer position")
+                            .frame(width: 130, alignment: .leading)
+                        Picker("Visualizer position", selection: $nowPlayingVisualizerPosition) {
+                            ForEach(VisualizerPosition.allCases, id: \.rawValue) { pos in
+                                Text(pos.label).tag(pos.rawValue)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: nowPlayingVisualizerPosition) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.nowplaying.visualizer-position",
+                                newValue: newValue
+                            )
+                        }
+                    }
+                    .disabled(!nowPlayingShowVisualizer)
 
                     Text("Enabled fields are joined by the separator. Example: \"Song Title - Artist - Album\"")
                         .font(.caption)
@@ -945,6 +975,8 @@ struct WidgetsSettingsTab: View {
         nowPlayingArtistMaxLength = nowPlayingConfig["artist-max-length"]?.intValue ?? 20
         nowPlayingAlbumMaxLength = nowPlayingConfig["album-max-length"]?.intValue ?? 20
         nowPlayingSeparator = nowPlayingConfig["separator"]?.stringValue ?? " - "
+        nowPlayingShowVisualizer = nowPlayingConfig["show-visualizer"]?.boolValue ?? true
+        nowPlayingVisualizerPosition = nowPlayingConfig["visualizer-position"]?.stringValue ?? "right"
 
         // Volume display mode settings
         let volumeConfig2 = configManager.globalWidgetConfig(for: "default.volume")

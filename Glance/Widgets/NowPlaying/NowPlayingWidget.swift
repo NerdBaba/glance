@@ -21,7 +21,9 @@ struct NowPlayingWidget: View {
                     titleMaxLength: titleMaxLength,
                     artistMaxLength: artistMaxLength,
                     albumMaxLength: albumMaxLength,
-                    separator: separator
+                    separator: separator,
+                    showVisualizer: showVisualizer,
+                    visualizerPosition: visualizerPosition
                 ) { measuredWidth in
                     if animatedWidth == 0 {
                         animatedWidth = measuredWidth
@@ -43,7 +45,9 @@ struct NowPlayingWidget: View {
                     titleMaxLength: titleMaxLength,
                     artistMaxLength: artistMaxLength,
                     albumMaxLength: albumMaxLength,
-                    separator: separator
+                    separator: separator,
+                    showVisualizer: showVisualizer,
+                    visualizerPosition: visualizerPosition
                 )
                     .onTapGesture {
                         MenuBarPopup.show(rect: widgetFrame, id: "nowplaying") {
@@ -68,6 +72,11 @@ struct NowPlayingWidget: View {
     private var artistMaxLength: Int { configProvider.config["artist-max-length"]?.intValue ?? 20 }
     private var albumMaxLength: Int { configProvider.config["album-max-length"]?.intValue ?? 20 }
     private var separator: String { configProvider.config["separator"]?.stringValue ?? " - " }
+    private var showVisualizer: Bool { configProvider.config["show-visualizer"]?.boolValue ?? true }
+    private var visualizerPosition: VisualizerPosition {
+        let raw = configProvider.config["visualizer-position"]?.stringValue ?? "right"
+        return VisualizerPosition(rawValue: raw) ?? .right
+    }
 }
 
 // MARK: - Music Icon View
@@ -96,13 +105,24 @@ struct NowPlayingContent: View {
     let artistMaxLength: Int
     let albumMaxLength: Int
     let separator: String
+    let showVisualizer: Bool
+    let visualizerPosition: VisualizerPosition
 
     @Environment(\.widgetFont) var widgetFont
+    @Environment(\.appearance) var appearance
 
     var body: some View {
         HStack(spacing: 5) {
+            if visualizerPosition == .left && showVisualizer {
+                visualizer
+            }
+
             if showIcon {
                 MusicIconView()
+            }
+
+            if visualizerPosition == .afterIcon && showVisualizer {
+                visualizer
             }
 
             let parts = textParts
@@ -112,8 +132,20 @@ struct NowPlayingContent: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
+
+            if visualizerPosition == .right && showVisualizer {
+                visualizer
+            }
         }
         .padding(.horizontal, 4)
+    }
+
+    private var visualizer: some View {
+        AudioVisualizerView(
+            isPlaying: song.state == .playing,
+            barCount: 5,
+            color: appearance.accentColor
+        )
     }
 
     private var textParts: [String] {
@@ -153,6 +185,8 @@ struct MeasurableNowPlayingContent: View {
     let artistMaxLength: Int
     let albumMaxLength: Int
     let separator: String
+    let showVisualizer: Bool
+    let visualizerPosition: VisualizerPosition
     let onSizeChange: (CGFloat) -> Void
 
     var body: some View {
@@ -165,7 +199,9 @@ struct MeasurableNowPlayingContent: View {
             titleMaxLength: titleMaxLength,
             artistMaxLength: artistMaxLength,
             albumMaxLength: albumMaxLength,
-            separator: separator
+            separator: separator,
+            showVisualizer: showVisualizer,
+            visualizerPosition: visualizerPosition
         )
         .background(
             GeometryReader { geometry in
@@ -190,6 +226,8 @@ struct VisibleNowPlayingContent: View {
     let artistMaxLength: Int
     let albumMaxLength: Int
     let separator: String
+    let showVisualizer: Bool
+    let visualizerPosition: VisualizerPosition
 
     var body: some View {
         NowPlayingContent(
@@ -201,7 +239,9 @@ struct VisibleNowPlayingContent: View {
             titleMaxLength: titleMaxLength,
             artistMaxLength: artistMaxLength,
             albumMaxLength: albumMaxLength,
-            separator: separator
+            separator: separator,
+            showVisualizer: showVisualizer,
+            visualizerPosition: visualizerPosition
         )
         .frame(width: width)
         .animation(.smooth(duration: 0.1), value: song)

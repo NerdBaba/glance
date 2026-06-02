@@ -259,7 +259,7 @@ final class NowPlayingManager: ObservableObject {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: cliPath)
-        process.arguments = ["get", "--json", "title", "album", "artist", "isplaying"]
+        process.arguments = ["get", "--json", "title", "album", "artist", "playbackRate"]
 
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -273,7 +273,9 @@ final class NowPlayingManager: ObservableObject {
         guard !data.isEmpty,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
 
-        let isPlaying = json["isplaying"] as? Bool ?? false
+        // playbackRate > 0 means playing; 0 means paused/stopped
+        let playbackRate = json["playbackRate"] as? Double ?? 0
+        let isPlaying = playbackRate > 0
         let title = json["title"] as? String ?? ""
         let album = json["album"] as? String ?? ""
         let artist = json["artist"] as? String ?? ""
