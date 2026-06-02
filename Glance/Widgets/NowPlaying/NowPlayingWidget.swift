@@ -4,7 +4,7 @@ import SwiftUI
 
 struct NowPlayingWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
-    @ObservedObject var playingManager = NowPlayingManager.shared
+    @StateObject private var playingManager = NowPlayingManager.shared
 
     @State private var widgetFrame: CGRect = .zero
     @State private var animatedWidth: CGFloat = 0
@@ -12,7 +12,7 @@ struct NowPlayingWidget: View {
     var body: some View {
         ZStack {
             if let song = playingManager.nowPlaying {
-                MeasurableNowPlayingContent(song: song, showCava: showCava, showTitle: showTitle, barCount: barCount, barWidth: barWidth, barGap: barGap, barHeight: barHeight) { measuredWidth in
+                MeasurableNowPlayingContent(song: song, showIcon: showIcon, showTitle: showTitle, titleMaxLength: titleMaxLength) { measuredWidth in
                     if animatedWidth == 0 {
                         animatedWidth = measuredWidth
                     } else if animatedWidth != measuredWidth {
@@ -23,7 +23,7 @@ struct NowPlayingWidget: View {
                 }
                 .hidden()
 
-                VisibleNowPlayingContent(song: song, width: animatedWidth, showCava: showCava, showTitle: showTitle, barCount: barCount, barWidth: barWidth, barGap: barGap, barHeight: barHeight)
+                VisibleNowPlayingContent(song: song, width: animatedWidth, showIcon: showIcon, showTitle: showTitle, titleMaxLength: titleMaxLength)
                     .onTapGesture {
                         MenuBarPopup.show(rect: widgetFrame, id: "nowplaying") {
                             NowPlayingPopup()
@@ -31,7 +31,6 @@ struct NowPlayingWidget: View {
                     }
             }
         }
-        .drawingGroup()
         .background(
             GeometryReader { geometry in
                 Color.clear
@@ -40,41 +39,22 @@ struct NowPlayingWidget: View {
         )
     }
 
-    private var showCava: Bool { configProvider.config["show-cava"]?.boolValue ?? true }
+    private var showIcon: Bool { configProvider.config["show-icon"]?.boolValue ?? true }
     private var showTitle: Bool { configProvider.config["show-title"]?.boolValue ?? true }
-    private var barCount: Int { configProvider.config["bar-count"]?.intValue ?? 12 }
-    private var barWidth: CGFloat { CGFloat(configProvider.config["bar-width"]?.intValue ?? 2) }
-    private var barGap: CGFloat { CGFloat(configProvider.config["bar-gap"]?.intValue ?? 2) }
-    private var barHeight: CGFloat { CGFloat(configProvider.config["bar-height"]?.intValue ?? 16) }
+    private var titleMaxLength: Int { configProvider.config["title-max-length"]?.intValue ?? 30 }
 }
 
-// MARK: - Cava Bars View (TimelineView-based, no @State timers)
+// MARK: - Music Icon View
 
-struct CavaBarsView: View {
-    let isPlaying: Bool
-    let barCount: Int
-    let barWidth: CGFloat
-    let barGap: CGFloat
-    let barHeight: CGFloat
+struct MusicIconView: View {
+    @StateObject private var manager = NowPlayingManager.shared
+
+    private var isPlaying: Bool { manager.nowPlaying?.state == .playing }
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.2)) { timeline in
-            HStack(spacing: barGap) {
-                ForEach(0..<barCount, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(isPlaying ? Color.primary.opacity(0.8) : Color.primary.opacity(0.2))
-                        .frame(width: barWidth, height: isPlaying ? barHeight(at: timeline.date, index: index) : 1)
-                }
-            }
-            .frame(height: barHeight)
-            .animation(.easeInOut(duration: 0.2), value: isPlaying)
-        }
-    }
-
-    private func barHeight(at date: Date, index: Int) -> CGFloat {
-        let t = Int(CFAbsoluteTimeGetCurrent() * 5)
-        let v = abs((index * 31 + t * 17).hashValue)
-        return CGFloat(v % 1000) / 1000.0 * (barHeight - 2) + 2
+        Image(systemName: "music.note")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(isPlaying ? Color.white.opacity(0.9) : Color.white.opacity(0.3))
     }
 }
 
@@ -82,28 +62,19 @@ struct CavaBarsView: View {
 
 struct NowPlayingContent: View {
     let song: NowPlayingSong
-    let showCava: Bool
+    let showIcon: Bool
     let showTitle: Bool
-    let barCount: Int
-    let barWidth: CGFloat
-    let barGap: CGFloat
-    let barHeight: CGFloat
+    let titleMaxLength: Int
 
     @Environment(\.widgetFont) var widgetFont
 
     var body: some View {
-        HStack(spacing: 6) {
-            if showCava {
-                CavaBarsView(
-                    isPlaying: song.state == .playing,
-                    barCount: barCount,
-                    barWidth: barWidth,
-                    barGap: barGap,
-                    barHeight: barHeight
-                )
+        HStack(spacing: 5) {
+            if showIcon {
+                MusicIconView()
             }
             if showTitle, !song.title.isEmpty {
-                Text(song.title)
+                Text(truncatedTitle)
                     .font(widgetFont.toFont())
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -111,22 +82,28 @@ struct NowPlayingContent: View {
         }
         .padding(.horizontal, 4)
     }
+
+    private var truncatedTitle: String {
+        let title = song.title
+        if title.count > titleMaxLength {
+            let endIndex = title.index(title.startIndex, offsetBy: titleMaxLength)
+            return String(title[..<endIndex]) + "..."
+        }
+        return title
+    }
 }
 
 // MARK: - Measurable / Visible wrappers
 
 struct MeasurableNowPlayingContent: View {
     let song: NowPlayingSong
-    let showCava: Bool
+    let showIcon: Bool
     let showTitle: Bool
-    let barCount: Int
-    let barWidth: CGFloat
-    let barGap: CGFloat
-    let barHeight: CGFloat
+    let titleMaxLength: Int
     let onSizeChange: (CGFloat) -> Void
 
     var body: some View {
-        NowPlayingContent(song: song, showCava: showCava, showTitle: showTitle, barCount: barCount, barWidth: barWidth, barGap: barGap, barHeight: barHeight)
+        NowPlayingContent(song: song, showIcon: showIcon, showTitle: showTitle, titleMaxLength: titleMaxLength)
             .background(
                 GeometryReader { geometry in
                     Color.clear
@@ -142,15 +119,12 @@ struct MeasurableNowPlayingContent: View {
 struct VisibleNowPlayingContent: View {
     let song: NowPlayingSong
     let width: CGFloat
-    let showCava: Bool
+    let showIcon: Bool
     let showTitle: Bool
-    let barCount: Int
-    let barWidth: CGFloat
-    let barGap: CGFloat
-    let barHeight: CGFloat
+    let titleMaxLength: Int
 
     var body: some View {
-        NowPlayingContent(song: song, showCava: showCava, showTitle: showTitle, barCount: barCount, barWidth: barWidth, barGap: barGap, barHeight: barHeight)
+        NowPlayingContent(song: song, showIcon: showIcon, showTitle: showTitle, titleMaxLength: titleMaxLength)
             .frame(width: width)
             .animation(.smooth(duration: 0.1), value: song)
             .transition(.blurReplace)

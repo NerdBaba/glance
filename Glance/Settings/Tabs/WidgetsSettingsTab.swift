@@ -33,6 +33,10 @@ struct WidgetsSettingsTab: View {
     @State private var weatherLatitude = ""
     @State private var weatherLongitude = ""
 
+    @State private var nowPlayingShowIcon = true
+    @State private var nowPlayingShowTitle = true
+    @State private var nowPlayingTitleMaxLength = 30
+
     private let allAvailableWidgets: [(id: String, label: String, icon: String)] = [
         ("default.spaces", "Spaces", "rectangle.3.group"),
         ("default.activeapp", "Active App", "app.badge.fill"),
@@ -299,6 +303,40 @@ struct WidgetsSettingsTab: View {
                         .foregroundStyle(.secondary)
                 }
 
+                SettingsSection(title: "Now Playing") {
+                    Toggle("Show music icon", isOn: $nowPlayingShowIcon)
+                        .onChange(of: nowPlayingShowIcon) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.nowplaying.show-icon",
+                                newValue: newValue ? "true" : "false"
+                            )
+                        }
+
+                    Toggle("Show song title", isOn: $nowPlayingShowTitle)
+                        .onChange(of: nowPlayingShowTitle) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.nowplaying.show-title",
+                                newValue: newValue ? "true" : "false"
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Title max length",
+                        value: $nowPlayingTitleMaxLength,
+                        range: 5...80,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.nowplaying.title-max-length",
+                            newValue: String(nowPlayingTitleMaxLength)
+                        )
+                    }
+
+                    Text("Controls how long the song title can be before truncation.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Text("Time and Spaces keep their own dedicated settings tabs. Any new configurable widget should get a section here instead of staying TOML-only.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -355,6 +393,11 @@ struct WidgetsSettingsTab: View {
         weatherLocationName = weatherLocationConfig["name"]?.stringValue ?? ""
         weatherLatitude = decimalString(from: weatherLocationConfig["latitude"]?.doubleValue)
         weatherLongitude = decimalString(from: weatherLocationConfig["longitude"]?.doubleValue)
+
+        let nowPlayingConfig = configManager.globalWidgetConfig(for: "default.nowplaying")
+        nowPlayingShowIcon = nowPlayingConfig["show-icon"]?.boolValue ?? true
+        nowPlayingShowTitle = nowPlayingConfig["show-title"]?.boolValue ?? true
+        nowPlayingTitleMaxLength = nowPlayingConfig["title-max-length"]?.intValue ?? 30
     }
 
     // MARK: - Widget list operations
