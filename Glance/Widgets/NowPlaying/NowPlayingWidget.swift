@@ -12,7 +12,17 @@ struct NowPlayingWidget: View {
     var body: some View {
         ZStack {
             if let song = playingManager.nowPlaying {
-                MeasurableNowPlayingContent(song: song, showIcon: showIcon, showTitle: showTitle, titleMaxLength: titleMaxLength) { measuredWidth in
+                MeasurableNowPlayingContent(
+                    song: song,
+                    showIcon: showIcon,
+                    showTitle: showTitle,
+                    showArtist: showArtist,
+                    showAlbum: showAlbum,
+                    titleMaxLength: titleMaxLength,
+                    artistMaxLength: artistMaxLength,
+                    albumMaxLength: albumMaxLength,
+                    separator: separator
+                ) { measuredWidth in
                     if animatedWidth == 0 {
                         animatedWidth = measuredWidth
                     } else if animatedWidth != measuredWidth {
@@ -23,7 +33,18 @@ struct NowPlayingWidget: View {
                 }
                 .hidden()
 
-                VisibleNowPlayingContent(song: song, width: animatedWidth, showIcon: showIcon, showTitle: showTitle, titleMaxLength: titleMaxLength)
+                VisibleNowPlayingContent(
+                    song: song,
+                    width: animatedWidth,
+                    showIcon: showIcon,
+                    showTitle: showTitle,
+                    showArtist: showArtist,
+                    showAlbum: showAlbum,
+                    titleMaxLength: titleMaxLength,
+                    artistMaxLength: artistMaxLength,
+                    albumMaxLength: albumMaxLength,
+                    separator: separator
+                )
                     .onTapGesture {
                         MenuBarPopup.show(rect: widgetFrame, id: "nowplaying") {
                             NowPlayingPopup()
@@ -41,7 +62,12 @@ struct NowPlayingWidget: View {
 
     private var showIcon: Bool { configProvider.config["show-icon"]?.boolValue ?? true }
     private var showTitle: Bool { configProvider.config["show-title"]?.boolValue ?? true }
+    private var showArtist: Bool { configProvider.config["show-artist"]?.boolValue ?? false }
+    private var showAlbum: Bool { configProvider.config["show-album"]?.boolValue ?? false }
     private var titleMaxLength: Int { configProvider.config["title-max-length"]?.intValue ?? 30 }
+    private var artistMaxLength: Int { configProvider.config["artist-max-length"]?.intValue ?? 20 }
+    private var albumMaxLength: Int { configProvider.config["album-max-length"]?.intValue ?? 20 }
+    private var separator: String { configProvider.config["separator"]?.stringValue ?? " - " }
 }
 
 // MARK: - Music Icon View
@@ -64,7 +90,12 @@ struct NowPlayingContent: View {
     let song: NowPlayingSong
     let showIcon: Bool
     let showTitle: Bool
+    let showArtist: Bool
+    let showAlbum: Bool
     let titleMaxLength: Int
+    let artistMaxLength: Int
+    let albumMaxLength: Int
+    let separator: String
 
     @Environment(\.widgetFont) var widgetFont
 
@@ -73,8 +104,10 @@ struct NowPlayingContent: View {
             if showIcon {
                 MusicIconView()
             }
-            if showTitle, !song.title.isEmpty {
-                Text(truncatedTitle)
+
+            let parts = textParts
+            if !parts.isEmpty {
+                Text(parts.joined(separator: separator))
                     .font(widgetFont.toFont())
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -83,13 +116,28 @@ struct NowPlayingContent: View {
         .padding(.horizontal, 4)
     }
 
-    private var truncatedTitle: String {
-        let title = song.title
-        if title.count > titleMaxLength {
-            let endIndex = title.index(title.startIndex, offsetBy: titleMaxLength)
-            return String(title[..<endIndex]) + "..."
+    private var textParts: [String] {
+        var parts: [String] = []
+
+        if showTitle, !song.title.isEmpty {
+            parts.append(truncate(song.title, max: titleMaxLength))
         }
-        return title
+        if showArtist, !song.artist.isEmpty {
+            parts.append(truncate(song.artist, max: artistMaxLength))
+        }
+        if showAlbum, !song.album.isEmpty {
+            parts.append(truncate(song.album, max: albumMaxLength))
+        }
+
+        return parts
+    }
+
+    private func truncate(_ text: String, max maxLength: Int) -> String {
+        if text.count > maxLength {
+            let endIndex = text.index(text.startIndex, offsetBy: maxLength)
+            return String(text[..<endIndex]) + "..."
+        }
+        return text
     }
 }
 
@@ -99,20 +147,35 @@ struct MeasurableNowPlayingContent: View {
     let song: NowPlayingSong
     let showIcon: Bool
     let showTitle: Bool
+    let showArtist: Bool
+    let showAlbum: Bool
     let titleMaxLength: Int
+    let artistMaxLength: Int
+    let albumMaxLength: Int
+    let separator: String
     let onSizeChange: (CGFloat) -> Void
 
     var body: some View {
-        NowPlayingContent(song: song, showIcon: showIcon, showTitle: showTitle, titleMaxLength: titleMaxLength)
-            .background(
-                GeometryReader { geometry in
-                    Color.clear
-                        .onAppear { onSizeChange(geometry.size.width) }
-                        .onChange(of: geometry.size.width) { _, newWidth in
-                            onSizeChange(newWidth)
-                        }
-                }
-            )
+        NowPlayingContent(
+            song: song,
+            showIcon: showIcon,
+            showTitle: showTitle,
+            showArtist: showArtist,
+            showAlbum: showAlbum,
+            titleMaxLength: titleMaxLength,
+            artistMaxLength: artistMaxLength,
+            albumMaxLength: albumMaxLength,
+            separator: separator
+        )
+        .background(
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { onSizeChange(geometry.size.width) }
+                    .onChange(of: geometry.size.width) { _, newWidth in
+                        onSizeChange(newWidth)
+                    }
+            }
+        )
     }
 }
 
@@ -121,13 +184,28 @@ struct VisibleNowPlayingContent: View {
     let width: CGFloat
     let showIcon: Bool
     let showTitle: Bool
+    let showArtist: Bool
+    let showAlbum: Bool
     let titleMaxLength: Int
+    let artistMaxLength: Int
+    let albumMaxLength: Int
+    let separator: String
 
     var body: some View {
-        NowPlayingContent(song: song, showIcon: showIcon, showTitle: showTitle, titleMaxLength: titleMaxLength)
-            .frame(width: width)
-            .animation(.smooth(duration: 0.1), value: song)
-            .transition(.blurReplace)
+        NowPlayingContent(
+            song: song,
+            showIcon: showIcon,
+            showTitle: showTitle,
+            showArtist: showArtist,
+            showAlbum: showAlbum,
+            titleMaxLength: titleMaxLength,
+            artistMaxLength: artistMaxLength,
+            albumMaxLength: albumMaxLength,
+            separator: separator
+        )
+        .frame(width: width)
+        .animation(.smooth(duration: 0.1), value: song)
+        .transition(.blurReplace)
     }
 }
 

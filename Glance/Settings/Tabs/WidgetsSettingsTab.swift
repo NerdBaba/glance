@@ -35,7 +35,12 @@ struct WidgetsSettingsTab: View {
 
     @State private var nowPlayingShowIcon = true
     @State private var nowPlayingShowTitle = true
+    @State private var nowPlayingShowArtist = false
+    @State private var nowPlayingShowAlbum = false
     @State private var nowPlayingTitleMaxLength = 30
+    @State private var nowPlayingArtistMaxLength = 20
+    @State private var nowPlayingAlbumMaxLength = 20
+    @State private var nowPlayingSeparator = " - "
 
     // Volume display mode settings
     @State private var volumeDisplayMode = "icon-value"
@@ -406,7 +411,7 @@ struct WidgetsSettingsTab: View {
                             )
                         }
 
-                    Toggle("Show song title", isOn: $nowPlayingShowTitle)
+                    Toggle("Show title", isOn: $nowPlayingShowTitle)
                         .onChange(of: nowPlayingShowTitle) { _, newValue in
                             configManager.updateConfigValue(
                                 key: "widgets.default.nowplaying.show-title",
@@ -426,7 +431,60 @@ struct WidgetsSettingsTab: View {
                         )
                     }
 
-                    Text("Controls how long the song title can be before truncation.")
+                    Toggle("Show artist", isOn: $nowPlayingShowArtist)
+                        .onChange(of: nowPlayingShowArtist) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.nowplaying.show-artist",
+                                newValue: newValue ? "true" : "false"
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Artist max length",
+                        value: $nowPlayingArtistMaxLength,
+                        range: 5...60,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.nowplaying.artist-max-length",
+                            newValue: String(nowPlayingArtistMaxLength)
+                        )
+                    }
+
+                    Toggle("Show album", isOn: $nowPlayingShowAlbum)
+                        .onChange(of: nowPlayingShowAlbum) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.nowplaying.show-album",
+                                newValue: newValue ? "true" : "false"
+                            )
+                        }
+
+                    StepperRow(
+                        label: "Album max length",
+                        value: $nowPlayingAlbumMaxLength,
+                        range: 5...60,
+                        suffix: " chars"
+                    ) {
+                        configManager.updateConfigValue(
+                            key: "widgets.default.nowplaying.album-max-length",
+                            newValue: String(nowPlayingAlbumMaxLength)
+                        )
+                    }
+
+                    HStack {
+                        Text("Separator")
+                            .frame(width: 130, alignment: .leading)
+                        TextField("Separator", text: $nowPlayingSeparator)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: nowPlayingSeparator) { _, newValue in
+                                configManager.updateConfigValue(
+                                    key: "widgets.default.nowplaying.separator",
+                                    newValue: newValue
+                                )
+                            }
+                    }
+
+                    Text("Enabled fields are joined by the separator. Example: \"Song Title - Artist - Album\"")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -881,7 +939,12 @@ struct WidgetsSettingsTab: View {
         let nowPlayingConfig = configManager.globalWidgetConfig(for: "default.nowplaying")
         nowPlayingShowIcon = nowPlayingConfig["show-icon"]?.boolValue ?? true
         nowPlayingShowTitle = nowPlayingConfig["show-title"]?.boolValue ?? true
+        nowPlayingShowArtist = nowPlayingConfig["show-artist"]?.boolValue ?? false
+        nowPlayingShowAlbum = nowPlayingConfig["show-album"]?.boolValue ?? false
         nowPlayingTitleMaxLength = nowPlayingConfig["title-max-length"]?.intValue ?? 30
+        nowPlayingArtistMaxLength = nowPlayingConfig["artist-max-length"]?.intValue ?? 20
+        nowPlayingAlbumMaxLength = nowPlayingConfig["album-max-length"]?.intValue ?? 20
+        nowPlayingSeparator = nowPlayingConfig["separator"]?.stringValue ?? " - "
 
         // Volume display mode settings
         let volumeConfig2 = configManager.globalWidgetConfig(for: "default.volume")
