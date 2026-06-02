@@ -37,6 +37,21 @@ struct BluetoothWidget: View {
                     .font(widgetFont.toFont())
                     .monospacedDigit()
                     .fixedSize(horizontal: true, vertical: false)
+            case "label-value":
+                let truncatedLabel = label.count > maxLength
+                    ? String(label.prefix(maxLength - 3)) + "..."
+                    : label
+                if viewModel.connectedCount > 0 {
+                    Text("\(truncatedLabel) \(viewModel.connectedCount)")
+                        .font(widgetFont.toFont())
+                        .monospacedDigit()
+                        .fixedSize(horizontal: true, vertical: false)
+                } else {
+                    Text(truncatedLabel)
+                        .font(widgetFont.toFont())
+                        .monospacedDigit()
+                        .fixedSize(horizontal: true, vertical: false)
+                }
             case "icon-label-value":
                 HStack(spacing: 3) {
                     Image(systemName: "wave.3.right")

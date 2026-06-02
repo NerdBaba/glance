@@ -41,6 +41,11 @@ struct FanWidget: View {
                     .font(widgetFont.toFont())
                     .monospacedDigit()
                     .fixedSize(horizontal: true, vertical: false)
+            case "label-value":
+                Text(displayText)
+                    .font(widgetFont.toFont())
+                    .monospacedDigit()
+                    .fixedSize(horizontal: true, vertical: false)
             case "icon-label-value":
                 HStack(spacing: 6) {
                     Image(systemName: "fan")

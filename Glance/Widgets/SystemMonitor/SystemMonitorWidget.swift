@@ -43,6 +43,11 @@ struct SystemMonitorWidget: View {
                 .font(widgetFont.toFont())
                 .monospacedDigit()
                 .fixedSize(horizontal: true, vertical: false)
+        case "label-value":
+            Text(displayText(cpuLabel, cpuValueText, cpuMaxLength))
+                .font(widgetFont.toFont())
+                .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
         case "icon-label-value":
             HStack(spacing: 4) {
                 Image(systemName: "cpu")
@@ -74,6 +79,11 @@ struct SystemMonitorWidget: View {
                 .barStatusSymbol(size: 11, opticalYOffset: -0.1)
         case "value":
             Text(memValueText)
+                .font(widgetFont.toFont())
+                .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
+        case "label-value":
+            Text(displayText(memLabel, memValueText, memMaxLength))
                 .font(widgetFont.toFont())
                 .monospacedDigit()
                 .fixedSize(horizontal: true, vertical: false)

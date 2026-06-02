@@ -266,6 +266,7 @@ struct WidgetsSettingsTab: View {
                     Picker("Display mode", selection: $volumeDisplayMode) {
                         Text("Icon").tag("icon")
                         Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
                         Text("Icon + Value").tag("icon-value")
                         Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
@@ -433,8 +434,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "System Monitor (CPU)") {
                     Picker("Display mode", selection: $systemMonitorCpuDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)
@@ -470,8 +473,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "System Monitor (Memory)") {
                     Picker("Display mode", selection: $systemMonitorMemDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)
@@ -507,8 +512,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "Temperature") {
                     Picker("Display mode", selection: $temperatureDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)
@@ -544,8 +551,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "Fan") {
                     Picker("Display mode", selection: $fanDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)
@@ -581,8 +590,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "Energy") {
                     Picker("Display mode", selection: $energyDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)
@@ -618,8 +629,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "Battery Display") {
                     Picker("Display mode", selection: $batteryDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)
@@ -655,8 +668,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "Bluetooth") {
                     Picker("Display mode", selection: $bluetoothDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)
@@ -692,8 +707,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "Brightness Display") {
                     Picker("Display mode", selection: $brightnessDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)
@@ -729,8 +746,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "Network (WiFi)") {
                     Picker("Display mode", selection: $networkWifiDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)
@@ -766,8 +785,10 @@ struct WidgetsSettingsTab: View {
                 SettingsSection(title: "Network (Ethernet)") {
                     Picker("Display mode", selection: $networkEthDisplayMode) {
                         Text("Icon").tag("icon")
-                        Text("Text").tag("text")
-                        Text("Both").tag("both")
+                        Text("Value").tag("value")
+                        Text("Label + Value").tag("label-value")
+                        Text("Icon + Value").tag("icon-value")
+                        Text("Icon + Label + Value").tag("icon-label-value")
                         Text("Off").tag("off")
                     }
                     .pickerStyle(.menu)

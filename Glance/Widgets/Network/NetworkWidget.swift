@@ -55,6 +55,9 @@ struct NetworkWidget: View {
             } else {
                 wifiIcon
             }
+        case "label-value":
+            Text(truncated(wifiLabel, wifiMaxLength))
+                .barStatusSymbol()
         case "icon-label-value":
             HStack(spacing: 4) {
                 wifiIcon
@@ -85,6 +88,9 @@ struct NetworkWidget: View {
             } else {
                 ethernetIcon
             }
+        case "label-value":
+            Text(truncated(ethLabel, ethMaxLength))
+                .barStatusSymbol()
         case "icon-label-value":
             HStack(spacing: 4) {
                 ethernetIcon

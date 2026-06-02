@@ -26,6 +26,8 @@ struct BatteryWidget: View {
                 iconView
             case "value":
                 valueView
+            case "label-value":
+                textView
             case "icon-label-value":
                 iconLabelView
             case "off":
@@ -86,6 +88,39 @@ struct BatteryWidget: View {
     private var valueView: some View {
         HStack(alignment: .center, spacing: 2) {
             Text("\(level)")
+                .font(widgetFont.toFont())
+                .monospacedDigit()
+                .fontWeight(.semibold)
+            if isCharging && level != 100 {
+                Image(systemName: "bolt.fill")
+                    .font(widgetFont.toFont())
+            }
+            if !isCharging && isPluggedIn && level != 100 {
+                Image(systemName: "powerplug.portrait.fill")
+                    .font(widgetFont.toFont())
+            }
+        }
+        .foregroundStyle(batteryTextColor)
+        .transition(.blurReplace)
+        .animation(.smooth, value: isCharging)
+        .background(
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear {
+                        rect = geometry.frame(in: .global)
+                    }
+            }
+        )
+    }
+
+    /// Label + value: level number + charging icon (no battery shape)
+    private var textView: some View {
+        HStack(alignment: .center, spacing: 2) {
+            let displayLabel = label.isEmpty ? "\(level)" : label
+            let truncatedLabel = displayLabel.count > maxLength
+                ? String(displayLabel.prefix(maxLength - 3)) + "..."
+                : displayLabel
+            Text(truncatedLabel)
                 .font(widgetFont.toFont())
                 .monospacedDigit()
                 .fontWeight(.semibold)

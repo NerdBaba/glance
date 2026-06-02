@@ -41,6 +41,14 @@ struct BrightnessWidget: View {
                 .font(.system(size: 13, weight: .medium))
                 .monospacedDigit()
                 .fixedSize(horizontal: true, vertical: false)
+        case "label-value":
+            let truncatedLabel = label.count > maxLength
+                ? String(label.prefix(maxLength - 3)) + "..."
+                : label
+            Text("\(truncatedLabel) \(viewModel.brightnessPercent)%")
+                .font(.system(size: 13, weight: .medium))
+                .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
         case "icon-label-value":
             HStack(spacing: 5) {
                 Image(systemName: viewModel.iconName)
