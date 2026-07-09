@@ -351,9 +351,10 @@ private struct SpaceView: View {
     @ViewBuilder
     private func wordsContent(isFocused: Bool) -> some View {
         let word = spaceWords[space.id] ?? space.id
+        let widgetFont = appearance.widgetFont
 
         Text(word)
-            .font(.system(size: 12, weight: isFocused ? .bold : .medium))
+            .font(widgetFont.toFont().weight(isFocused ? .bold : widgetFont.weight))
             .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
