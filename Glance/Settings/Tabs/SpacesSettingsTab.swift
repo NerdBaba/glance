@@ -45,6 +45,7 @@ struct SpacesSettingsTab: View {
                         Text("Pill").tag("pill")
                         Text("Underline").tag("underline")
                         Text("Glow").tag("glow")
+                        Text("Inverted").tag("inverted")
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: selectedHighlight) { _, newValue in
@@ -491,6 +492,8 @@ private struct SpacesHighlightDiagram: View {
                 underlineDiagram(w: w, h: h)
             case "glow":
                 glowDiagram(w: w, h: h)
+            case "inverted":
+                invertedDiagram(w: w, h: h)
             default:
                 EmptyView()
             }
@@ -548,6 +551,24 @@ private struct SpacesHighlightDiagram: View {
             Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
             Circle().fill(Color.white).frame(width: 7, height: 7)
                 .shadow(color: Color.accentColor.opacity(0.8), radius: 4)
+            Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
+        }
+        .frame(width: w, height: h)
+    }
+
+    // Inverted: focused has solid background with inverted text
+    @ViewBuilder
+    private func invertedDiagram(w: CGFloat, h: CGFloat) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
+            Text("A")
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.accentColor.inverted())
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule().fill(Color.accentColor)
+                )
             Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
         }
         .frame(width: w, height: h)

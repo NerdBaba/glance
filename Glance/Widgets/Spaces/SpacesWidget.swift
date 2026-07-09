@@ -17,6 +17,7 @@ enum SpacesHighlight: String {
     case pill      // Accent capsule background behind focused
     case underline // Colored bar beneath focused
     case glow      // Soft accent glow around focused
+    case inverted  // Solid background with inverted text color
 }
 
 enum NumeralSystem: String {
@@ -361,6 +362,18 @@ private struct SpaceView: View {
     }
 }
 
+// MARK: - Color Inversion Utility
+
+extension Color {
+    /// Returns the inverse (negative) of this color by inverting RGB components
+    func inverted() -> Color {
+        let nsColor = NSColor(self)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        nsColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return Color(red: 1.0 - r, green: 1.0 - g, blue: 1.0 - b).opacity(a)
+    }
+}
+
 // MARK: - Highlight Style Modifier
 
 private struct HighlightModifier: ViewModifier {
@@ -404,6 +417,20 @@ private struct HighlightModifier: ViewModifier {
             content
                 .shadow(color: isFocused ? accentColor.opacity(0.6) : .clear, radius: isFocused ? 6 : 0)
                 .opacity(isFocused ? 1.0 : (isHovered ? 0.85 : 0.5))
+
+        case .inverted:
+            if isFocused {
+                content
+                    .background(
+                        Capsule()
+                            .fill(accentColor)
+                    )
+                    .foregroundStyle(accentColor.inverted())
+                    .opacity(1.0)
+            } else {
+                content
+                    .opacity(isHovered ? 0.9 : 0.6)
+            }
         }
     }
 }
