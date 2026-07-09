@@ -202,6 +202,18 @@ private struct SpaceView: View {
         return [:]
     }
 
+    var invertedShape: String {
+        config["space.inverted-shape"]?.stringValue ?? "pill"
+    }
+
+    var pywalPerSpace: Bool {
+        config["space.pywal-per-space"]?.boolValue ?? false
+    }
+
+    var pywalColors: [Color] {
+        configManager.pywalColors?.colors ?? []
+    }
+
     let space: AnySpace
 
     @State var isHovered = false
@@ -219,7 +231,11 @@ private struct SpaceView: View {
                     highlight,
                     isFocused: isFocused,
                     isHovered: isHovered,
-                    accentColor: appearance.accentColor
+                    accentColor: appearance.accentColor,
+                    spaceId: space.id,
+                    invertedShape: invertedShape,
+                    pywalPerSpace: pywalPerSpace,
+                    pywalColors: pywalColors
                 )
                 .contentShape(Rectangle())
                 .transition(.blurReplace)
@@ -373,6 +389,16 @@ extension Color {
         nsColor.getRed(&r, green: &g, blue: &b, alpha: &a)
         return Color(red: 1.0 - r, green: 1.0 - g, blue: 1.0 - b).opacity(a)
     }
+
+    /// Returns a light or dark variant of this color for readable contrast
+    func contrastVariant() -> Color {
+        let nsColor = NSColor(self)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        nsColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        // Relative luminance (WCAG formula)
+        let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        return luminance > 0.5 ? Color.black : Color.white
+    }
 }
 
 // MARK: - Highlight Style Modifier
@@ -382,6 +408,16 @@ private struct HighlightModifier: ViewModifier {
     let isFocused: Bool
     let isHovered: Bool
     let accentColor: Color
+    let spaceId: String
+    let invertedShape: String
+    let pywalPerSpace: Bool
+    let pywalColors: [Color]
+
+    private var resolvedAccentColor: Color {
+        guard pywalPerSpace, !pywalColors.isEmpty else { return accentColor }
+        let index = (Int(spaceId) ?? 0) % pywalColors.count
+        return pywalColors[index]
+    }
 
     func body(content: Content) -> some View {
         switch style {
@@ -420,13 +456,22 @@ private struct HighlightModifier: ViewModifier {
                 .opacity(isFocused ? 1.0 : (isHovered ? 0.85 : 0.5))
 
         case .inverted:
+            let bgColor = resolvedAccentColor
+            let textColor = bgColor.contrastVariant()
             if isFocused {
                 content
                     .background(
-                        Capsule()
-                            .fill(accentColor)
+                        Group {
+                            if invertedShape == "square" {
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(bgColor)
+                            } else {
+                                Capsule()
+                                    .fill(bgColor)
+                            }
+                        }
                     )
-                    .foregroundStyle(accentColor.inverted())
+                    .foregroundStyle(textColor)
                     .opacity(1.0)
             } else {
                 content
@@ -441,13 +486,21 @@ private extension View {
         _ style: SpacesHighlight,
         isFocused: Bool,
         isHovered: Bool,
-        accentColor: Color
+        accentColor: Color,
+        spaceId: String,
+        invertedShape: String,
+        pywalPerSpace: Bool,
+        pywalColors: [Color]
     ) -> some View {
         modifier(HighlightModifier(
             style: style,
             isFocused: isFocused,
             isHovered: isHovered,
-            accentColor: accentColor
+            accentColor: accentColor,
+            spaceId: spaceId,
+            invertedShape: invertedShape,
+            pywalPerSpace: pywalPerSpace,
+            pywalColors: pywalColors
         ))
     }
 }

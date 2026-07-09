@@ -15,6 +15,8 @@ struct SpacesSettingsTab: View {
     @State private var showingIconPicker = false
     @State private var spaceWords: [String: String] = [:]
     @State private var hasAppeared = false
+    @State private var invertedShape: String = "pill"
+    @State private var pywalPerSpace: Bool = false
 
     var body: some View {
         ScrollView {
@@ -52,6 +54,29 @@ struct SpacesSettingsTab: View {
                         configManager.updateConfigValue(
                             key: "widgets.default.spaces.space.highlight",
                             newValue: newValue)
+                    }
+                }
+
+                // MARK: - Inverted Style Options
+                if selectedHighlight == "inverted" {
+                    SettingsSection(title: "Inverted Style") {
+                        Picker("Shape", selection: $invertedShape) {
+                            Text("Pill").tag("pill")
+                            Text("Square").tag("square")
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: invertedShape) { _, newValue in
+                            configManager.updateConfigValue(
+                                key: "widgets.default.spaces.space.inverted-shape",
+                                newValue: newValue)
+                        }
+
+                        Toggle("Pywal color per space", isOn: $pywalPerSpace)
+                            .onChange(of: pywalPerSpace) { _, newValue in
+                                configManager.updateConfigValue(
+                                    key: "widgets.default.spaces.space.pywal-per-space",
+                                    newValue: newValue ? "true" : "false")
+                            }
                     }
                 }
 
@@ -206,6 +231,8 @@ struct SpacesSettingsTab: View {
         tintIcons = spacesConfig["space.tint-icons"]?.boolValue ?? false
         selectedIconStyle = spacesConfig["space.icon-style"]?.stringValue ?? "app-icon"
         customIcon = spacesConfig["space.global-icon"]?.stringValue ?? "desktopcomputer"
+        invertedShape = spacesConfig["space.inverted-shape"]?.stringValue ?? "pill"
+        pywalPerSpace = spacesConfig["space.pywal-per-space"]?.boolValue ?? false
 
         if let wordsDict = spacesConfig["space.words"]?.dictionaryValue {
             spaceWords = wordsDict.compactMapValues { $0.stringValue }
