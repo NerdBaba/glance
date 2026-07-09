@@ -194,7 +194,10 @@ struct WidgetsSection: Decodable {
         var intValue: Int? = nil
 
         init?(stringValue: String) { self.stringValue = stringValue }
-        init?(intValue: Int) { return nil }
+        init?(intValue: Int) {
+            self.stringValue = String(intValue)
+            self.intValue = intValue
+        }
     }
 
     init(
@@ -347,8 +350,20 @@ enum TOMLValue: Decodable {
             self = .array(arr)
             return
         }
+        // Try decoding as dictionary with string keys first
         if let dict = try? container.decode(ConfigData.self) {
             self = .dictionary(dict)
+            return
+        }
+        // Try decoding as dictionary with mixed keys (int/string) and convert to ConfigData
+        if let mixedDict = try? container.decode([String: TOMLValue].self) {
+            self = .dictionary(mixedDict)
+            return
+        }
+        // Try decoding as dictionary with int keys and convert to ConfigData
+        if let intDict = try? container.decode([Int: TOMLValue].self) {
+            let stringDict = Dictionary(uniqueKeysWithValues: intDict.map { (String($0.key), $0.value) })
+            self = .dictionary(stringDict)
             return
         }
 

@@ -9,6 +9,7 @@ enum SpacesDisplayMode: String {
     case iconsOnly     = "icons-only"   // App icons only, no numbers
     case focusedOnly   = "focused-only" // Only show the focused space
     case customIcons   = "custom-icons" // Custom SF Symbol icon per space
+    case words         = "words"        // Custom user-defined words per space
 }
 
 enum SpacesHighlight: String {
@@ -113,6 +114,24 @@ private extension Int {
     }
 }
 
+// MARK: - Inline Table Parser
+
+func parseInlineTable(_ str: String) -> [String: String] {
+    var result: [String: String] = [:]
+    let trimmed = str.trimmingCharacters(in: .whitespaces)
+        .replacingOccurrences(of: "{", with: "")
+        .replacingOccurrences(of: "}", with: "")
+    let pairs = trimmed.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+    for pair in pairs {
+        let parts = pair.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+        guard parts.count == 2 else { continue }
+        let key = parts[0].replacingOccurrences(of: "\"", with: "")
+        let value = parts[1].replacingOccurrences(of: "\"", with: "")
+        result[key] = value
+    }
+    return result
+}
+
 // MARK: - Spaces Widget
 
 struct SpacesWidget: View {
@@ -171,6 +190,17 @@ private struct SpaceView: View {
         return NumeralSystem(rawValue: raw) ?? .arabic
     }
 
+    var spaceWords: [String: String] {
+        if let dict = config["space.words"]?.dictionaryValue {
+            return dict.compactMapValues { $0.stringValue }
+        }
+        // Fallback: parse inline table string like "{ 2 = \"sss\", 1 = \"ss\" }"
+        if let rawStr = config["space.words"]?.stringValue {
+            return parseInlineTable(rawStr)
+        }
+        return [:]
+    }
+
     let space: AnySpace
 
     @State var isHovered = false
@@ -216,6 +246,8 @@ private struct SpaceView: View {
             iconsOnlyContent(isFocused: isFocused)
         case .customIcons:
             customIconsContent(isFocused: isFocused)
+        case .words:
+            wordsContent(isFocused: isFocused)
         }
     }
 
@@ -311,6 +343,21 @@ private struct SpaceView: View {
         }
         .padding(.horizontal, 6)
         .frame(height: 30)
+    }
+
+    // MARK: - Words Mode (custom user-defined words)
+
+    @ViewBuilder
+    private func wordsContent(isFocused: Bool) -> some View {
+        let word = spaceWords[space.id] ?? space.id
+
+        Text(word)
+            .font(.system(size: 12, weight: isFocused ? .bold : .medium))
+            .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 6)
+            .frame(height: 30)
     }
 }
 

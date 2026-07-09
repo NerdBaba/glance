@@ -563,6 +563,8 @@ final class ConfigManager: ObservableObject {
         if value == "true" || value == "false" { return value }
         // Arrays
         if value.hasPrefix("[") && value.hasSuffix("]") { return value }
+        // Inline tables (dictionaries)
+        if value.hasPrefix("{") && value.hasSuffix("}") { return value }
         // Integer
         if Int(value) != nil { return value }
         // Float

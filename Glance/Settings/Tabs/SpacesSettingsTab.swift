@@ -13,6 +13,8 @@ struct SpacesSettingsTab: View {
     @State private var selectedIconStyle: String = "app-icon"
     @State private var customIcon: String = "desktopcomputer"
     @State private var showingIconPicker = false
+    @State private var spaceWords: [String: String] = [:]
+    @State private var hasAppeared = false
 
     var body: some View {
         ScrollView {
@@ -26,6 +28,7 @@ struct SpacesSettingsTab: View {
                         Text("Icons Only").tag("icons-only")
                         Text("Focused Only").tag("focused-only")
                         Text("Custom Icons").tag("custom-icons")
+                        Text("Words").tag("words")
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: selectedDisplayMode) { _, newValue in
@@ -63,6 +66,31 @@ struct SpacesSettingsTab: View {
                         configManager.updateConfigValue(
                             key: "widgets.default.spaces.space.numeral-system",
                             newValue: newValue)
+                    }
+                }
+
+                // MARK: - Custom Words
+                if selectedDisplayMode == "words" {
+                    SettingsSection(title: "Custom Words") {
+                        Text("Enter a custom word for each space. Spaces without a word will show their number.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        ForEach(1...9, id: \.self) { spaceNum in
+                            let spaceId = String(spaceNum)
+                            HStack {
+                                Text("Space \(spaceNum)")
+                                    .font(.system(size: 13))
+                                    .frame(width: 80, alignment: .leading)
+                                TextField("Label", text: Binding(
+                                    get: { spaceWords[spaceId] ?? "" },
+                                    set: { newValue in
+                                        spaceWords[spaceId] = newValue
+                                        saveSpaceWords()
+                                    }
+                                ))
+                                .textFieldStyle(.roundedBorder)
+                            }
+                        }
                     }
                 }
 
@@ -155,7 +183,14 @@ struct SpacesSettingsTab: View {
             }
             .padding(24)
         }
-        .onAppear { syncFromConfig() }
+        .onAppear {
+            syncFromConfig()
+            hasAppeared = true
+        }
+        .onChange(of: configManager.config) { _, _ in
+            guard hasAppeared else { return }
+            syncFromConfig()
+        }
     }
 
     private func syncFromConfig() {
@@ -170,12 +205,27 @@ struct SpacesSettingsTab: View {
         tintIcons = spacesConfig["space.tint-icons"]?.boolValue ?? false
         selectedIconStyle = spacesConfig["space.icon-style"]?.stringValue ?? "app-icon"
         customIcon = spacesConfig["space.global-icon"]?.stringValue ?? "desktopcomputer"
+
+        if let wordsDict = spacesConfig["space.words"]?.dictionaryValue {
+            spaceWords = wordsDict.compactMapValues { $0.stringValue }
+        } else if let rawStr = spacesConfig["space.words"]?.stringValue {
+            spaceWords = parseInlineTable(rawStr)
+        }
     }
 
     private func saveCustomIcon(_ icon: String) {
         configManager.updateConfigValue(
             key: "widgets.default.spaces.space.global-icon",
             newValue: icon)
+    }
+
+    private func saveSpaceWords() {
+        let filtered = spaceWords.filter { !$0.value.isEmpty }
+        let entries = filtered.map { "\($0.key) = \"\($0.value)\"" }
+        let json = "{ \(entries.joined(separator: ", ")) }"
+        configManager.updateConfigValue(
+            key: "widgets.default.spaces.space.words",
+            newValue: json)
     }
 
     private func loadRecentIcons() -> [String] {
