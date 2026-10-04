@@ -124,6 +124,19 @@ final class AppLogger {
     }
 
     private func logFileURL() -> URL? {
+        if let previewLogPath = ProcessInfo.processInfo.environment["GLANCE_LOG_FILE"],
+           !previewLogPath.isEmpty {
+            let url = URL(fileURLWithPath: previewLogPath)
+            do {
+                try fileManager.createDirectory(
+                    at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            } catch {
+                fputs("Glance logger failed: \(error)\n", stderr)
+                return nil
+            }
+            return url
+        }
+
         guard let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
             return nil
         }

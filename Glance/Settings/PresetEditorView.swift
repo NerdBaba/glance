@@ -117,9 +117,9 @@ struct PresetEditorView: View {
 
                     // Shadow
                     GroupBox("Shadow") {
-                        editorSlider("Opacity", value: $shadowOpacity, range: 0...0.5, step: 0.01, format: "%.2f")
+                        editorSlider("Opacity", value: $shadowOpacity, range: 0...1, step: 0.01, format: "%.2f")
                         editorSlider("Radius", value: $shadowRadius, range: 0...20, format: "%.0f")
-                        editorSlider("Y offset", value: $shadowY, range: 0...10, format: "%.0f")
+                        editorSlider("Y offset", value: $shadowY, range: -20...20, format: "%.0f")
                     }
 
                     // Colors

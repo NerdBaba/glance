@@ -12,7 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var backgroundPanel: NSPanel?
     private var menuBarPanel: NSPanel?
     private var statusItem: NSStatusItem?
-    private let updaterController = SPUStandardUpdaterController(
+    private lazy var updaterController = SPUStandardUpdaterController(
         startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     private var hotkeyManager = HotkeyManager()
     private var toggleHotkeyID: UInt32?
@@ -28,6 +28,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showFatalConfigError(message: error)
             return
         }
+
+        // Inspect settings with an isolated config without starting bar services.
+        if CommandLine.arguments.contains("--preview-settings") {
+            SettingsWindowController.shared.showSettings()
+            return
+        }
+
+        // A diagnostic panel uses stable preview widgets and does not seed
+        // presets, change window gaps, or start normal application services.
+        if CommandLine.arguments.contains("--preview-panel") {
+            guard let screenFrame = NSScreen.main?.frame else { return }
+            let previewFrame = menuBarFrame(on: screenFrame)
+            setupPanel(
+                &menuBarPanel,
+                frame: previewFrame,
+                level: Int(CGWindowLevelForKey(.backstopMenu)),
+                hostingRootView: AnyView(BarPanelContent()))
+            menuBarPanel?.title = "Glance Bar Preview"
+            configCancellable = ConfigManager.shared.$config
+                .receive(on: RunLoop.main)
+                .sink { [weak self] _ in self?.updateMenuBarPanelFrame() }
+            AppLogger.shared.info("Preview panel launched: \(NSStringFromRect(previewFrame))", category: .app)
+            return
+        }
+
+        // Seed bundled theme snapshots into Randomazzo on normal app launches.
+        _ = RandomazzoStore.shared
 
         // Show "What's New" banner if the app version is outdated
         if !VersionChecker.isLatestVersion() {
@@ -165,34 +192,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Panels
 
+    private func menuBarFrame(on screenFrame: NSRect) -> NSRect {
+        let config = ConfigManager.shared.config
+        let fg = config.experimental.foreground
+        let scale = fg.renderingScale(for: screenFrame.width)
+        let height = max(fg.resolveHeight(), 1) * scale
+        let insets = BarDrawingInsets(appearance: config.appearance, foreground: fg)
+        let barY = fg.position == "bottom"
+            ? screenFrame.minY + fg.topMargin * scale
+            : screenFrame.maxY - height - fg.topMargin * scale
+        return NSRect(
+            x: screenFrame.minX,
+            y: barY - insets.bottom * scale,
+            width: screenFrame.width,
+            height: height + (insets.top + insets.bottom) * scale)
+    }
+
     /// Configures and displays the background and menu bar panels.
     private func setupPanels() {
         guard let screenFrame = NSScreen.main?.frame else { return }
-        let fg = ConfigManager.shared.config.experimental.foreground
-        let barHeight = fg.resolveHeight()
-        let topMargin = fg.topMargin
-        let bottomMargin = fg.position == "bottom" ? topMargin : 0
-        
-        // Menu bar panel: positioned at top or bottom based on config
-        let menuBarFrame: NSRect
-        if fg.position == "bottom" {
-            // Bottom position
-            menuBarFrame = NSRect(
-                x: screenFrame.origin.x,
-                y: screenFrame.origin.y + bottomMargin,
-                width: screenFrame.size.width,
-                height: barHeight
-            )
-        } else {
-            // Top position (default)
-            menuBarFrame = NSRect(
-                x: screenFrame.origin.x,
-                y: screenFrame.origin.y + screenFrame.size.height - barHeight - topMargin,
-                width: screenFrame.size.width,
-                height: barHeight
-            )
-        }
-        
         setupPanel(
             &backgroundPanel,
             frame: screenFrame,
@@ -200,35 +218,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hostingRootView: AnyView(BackgroundView()))
         setupPanel(
             &menuBarPanel,
-            frame: menuBarFrame,
+            frame: menuBarFrame(on: screenFrame),
             level: Int(CGWindowLevelForKey(.backstopMenu)),
-            hostingRootView: AnyView(MenuBarView()))
+            hostingRootView: AnyView(BarPanelContent()))
     }
 
     /// Updates the menu bar panel frame to match current config (bar height + margins).
     private func updateMenuBarPanelFrame() {
         guard let screenFrame = NSScreen.main?.frame else { return }
-        let fg = ConfigManager.shared.config.experimental.foreground
-        let barHeight = fg.resolveHeight()
-        let topMargin = fg.topMargin
-        let bottomMargin = fg.position == "bottom" ? topMargin : 0
-        
-        let newFrame: NSRect
-        if fg.position == "bottom" {
-            newFrame = NSRect(
-                x: screenFrame.origin.x,
-                y: screenFrame.origin.y + bottomMargin,
-                width: screenFrame.size.width,
-                height: barHeight
-            )
-        } else {
-            newFrame = NSRect(
-                x: screenFrame.origin.x,
-                y: screenFrame.origin.y + screenFrame.size.height - barHeight - topMargin,
-                width: screenFrame.size.width,
-                height: barHeight
-            )
-        }
+        let newFrame = menuBarFrame(on: screenFrame)
         
         if let panel = menuBarPanel {
             if panel.frame != newFrame {
@@ -240,7 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 &menuBarPanel,
                 frame: newFrame,
                 level: Int(CGWindowLevelForKey(.backstopMenu)),
-                hostingRootView: AnyView(MenuBarView()))
+                hostingRootView: AnyView(BarPanelContent()))
         }
     }
 

@@ -26,8 +26,12 @@ final class CalendarManager: ObservableObject {
     private var workspaceWakeObserver: NSObjectProtocol?
     private var refreshWorkItem: DispatchWorkItem?
 
-    init(configProvider: ConfigProvider) {
+    init(configProvider: ConfigProvider, previewMode: Bool = false) {
         self.configProvider = configProvider
+        guard !previewMode else {
+            hasAccess = false
+            return
+        }
         requestAccess()
         setupObservers()
         startMonitoring()

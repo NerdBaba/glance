@@ -38,7 +38,21 @@ private struct WidgetFontKey: EnvironmentKey {
     static let defaultValue: FontConfig = FontConfig(fontName: nil, fontSize: 13, weight: .medium)
 }
 
+private struct BarPreviewRenderingKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private struct PolybarModuleLayoutKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 extension EnvironmentValues {
+    /// Segment layout is supplied by format-padding rather than native widget insets.
+    var usesPolybarModuleLayout: Bool {
+        get { self[PolybarModuleLayoutKey.self] }
+        set { self[PolybarModuleLayoutKey.self] = newValue }
+    }
+
     var barStyle: BarStyle {
         get { self[BarStyleKey.self] }
         set { self[BarStyleKey.self] = newValue }
@@ -59,6 +73,11 @@ extension EnvironmentValues {
     var widgetFont: FontConfig {
         get { self[WidgetFontKey.self] }
         set { self[WidgetFontKey.self] = newValue }
+    }
+
+    var isBarPreviewRendering: Bool {
+        get { self[BarPreviewRenderingKey.self] }
+        set { self[BarPreviewRenderingKey.self] = newValue }
     }
 }
 
@@ -87,6 +106,8 @@ struct PersistentBlurView: NSViewRepresentable {
 /// Applied to individual widget capsules.
 /// Uses AppearanceConfig for all visual parameters including colors.
 struct WidgetStyleModifier: ViewModifier {
+    @Environment(\.isBarPreviewRendering) private var isBarPreviewRendering
+
     let appearance: AppearanceConfig
     let heightOverride: CGFloat?
     let showBackground: Bool
@@ -109,12 +130,16 @@ struct WidgetStyleModifier: ViewModifier {
             switch appearance.renderingStyle {
             case .glass:
                 content
-                    .background(
-                        ZStack {
-                            PersistentBlurView(material: appearance.blurMaterial)
+                    .background {
+                        if isBarPreviewRendering {
                             appearance.widgetBackgroundColor.opacity(appearance.fillOpacity)
+                        } else {
+                            ZStack {
+                                PersistentBlurView(material: appearance.blurMaterial)
+                                appearance.widgetBackgroundColor.opacity(appearance.fillOpacity)
+                            }
                         }
-                    )
+                    }
                     .clipShape(shape)
                     .overlay(
                         shape
@@ -156,6 +181,7 @@ struct WidgetStyleModifier: ViewModifier {
                                 lineWidth: appearance.borderWidth
                             )
                     )
+                    .compositingGroup()
                     .shadow(color: appearance.glowColor.opacity(appearance.glowOpacity), radius: appearance.glowRadius)
                     .shadow(color: appearance.borderColor2 != nil
                         ? appearance.borderColor2!.opacity(appearance.glowOpacity * 0.5)

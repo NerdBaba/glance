@@ -39,13 +39,24 @@ final class ConfigManager: ObservableObject {
         let homePath = FileManager.default.homeDirectoryForCurrentUser.path
         let path1 = "\(homePath)/.glance-config.toml"
         let path2 = "\(homePath)/.config/glance/config.toml"
+        // Allows the developer preview runner to render a draft TOML without
+        // replacing or touching the user's active Glance configuration.
+        let previewPath = ProcessInfo.processInfo.environment["GLANCE_CONFIG_PATH"]
+            ?? Self.argumentValue(after: "--config")
         var chosenPath: String?
+        if let previewPath {
+            guard FileManager.default.fileExists(atPath: previewPath) else {
+                initError = "Preview config file not found: \(previewPath)"
+                return
+            }
+            chosenPath = previewPath
+        }
 
-        if FileManager.default.fileExists(atPath: path1) {
+        if chosenPath == nil, FileManager.default.fileExists(atPath: path1) {
             chosenPath = path1
-        } else if FileManager.default.fileExists(atPath: path2) {
+        } else if chosenPath == nil, FileManager.default.fileExists(atPath: path2) {
             chosenPath = path2
-        } else {
+        } else if chosenPath == nil {
             do {
                 try createDefaultConfig(at: path1)
                 chosenPath = path1
@@ -62,6 +73,12 @@ final class ConfigManager: ObservableObject {
             parseConfigFile(at: path)
             startWatchingFile(at: path)
         }
+    }
+
+    private static func argumentValue(after option: String) -> String? {
+        guard let index = CommandLine.arguments.firstIndex(of: option),
+              CommandLine.arguments.indices.contains(index + 1) else { return nil }
+        return CommandLine.arguments[index + 1]
     }
 
     private func parseConfigFile(at path: String) {
@@ -82,6 +99,17 @@ final class ConfigManager: ObservableObject {
             logger.info("Config parsed successfully (strict)", category: .config)
         } catch {
             logger.error("Config parse error: \(error.localizedDescription)", category: .config)
+            // A read failure cannot be recovered by lenient TOML parsing. Do
+            // not silently display the default theme during a review launch.
+            if (try? String(contentsOfFile: path, encoding: .utf8)) == nil {
+                let message = "Cannot read config at \(path): \(error.localizedDescription)"
+                if Thread.isMainThread {
+                    self.initError = message
+                } else {
+                    DispatchQueue.main.async { self.initError = message }
+                }
+                return
+            }
             lenientParseConfigFile(path: path)
         }
     }
@@ -505,6 +533,7 @@ final class ConfigManager: ObservableObject {
             let currentText = try String(contentsOfFile: path, encoding: .utf8)
             let updatedText = updatedTOMLString(
                 original: currentText, key: key, newValue: newValue)
+            guard updatedText != currentText else { return }
             try updatedText.write(
                 toFile: path, atomically: true, encoding: .utf8)
             logger.info("Updated config key '\(key)' to '\(newValue)'", category: .config)
@@ -551,6 +580,7 @@ final class ConfigManager: ObservableObject {
                 text = removedConfigValue(from: text, key: key)
             }
             try text.write(toFile: path, atomically: true, encoding: .utf8)
+            parseConfigFile(at: path)
         } catch {
             let removedKeys = keys.joined(separator: ", ")
             logger.error("Error removing config keys [\(removedKeys)]: \(error.localizedDescription)", category: .config)
@@ -559,6 +589,8 @@ final class ConfigManager: ObservableObject {
 
     /// Formats a value for TOML: numbers and booleans are bare, arrays are bare, strings get quotes.
     private func tomlFormatted(_ value: String) -> String {
+        // Settings controls can provide an already escaped TOML string.
+        if value.hasPrefix("\"") && value.hasSuffix("\"") && value.count >= 2 { return value }
         // Booleans
         if value == "true" || value == "false" { return value }
         // Arrays
@@ -570,7 +602,12 @@ final class ConfigManager: ObservableObject {
         // Float
         if Double(value) != nil { return value }
         // String — wrap in quotes
-        return "\"\(value)\""
+        let escaped = value.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+            .replacingOccurrences(of: "\t", with: "\\t")
+        return "\"\(escaped)\""
     }
 
     /// Count unbalanced open brackets in a string (for multi-line array detection).

@@ -19,11 +19,11 @@ struct NetworkWidget: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            if viewModel.wifiState != .notSupported {
-                wifiContent
-            }
-            if viewModel.ethernetState != .notSupported {
-                ethernetContent
+            if configProvider.config["display-mode"]?.stringValue == "ip" {
+                NetworkIPAddressContent(config: configProvider, address: viewModel.localIP)
+            } else {
+                if viewModel.wifiState != .notSupported { wifiContent }
+                if viewModel.ethernetState != .notSupported { ethernetContent }
             }
         }
         .barSingleLineAligned()
@@ -164,6 +164,24 @@ struct NetworkWidget: View {
         guard text.count > maxLength else { return text }
         let endIndex = text.index(text.startIndex, offsetBy: maxLength - 3)
         return String(text[..<endIndex]) + "..."
+    }
+}
+
+/// Shares native address data and the same configurable icon/typography in
+/// live bars and deterministic image exports.
+struct NetworkIPAddressContent: View {
+    let config: ConfigProvider
+    let address: String
+    @Environment(\.widgetFont) private var widgetFont
+
+    var body: some View {
+        HStack(spacing: config.config["content-spacing"]?.doubleValue ?? 8) {
+            if config.config["show-icon"]?.boolValue ?? true {
+                PolybarIcon(config: config, glyph: config.config["glyph"]?.stringValue, systemName: "link")
+            }
+            Text(address).font(widgetFont.toFont()).fixedSize()
+        }
+        .frame(maxHeight: .infinity)
     }
 }
 

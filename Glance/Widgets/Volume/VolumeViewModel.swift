@@ -35,8 +35,15 @@ final class VolumeViewModel: ObservableObject {
 
     private var currentListeningDevice: AudioObjectID = 0
     private var refcon: UnsafeMutableRawPointer?
+    private let previewMode: Bool
 
-    init() {
+    init(previewMode: Bool = false) {
+        self.previewMode = previewMode
+        if previewMode {
+            volume = 0.55
+            return
+        }
+
         refcon = Unmanaged.passUnretained(self).toOpaque()
         updateVolume()
         updateOutputDeviceName()
@@ -47,6 +54,7 @@ final class VolumeViewModel: ObservableObject {
     }
 
     deinit {
+        guard !previewMode else { return }
         removeDefaultDeviceListener()
         removeDeviceListeners()
     }

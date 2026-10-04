@@ -1,603 +1,744 @@
 import SwiftUI
 
 struct SpacesSettingsTab: View {
-    @ObservedObject var configManager = ConfigManager.shared
+  @ObservedObject var configManager = ConfigManager.shared
 
-    @State private var showKey: Bool = true
-    @State private var showTitle: Bool = true
-    @State private var maxLength: Double = 50
-    @State private var selectedDisplayMode: String = "icons"
-    @State private var selectedHighlight: String = "opacity"
-    @State private var selectedNumeralSystem: String = "arabic"
-    @State private var tintIcons: Bool = false
-    @State private var selectedIconStyle: String = "app-icon"
-    @State private var customIcon: String = "desktopcomputer"
-    @State private var showingIconPicker = false
-    @State private var spaceWords: [String: String] = [:]
-    @State private var hasAppeared = false
-    @State private var invertedShape: String = "pill"
-    @State private var pywalPerSpace: Bool = false
+  @State private var showKey: Bool = true
+  @State private var showTitle: Bool = true
+  @State private var maxLength: Double = 50
+  @State private var selectedDisplayMode: String = "icons"
+  @State private var selectedHighlight: String = "opacity"
+  @State private var selectedNumeralSystem: String = "arabic"
+  @State private var tintIcons: Bool = false
+  @State private var selectedIconStyle: String = "app-icon"
+  @State private var customIcon: String = "desktopcomputer"
+  @State private var showingIconPicker = false
+  @State private var spaceWords: [String: String] = [:]
+  @State private var hasAppeared = false
+  @State private var invertedShape: String = "pill"
+  @State private var pywalPerSpace: Bool = false
+  @State private var dotSize = 10.0
+  @State private var dotCellWidth = 28.0
+  @State private var dotStrokeWidth = 1.0
+  @State private var numberGap = 4.0
+  @State private var cellWidth = 40.0
+  @State private var focusedBackground = "pywal:4"
+  @State private var unfocusedBackground = "pywal:12"
+  @State private var focusedForeground = "pywal:0"
+  @State private var unfocusedForeground = "pywal:0"
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // MARK: - Display Mode
-                SettingsSection(title: "Display Mode") {
-                    Picker("Display Mode", selection: $selectedDisplayMode) {
-                        Text("Icons").tag("icons")
-                        Text("Numbers").tag("numbers")
-                        Text("Dots").tag("dots")
-                        Text("Icons Only").tag("icons-only")
-                        Text("Focused Only").tag("focused-only")
-                        Text("Custom Icons").tag("custom-icons")
-                        Text("Words").tag("words")
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: selectedDisplayMode) { _, newValue in
-                        configManager.updateConfigValue(
-                            key: "widgets.default.spaces.space.display-mode",
-                            newValue: newValue)
-                    }
-                }
+  @State private var synchronizedValues: [String: String] = [:]
 
-                // MARK: - Highlight Style
-                SettingsSection(title: "Highlight Style") {
-                    Picker("Highlight", selection: $selectedHighlight) {
-                        Text("Opacity").tag("opacity")
-                        Text("Pill").tag("pill")
-                        Text("Underline").tag("underline")
-                        Text("Glow").tag("glow")
-                        Text("Inverted").tag("inverted")
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: selectedHighlight) { _, newValue in
-                        configManager.updateConfigValue(
-                            key: "widgets.default.spaces.space.highlight",
-                            newValue: newValue)
-                    }
-                }
+  var body: some View {
+    SettingsPage {
+      ModuleSettingsHeader(id: "default.spaces")
+      // MARK: - Display Mode
+      SettingsSection(title: "Display Mode") {
+        Picker("Display Mode", selection: $selectedDisplayMode) {
+          Text("Icons").tag("icons")
+          Text("Numbers").tag("numbers")
+          Text("Dots").tag("dots")
+          Text("Dots + #").tag("dots-number")
+          Text("Blocks").tag("blocks")
+          Text("Icons Only").tag("icons-only")
+          Text("Focused Only").tag("focused-only")
+          Text("Focus #").tag("focused-number")
+          Text("Custom Icons").tag("custom-icons")
+          Text("Words").tag("words")
+        }
+        .pickerStyle(.menu)
+        .onChange(of: selectedDisplayMode) { _, newValue in
+          guard String(describing: newValue) != synchronizedValues["selectedDisplayMode"] else {
+            return
+          }
+          configManager.updateConfigValue(
+            key: "widgets.default.spaces.space.display-mode",
+            newValue: newValue)
+        }
+      }
 
-                // MARK: - Inverted Style Options
-                if selectedHighlight == "inverted" {
-                    SettingsSection(title: "Inverted Style") {
-                        Picker("Shape", selection: $invertedShape) {
-                            Text("Pill").tag("pill")
-                            Text("Square").tag("square")
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: invertedShape) { _, newValue in
-                            configManager.updateConfigValue(
-                                key: "widgets.default.spaces.space.inverted-shape",
-                                newValue: newValue)
-                        }
-
-                        Toggle("Pywal color per space", isOn: $pywalPerSpace)
-                            .onChange(of: pywalPerSpace) { _, newValue in
-                                configManager.updateConfigValue(
-                                    key: "widgets.default.spaces.space.pywal-per-space",
-                                    newValue: newValue ? "true" : "false")
-                            }
-                    }
-                }
-
-                // MARK: - Numeral System
-                SettingsSection(title: "Numeral System") {
-                    Picker("Number Format", selection: $selectedNumeralSystem) {
-                        Text("Arabic (1, 2, 3)").tag("arabic")
-                        Text("Arabic-Indic (١, ٢, ٣)").tag("arabic-indic")
-                        Text("Japanese (一, 二, 三)").tag("japanese")
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: selectedNumeralSystem) { _, newValue in
-                        configManager.updateConfigValue(
-                            key: "widgets.default.spaces.space.numeral-system",
-                            newValue: newValue)
-                    }
-                }
-
-                // MARK: - Custom Words
-                if selectedDisplayMode == "words" {
-                    SettingsSection(title: "Custom Words") {
-                        Text("Enter a custom word for each space. Spaces without a word will show their number.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        ForEach(1...9, id: \.self) { spaceNum in
-                            let spaceId = String(spaceNum)
-                            HStack {
-                                Text("Space \(spaceNum)")
-                                    .font(.system(size: 13))
-                                    .frame(width: 80, alignment: .leading)
-                                TextField("Label", text: Binding(
-                                    get: { spaceWords[spaceId] ?? "" },
-                                    set: { newValue in
-                                        spaceWords[spaceId] = newValue
-                                        saveSpaceWords()
-                                    }
-                                ))
-                                .textFieldStyle(.roundedBorder)
-                            }
-                        }
-                    }
-                }
-
-                // MARK: - Icon Styling
-                SettingsSection(title: "Icon Styling") {
-                    Picker("Icon Style", selection: $selectedIconStyle) {
-                        Text("App Icons").tag("app-icon")
-                        Text("SF Symbols").tag("sf-symbol")
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: selectedIconStyle) { _, newValue in
-                        configManager.updateConfigValue(
-                            key: "widgets.default.spaces.space.icon-style",
-                            newValue: newValue)
-                    }
-
-                    if selectedIconStyle == "app-icon" {
-                        Toggle("Tint icons with foreground color", isOn: $tintIcons)
-                            .padding(.top, 8)
-                            .onChange(of: tintIcons) { _, newValue in
-                                configManager.updateConfigValue(
-                                    key: "widgets.default.spaces.space.tint-icons",
-                                    newValue: newValue ? "true" : "false")
-                            }
-                    }
-                }
-
-                // MARK: - Space Indicators
-                SettingsSection(title: "Space Indicators") {
-                    Toggle("Show space number / key", isOn: $showKey)
-                        .onChange(of: showKey) { _, newValue in
-                            configManager.updateConfigValue(
-                                key: "widgets.default.spaces.space.show-key",
-                                newValue: newValue ? "true" : "false")
-                        }
-                }
-
-                // MARK: - Custom Icons
-                SettingsSection(title: "Custom Icons") {
-                    HStack {
-                        Image(systemName: customIcon)
-                            .font(.system(size: 24))
-                            .frame(width: 40, height: 40)
-                            .background(Color.accentColor.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Global icon for all spaces")
-                                .font(.system(size: 13))
-                            Text("Used when icon style is 'SF Symbols'")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button("Pick") {
-                            showingIconPicker = true
-                        }
-                    }
-                    .sheet(isPresented: $showingIconPicker) {
-                        IconPickerView(
-                            selectedIcon: Binding(
-                                get: { customIcon },
-                                set: { customIcon = $0 }
-                            ),
-                            recentIcons: loadRecentIcons(),
-                            onIconSelected: { icon in
-                                customIcon = icon
-                                saveCustomIcon(icon)
-                            },
-                            onDismiss: { showingIconPicker = false }
-                        )
-                    }
-                }
-
-                // MARK: - Window Titles
-                SettingsSection(title: "Window Titles") {
-                    Toggle("Show focused window title", isOn: $showTitle)
-                        .onChange(of: showTitle) { _, newValue in
-                            configManager.updateConfigValue(
-                                key: "widgets.default.spaces.window.show-title",
-                                newValue: newValue ? "true" : "false")
-                        }
-                    SliderRow(label: "Max title length", value: $maxLength, range: 10...100, step: 5, format: "%.0f") {
-                        configManager.updateConfigValue(
-                            key: "widgets.default.spaces.window.title.max-length",
-                            newValue: String(Int(maxLength)))
-                    }
-                }
-
-                Spacer()
+      if selectedDisplayMode == "dots-number" {
+        SettingsSection(title: "Dots and Current Number") {
+          SliderRow(label: "Dot diameter", value: $dotSize, range: 1...32, step: 1, format: "%.0f")
+          { saveSpaceMetric("dot-size", dotSize) }
+          SliderRow(
+            label: "Dot cell width", value: $dotCellWidth, range: 4...80, step: 1, format: "%.0f"
+          ) { saveSpaceMetric("dot-cell-width", dotCellWidth) }
+          SliderRow(
+            label: "Outline thickness", value: $dotStrokeWidth, range: 0.5...4, step: 0.5,
+            format: "%.1f"
+          ) { saveSpaceMetric("dot-stroke-width", dotStrokeWidth) }
+          SliderRow(
+            label: "Gap before number", value: $numberGap, range: 0...80, step: 1, format: "%.0f"
+          ) { saveSpaceMetric("number-gap", numberGap) }
+        }
+      }
+      if selectedDisplayMode == "blocks" {
+        SettingsSection(title: "Workspace Blocks") {
+          SliderRow(label: "Cell width", value: $cellWidth, range: 8...100, step: 1, format: "%.0f")
+          { saveSpaceMetric("cell-width", cellWidth) }
+          Text("Choose a hex color or a palette role such as pywal:4.").font(.caption)
+            .foregroundStyle(.secondary)
+          SettingsTextField(label: "Current background", value: $focusedBackground).onChange(
+            of: focusedBackground
+          ) { _, value in
+            guard String(describing: value) != synchronizedValues["focusedBackground"] else {
+              return
             }
-            .padding(24)
+            saveSpaceColor("focused-background", value)
+          }
+          SettingsTextField(label: "Other background", value: $unfocusedBackground).onChange(
+            of: unfocusedBackground
+          ) { _, value in
+            guard String(describing: value) != synchronizedValues["unfocusedBackground"] else {
+              return
+            }
+            saveSpaceColor("unfocused-background", value)
+          }
+          SettingsTextField(label: "Current text", value: $focusedForeground).onChange(
+            of: focusedForeground
+          ) { _, value in
+            guard String(describing: value) != synchronizedValues["focusedForeground"] else {
+              return
+            }
+            saveSpaceColor("focused-foreground", value)
+          }
+          SettingsTextField(label: "Other text", value: $unfocusedForeground).onChange(
+            of: unfocusedForeground
+          ) { _, value in
+            guard String(describing: value) != synchronizedValues["unfocusedForeground"] else {
+              return
+            }
+            saveSpaceColor("unfocused-foreground", value)
+          }
         }
-        .onAppear {
-            syncFromConfig()
-            hasAppeared = true
+      }
+
+      // MARK: - Highlight Style
+      SettingsSection(title: "Highlight Style") {
+        Picker("Highlight", selection: $selectedHighlight) {
+          Text("Opacity").tag("opacity")
+          Text("Pill").tag("pill")
+          Text("Underline").tag("underline")
+          Text("Glow").tag("glow")
+          Text("Inverted").tag("inverted")
         }
-        .onChange(of: configManager.config) { _, _ in
-            guard hasAppeared else { return }
-            syncFromConfig()
+        .pickerStyle(.menu)
+        .onChange(of: selectedHighlight) { _, newValue in
+          guard String(describing: newValue) != synchronizedValues["selectedHighlight"] else {
+            return
+          }
+          configManager.updateConfigValue(
+            key: "widgets.default.spaces.space.highlight",
+            newValue: newValue)
         }
-    }
+      }
 
-    private func syncFromConfig() {
-        let spacesConfig = configManager.globalWidgetConfig(for: "default.spaces") ?? [:]
+      // MARK: - Inverted Style Options
+      if selectedHighlight == "inverted" {
+        SettingsSection(title: "Inverted Style") {
+          Picker("Shape", selection: $invertedShape) {
+            Text("Pill").tag("pill")
+            Text("Square").tag("square")
+          }
+          .pickerStyle(.menu)
+          .onChange(of: invertedShape) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["invertedShape"] else {
+              return
+            }
+            configManager.updateConfigValue(
+              key: "widgets.default.spaces.space.inverted-shape",
+              newValue: newValue)
+          }
 
-        showKey = spacesConfig["space.show-key"]?.boolValue ?? true
-        showTitle = spacesConfig["window.show-title"]?.boolValue ?? true
-        maxLength = Double(spacesConfig["window.title.max-length"]?.intValue ?? 50)
-        selectedDisplayMode = spacesConfig["space.display-mode"]?.stringValue ?? "icons"
-        selectedHighlight = spacesConfig["space.highlight"]?.stringValue ?? "opacity"
-        selectedNumeralSystem = spacesConfig["space.numeral-system"]?.stringValue ?? "arabic"
-        tintIcons = spacesConfig["space.tint-icons"]?.boolValue ?? false
-        selectedIconStyle = spacesConfig["space.icon-style"]?.stringValue ?? "app-icon"
-        customIcon = spacesConfig["space.global-icon"]?.stringValue ?? "desktopcomputer"
-        invertedShape = spacesConfig["space.inverted-shape"]?.stringValue ?? "pill"
-        pywalPerSpace = spacesConfig["space.pywal-per-space"]?.boolValue ?? false
-
-        if let wordsDict = spacesConfig["space.words"]?.dictionaryValue {
-            spaceWords = wordsDict.compactMapValues { $0.stringValue }
-        } else if let rawStr = spacesConfig["space.words"]?.stringValue {
-            spaceWords = parseInlineTable(rawStr)
+          Toggle("Pywal color per space", isOn: $pywalPerSpace)
+            .onChange(of: pywalPerSpace) { _, newValue in
+              guard String(describing: newValue) != synchronizedValues["pywalPerSpace"] else {
+                return
+              }
+              configManager.updateConfigValue(
+                key: "widgets.default.spaces.space.pywal-per-space",
+                newValue: newValue ? "true" : "false")
+            }
         }
-    }
+      }
 
-    private func saveCustomIcon(_ icon: String) {
-        configManager.updateConfigValue(
-            key: "widgets.default.spaces.space.global-icon",
-            newValue: icon)
-    }
+      // MARK: - Numeral System
+      SettingsSection(title: "Numeral System") {
+        Picker("Number Format", selection: $selectedNumeralSystem) {
+          Text("Arabic (1, 2, 3)").tag("arabic")
+          Text("Arabic-Indic (١, ٢, ٣)").tag("arabic-indic")
+          Text("Japanese (一, 二, 三)").tag("japanese")
+          Text("Roman (I, II, III)").tag("roman")
+        }
+        .pickerStyle(.menu)
+        .onChange(of: selectedNumeralSystem) { _, newValue in
+          guard String(describing: newValue) != synchronizedValues["selectedNumeralSystem"] else {
+            return
+          }
+          configManager.updateConfigValue(
+            key: "widgets.default.spaces.space.numeral-system",
+            newValue: newValue)
+        }
+      }
 
-    private func saveSpaceWords() {
-        let filtered = spaceWords.filter { !$0.value.isEmpty }
-        let entries = filtered.map { "\($0.key) = \"\($0.value)\"" }
-        let json = "{ \(entries.joined(separator: ", ")) }"
-        configManager.updateConfigValue(
-            key: "widgets.default.spaces.space.words",
-            newValue: json)
-    }
+      // MARK: - Custom Words
+      if selectedDisplayMode == "words" {
+        SettingsSection(title: "Custom Words") {
+          Text("Enter a custom word for each space. Spaces without a word will show their number.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          ForEach(1...9, id: \.self) { spaceNum in
+            let spaceId = String(spaceNum)
+            HStack {
+              Text("Space \(spaceNum)")
+                .font(.system(size: 13))
+                .frame(width: 80, alignment: .leading)
+              TextField(
+                "Label",
+                text: Binding(
+                  get: { spaceWords[spaceId] ?? "" },
+                  set: { newValue in
+                    spaceWords[spaceId] = newValue
+                    saveSpaceWords()
+                  }
+                )
+              )
+              .textFieldStyle(.roundedBorder)
+            }
+          }
+        }
+      }
 
-    private func loadRecentIcons() -> [String] {
-        let spacesConfig = configManager.globalWidgetConfig(for: "default.spaces") ?? [:]
-        guard let array = spacesConfig["space.recent-icons"]?.arrayValue else { return [] }
-        return array.compactMap { $0.stringValue }
+      // MARK: - Icon Styling
+      SettingsSection(title: "Icon Styling") {
+        Picker("Icon Style", selection: $selectedIconStyle) {
+          Text("App Icons").tag("app-icon")
+          Text("SF Symbols").tag("sf-symbol")
+        }
+        .pickerStyle(.menu)
+        .onChange(of: selectedIconStyle) { _, newValue in
+          guard String(describing: newValue) != synchronizedValues["selectedIconStyle"] else {
+            return
+          }
+          configManager.updateConfigValue(
+            key: "widgets.default.spaces.space.icon-style",
+            newValue: newValue)
+        }
+
+        if selectedIconStyle == "app-icon" {
+          Toggle("Tint icons with foreground color", isOn: $tintIcons)
+            .padding(.top, 8)
+            .onChange(of: tintIcons) { _, newValue in
+              guard String(describing: newValue) != synchronizedValues["tintIcons"] else { return }
+              configManager.updateConfigValue(
+                key: "widgets.default.spaces.space.tint-icons",
+                newValue: newValue ? "true" : "false")
+            }
+        }
+      }
+
+      // MARK: - Space Indicators
+      SettingsSection(title: "Space Indicators") {
+        Toggle("Show space number / key", isOn: $showKey)
+          .onChange(of: showKey) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["showKey"] else { return }
+            configManager.updateConfigValue(
+              key: "widgets.default.spaces.space.show-key",
+              newValue: newValue ? "true" : "false")
+          }
+      }
+
+      // MARK: - Custom Icons
+      SettingsSection(title: "Custom Icons") {
+        HStack {
+          Image(systemName: customIcon)
+            .font(.system(size: 24))
+            .frame(width: 40, height: 40)
+            .background(Color.accentColor.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+          VStack(alignment: .leading, spacing: 2) {
+            Text("Global icon for all spaces")
+              .font(.system(size: 13))
+            Text("Used when icon style is 'SF Symbols'")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+          Spacer()
+          Button("Pick") {
+            showingIconPicker = true
+          }
+        }
+        .sheet(isPresented: $showingIconPicker) {
+          IconPickerView(
+            selectedIcon: Binding(
+              get: { customIcon },
+              set: { customIcon = $0 }
+            ),
+            recentIcons: loadRecentIcons(),
+            onIconSelected: { icon in
+              customIcon = icon
+              saveCustomIcon(icon)
+            },
+            onDismiss: { showingIconPicker = false }
+          )
+        }
+      }
+
+      // MARK: - Window Titles
+      SettingsSection(title: "Window Titles") {
+        Toggle("Show focused window title", isOn: $showTitle)
+          .onChange(of: showTitle) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["showTitle"] else { return }
+            configManager.updateConfigValue(
+              key: "widgets.default.spaces.window.show-title",
+              newValue: newValue ? "true" : "false")
+          }
+        SliderRow(
+          label: "Max title length", value: $maxLength, range: 10...100, step: 5, format: "%.0f"
+        ) {
+          configManager.updateConfigValue(
+            key: "widgets.default.spaces.window.title.max-length",
+            newValue: String(Int(maxLength)))
+        }
+      }
+
+      ModuleIconSettings(id: "default.spaces")
+      ModuleAppearanceSettings(id: "default.spaces")
     }
+    .onAppear {
+      syncFromConfig()
+      hasAppeared = true
+    }
+    .onChange(of: configManager.config) { _, _ in
+      guard hasAppeared else { return }
+      syncFromConfig()
+    }
+  }
+
+  private func syncFromConfig() {
+    let spacesConfig = configManager.globalWidgetConfig(for: "default.spaces")
+
+    showKey = spacesConfig["space.show-key"]?.boolValue ?? true
+    showTitle = spacesConfig["window.show-title"]?.boolValue ?? true
+    maxLength = Double(spacesConfig["window.title.max-length"]?.intValue ?? 50)
+    selectedDisplayMode = spacesConfig["space.display-mode"]?.stringValue ?? "icons"
+    selectedHighlight = spacesConfig["space.highlight"]?.stringValue ?? "opacity"
+    selectedNumeralSystem = spacesConfig["space.numeral-system"]?.stringValue ?? "arabic"
+    tintIcons = spacesConfig["space.tint-icons"]?.boolValue ?? false
+    selectedIconStyle = spacesConfig["space.icon-style"]?.stringValue ?? "app-icon"
+    customIcon = spacesConfig["space.global-icon"]?.stringValue ?? "desktopcomputer"
+    invertedShape = spacesConfig["space.inverted-shape"]?.stringValue ?? "pill"
+    pywalPerSpace = spacesConfig["space.pywal-per-space"]?.boolValue ?? false
+    dotSize = spacesConfig["space.dot-size"]?.doubleValue ?? 10
+    dotCellWidth = spacesConfig["space.dot-cell-width"]?.doubleValue ?? 28
+    dotStrokeWidth = spacesConfig["space.dot-stroke-width"]?.doubleValue ?? 1
+    numberGap = spacesConfig["space.number-gap"]?.doubleValue ?? 4
+    cellWidth = spacesConfig["space.cell-width"]?.doubleValue ?? 40
+    focusedBackground = spacesConfig["space.focused-background"]?.stringValue ?? "pywal:4"
+    unfocusedBackground = spacesConfig["space.unfocused-background"]?.stringValue ?? "pywal:12"
+    focusedForeground = spacesConfig["space.focused-foreground"]?.stringValue ?? "pywal:0"
+    unfocusedForeground = spacesConfig["space.unfocused-foreground"]?.stringValue ?? "pywal:0"
+
+    if let wordsDict = spacesConfig["space.words"]?.dictionaryValue {
+      spaceWords = wordsDict.compactMapValues { $0.stringValue }
+    } else if let rawStr = spacesConfig["space.words"]?.stringValue {
+      spaceWords = parseInlineTable(rawStr)
+    }
+    synchronizedValues = [
+      "showKey": String(describing: showKey),
+      "showTitle": String(describing: showTitle),
+      "maxLength": String(describing: maxLength),
+      "selectedDisplayMode": String(describing: selectedDisplayMode),
+      "selectedHighlight": String(describing: selectedHighlight),
+      "selectedNumeralSystem": String(describing: selectedNumeralSystem),
+      "tintIcons": String(describing: tintIcons),
+      "selectedIconStyle": String(describing: selectedIconStyle),
+      "customIcon": String(describing: customIcon),
+      "spaceWords": String(describing: spaceWords),
+      "invertedShape": String(describing: invertedShape),
+      "pywalPerSpace": String(describing: pywalPerSpace),
+      "dotSize": String(describing: dotSize),
+      "dotCellWidth": String(describing: dotCellWidth),
+      "dotStrokeWidth": String(describing: dotStrokeWidth),
+      "numberGap": String(describing: numberGap),
+      "cellWidth": String(describing: cellWidth),
+      "focusedBackground": String(describing: focusedBackground),
+      "unfocusedBackground": String(describing: unfocusedBackground),
+      "focusedForeground": String(describing: focusedForeground),
+      "unfocusedForeground": String(describing: unfocusedForeground),
+    ]
+  }
+
+  private func saveSpaceMetric(_ key: String, _ value: Double) {
+    configManager.updateConfigValue(
+      key: "widgets.default.spaces.space.\(key)", newValue: String(value))
+  }
+
+  private func saveSpaceColor(_ key: String, _ value: String) {
+    configManager.updateConfigValue(key: "widgets.default.spaces.space.\(key)", newValue: value)
+  }
+
+  private func saveCustomIcon(_ icon: String) {
+    configManager.updateConfigValue(
+      key: "widgets.default.spaces.space.global-icon",
+      newValue: icon)
+  }
+
+  private func saveSpaceWords() {
+    let filtered = spaceWords.filter { !$0.value.isEmpty }
+    let entries = filtered.map { "\($0.key) = \"\($0.value)\"" }
+    let json = "{ \(entries.joined(separator: ", ")) }"
+    configManager.updateConfigValue(
+      key: "widgets.default.spaces.space.words",
+      newValue: json)
+  }
+
+  private func loadRecentIcons() -> [String] {
+    let spacesConfig = configManager.globalWidgetConfig(for: "default.spaces")
+    guard let array = spacesConfig["space.recent-icons"]?.arrayValue else { return [] }
+    return array.compactMap { $0.stringValue }
+  }
 }
 
 // MARK: - Display Mode Picker
 
 private struct SpacesDisplayModePicker: View {
-    @Binding var selected: String
-    var onSelect: (String) -> Void
+  @Binding var selected: String
+  var onSelect: (String) -> Void
 
-    private let modes: [(id: String, label: String, icon: String, desc: String)] = [
-        ("icons", "Icons", "square.grid.2x2", "Number + app icons"),
-        ("numbers", "Numbers", "textformat.123", "Space numbers only"),
-        ("dots", "Dots", "circle.grid.3x3", "Minimal dot indicators"),
-        ("icons-only", "Icons Only", "app.dashed", "App icons, no numbers"),
-        ("focused-only", "Focused", "scope", "Only current space"),
-    ]
+  private let modes: [(id: String, label: String, icon: String, desc: String)] = [
+    ("icons", "Icons", "square.grid.2x2", "Number + app icons"),
+    ("numbers", "Numbers", "textformat.123", "Space numbers only"),
+    ("dots", "Dots", "circle.grid.3x3", "Minimal dot indicators"),
+    ("icons-only", "Icons Only", "app.dashed", "App icons, no numbers"),
+    ("focused-only", "Focused", "scope", "Only current space"),
+    ("focused-number", "Focus #", "number", "Only the current space number"),
+  ]
 
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(modes, id: \.id) { mode in
-                SpacesOptionCard(
-                    id: mode.id,
-                    label: mode.label,
-                    isSelected: selected == mode.id
-                ) {
-                    SpacesDisplayDiagram(mode: mode.id)
-                        .frame(height: 24)
-                } action: {
-                    selected = mode.id
-                    onSelect(mode.id)
-                }
-            }
+  var body: some View {
+    HStack(spacing: 8) {
+      ForEach(modes, id: \.id) { mode in
+        SpacesOptionCard(
+          id: mode.id,
+          label: mode.label,
+          isSelected: selected == mode.id
+        ) {
+          SpacesDisplayDiagram(mode: mode.id)
+            .frame(height: 24)
+        } action: {
+          selected = mode.id
+          onSelect(mode.id)
         }
+      }
     }
+  }
 }
 
 // MARK: - Highlight Style Picker
 
 private struct SpacesHighlightPicker: View {
-    @Binding var selected: String
-    var onSelect: (String) -> Void
+  @Binding var selected: String
+  var onSelect: (String) -> Void
 
-    private let styles: [(id: String, label: String)] = [
-        ("opacity", "Opacity"),
-        ("pill", "Pill"),
-        ("underline", "Underline"),
-        ("glow", "Glow"),
-    ]
+  private let styles: [(id: String, label: String)] = [
+    ("opacity", "Opacity"),
+    ("pill", "Pill"),
+    ("underline", "Underline"),
+    ("glow", "Glow"),
+  ]
 
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(styles, id: \.id) { style in
-                SpacesOptionCard(
-                    id: style.id,
-                    label: style.label,
-                    isSelected: selected == style.id
-                ) {
-                    SpacesHighlightDiagram(style: style.id)
-                        .frame(height: 24)
-                } action: {
-                    selected = style.id
-                    onSelect(style.id)
-                }
-            }
+  var body: some View {
+    HStack(spacing: 8) {
+      ForEach(styles, id: \.id) { style in
+        SpacesOptionCard(
+          id: style.id,
+          label: style.label,
+          isSelected: selected == style.id
+        ) {
+          SpacesHighlightDiagram(style: style.id)
+            .frame(height: 24)
+        } action: {
+          selected = style.id
+          onSelect(style.id)
         }
+      }
     }
+  }
 }
 
 // MARK: - Shared Card Component
 
 private struct SpacesOptionCard<Diagram: View>: View {
-    let id: String
-    let label: String
-    let isSelected: Bool
-    @ViewBuilder let diagram: Diagram
-    let action: () -> Void
+  let id: String
+  let label: String
+  let isSelected: Bool
+  @ViewBuilder let diagram: Diagram
+  let action: () -> Void
 
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                diagram
-                Text(label)
-                    .font(.caption2)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(
-                        isSelected ? Color.accentColor : Color.white.opacity(0.08),
-                        lineWidth: isSelected ? 1.5 : 0.5
-                    )
-            )
-        }
-        .buttonStyle(.plain)
+  var body: some View {
+    Button(action: action) {
+      VStack(spacing: 6) {
+        diagram
+        Text(label)
+          .font(.caption2)
+          .fontWeight(isSelected ? .semibold : .regular)
+          .foregroundStyle(isSelected ? .primary : .secondary)
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 8)
+      .padding(.horizontal, 4)
+      .background(
+        RoundedRectangle(cornerRadius: 8)
+          .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+      )
+      .overlay(
+        RoundedRectangle(cornerRadius: 8)
+          .strokeBorder(
+            isSelected ? Color.accentColor : Color.white.opacity(0.08),
+            lineWidth: isSelected ? 1.5 : 0.5
+          )
+      )
     }
+    .buttonStyle(.plain)
+  }
 }
 
 // MARK: - Display Mode Diagrams
 
 private struct SpacesDisplayDiagram: View {
-    let mode: String
+  let mode: String
 
-    var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
+  var body: some View {
+    GeometryReader { geo in
+      let w = geo.size.width
+      let h = geo.size.height
 
-            switch mode {
-            case "icons":
-                iconsDiagram(w: w, h: h)
-            case "numbers":
-                numbersDiagram(w: w, h: h)
-            case "dots":
-                dotsDiagram(w: w, h: h)
-            case "icons-only":
-                iconsOnlyDiagram(w: w, h: h)
-            case "focused-only":
-                focusedOnlyDiagram(w: w, h: h)
-            default:
-                EmptyView()
-            }
-        }
+      switch mode {
+      case "icons":
+        iconsDiagram(w: w, h: h)
+      case "numbers":
+        numbersDiagram(w: w, h: h)
+      case "dots":
+        dotsDiagram(w: w, h: h)
+      case "icons-only":
+        iconsOnlyDiagram(w: w, h: h)
+      case "focused-only":
+        focusedOnlyDiagram(w: w, h: h)
+      case "focused-number":
+        numbersDiagram(w: w, h: h)
+      default:
+        EmptyView()
+      }
     }
+  }
 
-    // Icons mode: number + squares representing app icons
-    @ViewBuilder
-    private func iconsDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 6) {
-            // Space 1: number + 2 icons
-            HStack(spacing: 3) {
-                Text("1")
-                    .font(.system(size: 8, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white.opacity(0.6))
-                    .frame(width: 8, height: 8)
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white.opacity(0.6))
-                    .frame(width: 8, height: 8)
-            }
-            // Space 2: number + 1 icon (dimmed)
-            HStack(spacing: 3) {
-                Text("2")
-                    .font(.system(size: 8, weight: .regular, design: .rounded))
-                    .foregroundStyle(.gray)
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white.opacity(0.3))
-                    .frame(width: 8, height: 8)
-            }
-            .opacity(0.6)
-        }
-        .frame(width: w, height: h)
+  // Icons mode: number + squares representing app icons
+  @ViewBuilder
+  private func iconsDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 6) {
+      // Space 1: number + 2 icons
+      HStack(spacing: 3) {
+        Text("1")
+          .font(.system(size: 8, weight: .bold, design: .rounded))
+          .foregroundStyle(.white)
+        RoundedRectangle(cornerRadius: 2)
+          .fill(Color.white.opacity(0.6))
+          .frame(width: 8, height: 8)
+        RoundedRectangle(cornerRadius: 2)
+          .fill(Color.white.opacity(0.6))
+          .frame(width: 8, height: 8)
+      }
+      // Space 2: number + 1 icon (dimmed)
+      HStack(spacing: 3) {
+        Text("2")
+          .font(.system(size: 8, weight: .regular, design: .rounded))
+          .foregroundStyle(.gray)
+        RoundedRectangle(cornerRadius: 2)
+          .fill(Color.white.opacity(0.3))
+          .frame(width: 8, height: 8)
+      }
+      .opacity(0.6)
     }
+    .frame(width: w, height: h)
+  }
 
-    // Numbers mode: just space numbers
-    @ViewBuilder
-    private func numbersDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 6) {
-            ForEach(1...4, id: \.self) { num in
-                Text("\(num)")
-                    .font(.system(size: 9, weight: num == 1 ? .bold : .regular, design: .rounded))
-                    .foregroundStyle(num == 1 ? .white : .gray)
-                    .opacity(num == 1 ? 1.0 : 0.5)
-            }
-        }
-        .frame(width: w, height: h)
+  // Numbers mode: just space numbers
+  @ViewBuilder
+  private func numbersDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 6) {
+      ForEach(1...4, id: \.self) { num in
+        Text("\(num)")
+          .font(.system(size: 9, weight: num == 1 ? .bold : .regular, design: .rounded))
+          .foregroundStyle(num == 1 ? .white : .gray)
+          .opacity(num == 1 ? 1.0 : 0.5)
+      }
     }
+    .frame(width: w, height: h)
+  }
 
-    // Dots mode: circles
-    @ViewBuilder
-    private func dotsDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 5) {
-            // Focused + occupied
-            Circle()
-                .fill(Color.accentColor)
-                .frame(width: 7, height: 7)
-            // Occupied
-            Circle()
-                .fill(Color.white.opacity(0.6))
-                .frame(width: 5, height: 5)
-            // Empty
-            Circle()
-                .fill(Color.white.opacity(0.2))
-                .frame(width: 5, height: 5)
-            // Occupied
-            Circle()
-                .fill(Color.white.opacity(0.6))
-                .frame(width: 5, height: 5)
-        }
-        .frame(width: w, height: h)
+  // Dots mode: circles
+  @ViewBuilder
+  private func dotsDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 5) {
+      // Focused + occupied
+      Circle()
+        .fill(Color.accentColor)
+        .frame(width: 7, height: 7)
+      // Occupied
+      Circle()
+        .fill(Color.white.opacity(0.6))
+        .frame(width: 5, height: 5)
+      // Empty
+      Circle()
+        .fill(Color.white.opacity(0.2))
+        .frame(width: 5, height: 5)
+      // Occupied
+      Circle()
+        .fill(Color.white.opacity(0.6))
+        .frame(width: 5, height: 5)
     }
+    .frame(width: w, height: h)
+  }
 
-    // Icons only: just squares
-    @ViewBuilder
-    private func iconsOnlyDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 6) {
-            // Space 1: 2 icon squares
-            HStack(spacing: 2) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white.opacity(0.7))
-                    .frame(width: 8, height: 8)
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white.opacity(0.7))
-                    .frame(width: 8, height: 8)
-            }
-            // Space 2: 1 icon (dimmed)
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.white.opacity(0.3))
-                .frame(width: 8, height: 8)
-            // Space 3: empty dot
-            Circle()
-                .fill(Color.white.opacity(0.15))
-                .frame(width: 5, height: 5)
-        }
-        .frame(width: w, height: h)
+  // Icons only: just squares
+  @ViewBuilder
+  private func iconsOnlyDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 6) {
+      // Space 1: 2 icon squares
+      HStack(spacing: 2) {
+        RoundedRectangle(cornerRadius: 2)
+          .fill(Color.white.opacity(0.7))
+          .frame(width: 8, height: 8)
+        RoundedRectangle(cornerRadius: 2)
+          .fill(Color.white.opacity(0.7))
+          .frame(width: 8, height: 8)
+      }
+      // Space 2: 1 icon (dimmed)
+      RoundedRectangle(cornerRadius: 2)
+        .fill(Color.white.opacity(0.3))
+        .frame(width: 8, height: 8)
+      // Space 3: empty dot
+      Circle()
+        .fill(Color.white.opacity(0.15))
+        .frame(width: 5, height: 5)
     }
+    .frame(width: w, height: h)
+  }
 
-    // Focused only: single space indicator
-    @ViewBuilder
-    private func focusedOnlyDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 3) {
-            Text("3")
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.white.opacity(0.6))
-                .frame(width: 8, height: 8)
-        }
-        .frame(width: w, height: h)
+  // Focused only: single space indicator
+  @ViewBuilder
+  private func focusedOnlyDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 3) {
+      Text("3")
+        .font(.system(size: 9, weight: .bold, design: .rounded))
+        .foregroundStyle(.white)
+      RoundedRectangle(cornerRadius: 2)
+        .fill(Color.white.opacity(0.6))
+        .frame(width: 8, height: 8)
     }
+    .frame(width: w, height: h)
+  }
 }
 
 // MARK: - Highlight Style Diagrams
 
 private struct SpacesHighlightDiagram: View {
-    let style: String
+  let style: String
 
-    var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
+  var body: some View {
+    GeometryReader { geo in
+      let w = geo.size.width
+      let h = geo.size.height
 
-            switch style {
-            case "opacity":
-                opacityDiagram(w: w, h: h)
-            case "pill":
-                pillDiagram(w: w, h: h)
-            case "underline":
-                underlineDiagram(w: w, h: h)
-            case "glow":
-                glowDiagram(w: w, h: h)
-            case "inverted":
-                invertedDiagram(w: w, h: h)
-            default:
-                EmptyView()
-            }
-        }
+      switch style {
+      case "opacity":
+        opacityDiagram(w: w, h: h)
+      case "pill":
+        pillDiagram(w: w, h: h)
+      case "underline":
+        underlineDiagram(w: w, h: h)
+      case "glow":
+        glowDiagram(w: w, h: h)
+      case "inverted":
+        invertedDiagram(w: w, h: h)
+      default:
+        EmptyView()
+      }
     }
+  }
 
-    // Opacity: focused bright, others dimmed
-    @ViewBuilder
-    private func opacityDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
-            Circle().fill(Color.white).frame(width: 7, height: 7)
-            Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
-        }
-        .frame(width: w, height: h)
+  // Opacity: focused bright, others dimmed
+  @ViewBuilder
+  private func opacityDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 5) {
+      Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
+      Circle().fill(Color.white).frame(width: 7, height: 7)
+      Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
     }
+    .frame(width: w, height: h)
+  }
 
-    // Pill: focused has background capsule
-    @ViewBuilder
-    private func pillDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(Color.white.opacity(0.4)).frame(width: 6, height: 6)
-            Circle().fill(Color.white).frame(width: 7, height: 7)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .background(
-                    Capsule().fill(Color.accentColor.opacity(0.3))
-                        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.4), lineWidth: 0.5))
-                )
-            Circle().fill(Color.white.opacity(0.4)).frame(width: 6, height: 6)
-        }
-        .frame(width: w, height: h)
+  // Pill: focused has background capsule
+  @ViewBuilder
+  private func pillDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 5) {
+      Circle().fill(Color.white.opacity(0.4)).frame(width: 6, height: 6)
+      Circle().fill(Color.white).frame(width: 7, height: 7)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+        .background(
+          Capsule().fill(Color.accentColor.opacity(0.3))
+            .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.4), lineWidth: 0.5))
+        )
+      Circle().fill(Color.white.opacity(0.4)).frame(width: 6, height: 6)
     }
+    .frame(width: w, height: h)
+  }
 
-    // Underline: focused has bar below
-    @ViewBuilder
-    private func underlineDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(Color.white.opacity(0.4)).frame(width: 6, height: 6)
-            VStack(spacing: 2) {
-                Circle().fill(Color.white).frame(width: 7, height: 7)
-                RoundedRectangle(cornerRadius: 0.5)
-                    .fill(Color.accentColor)
-                    .frame(width: 10, height: 2)
-            }
-            Circle().fill(Color.white.opacity(0.4)).frame(width: 6, height: 6)
-        }
-        .frame(width: w, height: h)
+  // Underline: focused has bar below
+  @ViewBuilder
+  private func underlineDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 5) {
+      Circle().fill(Color.white.opacity(0.4)).frame(width: 6, height: 6)
+      VStack(spacing: 2) {
+        Circle().fill(Color.white).frame(width: 7, height: 7)
+        RoundedRectangle(cornerRadius: 0.5)
+          .fill(Color.accentColor)
+          .frame(width: 10, height: 2)
+      }
+      Circle().fill(Color.white.opacity(0.4)).frame(width: 6, height: 6)
     }
+    .frame(width: w, height: h)
+  }
 
-    // Glow: focused has soft glow
-    @ViewBuilder
-    private func glowDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
-            Circle().fill(Color.white).frame(width: 7, height: 7)
-                .shadow(color: Color.accentColor.opacity(0.8), radius: 4)
-            Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
-        }
-        .frame(width: w, height: h)
+  // Glow: focused has soft glow
+  @ViewBuilder
+  private func glowDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 5) {
+      Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
+      Circle().fill(Color.white).frame(width: 7, height: 7)
+        .shadow(color: Color.accentColor.opacity(0.8), radius: 4)
+      Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
     }
+    .frame(width: w, height: h)
+  }
 
-    // Inverted: focused has solid background with inverted text
-    @ViewBuilder
-    private func invertedDiagram(w: CGFloat, h: CGFloat) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
-            Text("A")
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.accentColor.inverted())
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .background(
-                    Capsule().fill(Color.accentColor)
-                )
-            Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
-        }
-        .frame(width: w, height: h)
+  // Inverted: focused has solid background with inverted text
+  @ViewBuilder
+  private func invertedDiagram(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: 5) {
+      Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
+      Text("A")
+        .font(.system(size: 9, weight: .bold, design: .rounded))
+        .foregroundStyle(Color.accentColor.inverted())
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+        .background(
+          Capsule().fill(Color.accentColor)
+        )
+      Circle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 6)
     }
+    .frame(width: w, height: h)
+  }
 }

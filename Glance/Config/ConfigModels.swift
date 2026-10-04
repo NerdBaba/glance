@@ -255,29 +255,38 @@ struct WidgetsSection: Decodable {
     }
 
     func config(for widgetId: String) -> ConfigData? {
-        // Build a flat dictionary where keys use dot-notation (e.g., "space.display-mode")
-        var result: ConfigData = [:]
+        // TOML decoders may expose nested tables as dictionaries (default ->
+        // spaces -> space) or as flattened dotted sections. Keep parent
+        // dictionaries for widgets such as TimeWidget's calendar config while
+        // also indexing every nested leaf by its dot path.
+        var flattened: ConfigData = [:]
+        for (section, values) in others {
+            flatten(values, under: section, into: &flattened)
+        }
+
         let prefix = widgetId + "."
-        
-        // Include exact match (widget-level direct config)
-        if let base = others[widgetId] {
-            for (k, v) in base {
-                result[k] = v
-            }
+        var result: ConfigData = [:]
+        for (key, value) in flattened where key.hasPrefix(prefix) {
+            result[String(key.dropFirst(prefix.count))] = value
         }
-        
-        // Include all subsection configs, flattening them
-        for (key, valueDict) in others {
-            if key.hasPrefix(prefix) {
-                let subPath = String(key.dropFirst(prefix.count))
-                for (innerKey, innerValue) in valueDict {
-                    let fullKey = subPath + "." + innerKey
-                    result[fullKey] = innerValue
-                }
-            }
+        if let base = flattened[widgetId], let nested = base.dictionaryValue {
+            result.merge(nested) { _, latest in latest }
         }
-        
         return result.isEmpty ? nil : result
+    }
+
+    private func flatten(_ values: ConfigData, under path: String, into result: inout ConfigData) {
+        if !path.isEmpty {
+            result[path] = .dictionary(values)
+        }
+        for (key, value) in values {
+            let childPath = path.isEmpty ? key : "\(path).\(key)"
+            if let nested = value.dictionaryValue {
+                flatten(nested, under: childPath, into: &result)
+            } else {
+                result[childPath] = value
+            }
+        }
     }
 }
 
@@ -481,6 +490,14 @@ struct ForegroundConfig: Decodable {
     let margin: CGFloat         // Horizontal screen-edge margin (all formations)
     let gap: CGFloat            // Gap between groups in pills mode
     let position: String        // "top" or "bottom"
+    let floatingWidth: CGFloat  // Fixed width for a compact floating bar; 0 fills available width
+    let horizontalAlignment: String // left, center, or right when floatingWidth is set
+    let leftGroupWidth: CGFloat
+    let leftGroupOffset: CGFloat
+    let centerGroupWidth: CGFloat
+    let rightGroupWidth: CGFloat
+    let centerGroupOffset: CGFloat
+    let referenceWidth: CGFloat // Optional screenshot width for uniform display scaling
 
     init() {
         self.height = .defaultHeight
@@ -493,6 +510,14 @@ struct ForegroundConfig: Decodable {
         self.margin = 8
         self.gap = 10
         self.position = "top"
+        self.floatingWidth = 0
+        self.horizontalAlignment = "center"
+        self.leftGroupWidth = 0
+        self.leftGroupOffset = 0
+        self.centerGroupWidth = 0
+        self.rightGroupWidth = 0
+        self.centerGroupOffset = 0
+        self.referenceWidth = 0
     }
 
     init(from decoder: Decoder) throws {
@@ -571,6 +596,16 @@ struct ForegroundConfig: Decodable {
         
         // position
         position = try container.decodeIfPresent(String.self, forKey: .position) ?? "top"
+        floatingWidth = Self.decodeCGFloat(container, forKey: .floatingWidth, default: 0)
+        let decodedAlignment = try container.decodeIfPresent(String.self, forKey: .horizontalAlignment) ?? "center"
+        horizontalAlignment = ["left", "center", "right"].contains(decodedAlignment) ? decodedAlignment : "center"
+        leftGroupWidth = Self.decodeCGFloat(container, forKey: .leftGroupWidth, default: 0)
+        leftGroupOffset = Self.decodeCGFloat(container, forKey: .leftGroupOffset, default: 0)
+        centerGroupWidth = Self.decodeCGFloat(container, forKey: .centerGroupWidth, default: 0)
+        rightGroupWidth = Self.decodeCGFloat(container, forKey: .rightGroupWidth, default: 0)
+        centerGroupOffset = Self.decodeCGFloat(container, forKey: .centerGroupOffset, default: 0)
+        let decodedReferenceWidth = Self.decodeCGFloat(container, forKey: .referenceWidth, default: 0)
+        referenceWidth = decodedReferenceWidth.isFinite ? max(0, decodedReferenceWidth) : 0
     }
     
     enum CodingKeys: String, CodingKey {
@@ -584,8 +619,30 @@ struct ForegroundConfig: Decodable {
         case margin
         case gap
         case position
+        case floatingWidth = "floating-width"
+        case horizontalAlignment = "horizontal-alignment"
+        case leftGroupWidth = "left-group-width"
+        case leftGroupOffset = "left-group-offset"
+        case centerGroupWidth = "center-group-width"
+        case rightGroupWidth = "right-group-width"
+        case centerGroupOffset = "center-group-offset"
+        case referenceWidth = "reference-width"
+    }
+
+    private static func decodeCGFloat(
+        _ container: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys,
+        default defaultValue: CGFloat
+    ) -> CGFloat {
+        if let value = try? container.decode(Double.self, forKey: key) { return CGFloat(value) }
+        if let value = try? container.decode(Int.self, forKey: key) { return CGFloat(value) }
+        return defaultValue
     }
     
+    func renderingScale(for width: CGFloat) -> CGFloat {
+        referenceWidth > 0 && width.isFinite && width > 0 ? width / referenceWidth : 1
+    }
+
     func resolveHeight() -> CGFloat {
         switch height {
         case .defaultHeight:

@@ -4,6 +4,8 @@ import SwiftUI
 
 struct NowPlayingWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
+    @Environment(\.appearance) private var appearance
+    @Environment(\.widgetFont) private var widgetFont
     @StateObject private var playingManager = NowPlayingManager.shared
 
     @State private var widgetFrame: CGRect = .zero
@@ -35,25 +37,46 @@ struct NowPlayingWidget: View {
                 }
                 .hidden()
 
-                VisibleNowPlayingContent(
-                    song: song,
-                    width: animatedWidth,
-                    showIcon: showIcon,
-                    showTitle: showTitle,
-                    showArtist: showArtist,
-                    showAlbum: showAlbum,
-                    titleMaxLength: titleMaxLength,
-                    artistMaxLength: artistMaxLength,
-                    albumMaxLength: albumMaxLength,
-                    separator: separator,
-                    showVisualizer: showVisualizer,
-                    visualizerPosition: visualizerPosition
-                )
-                    .onTapGesture {
-                        MenuBarPopup.show(rect: widgetFrame, id: "nowplaying") {
-                            NowPlayingPopup()
+                HStack(spacing: contentSpacing) {
+                    VisibleNowPlayingContent(
+                        song: song,
+                        width: animatedWidth,
+                        showIcon: showIcon,
+                        showTitle: showTitle,
+                        showArtist: showArtist,
+                        showAlbum: showAlbum,
+                        titleMaxLength: titleMaxLength,
+                        artistMaxLength: artistMaxLength,
+                        albumMaxLength: albumMaxLength,
+                        separator: separator,
+                        showVisualizer: showVisualizer,
+                        visualizerPosition: visualizerPosition
+                    )
+                    if showPosition, showDuration,
+                       let position = song.position, let duration = song.duration {
+                        playbackTimeRange(position: position, duration: duration)
+                    } else {
+                        if showPosition, let position = song.position {
+                            playbackTimeLabel(position)
+                        }
+                        if showDuration, let duration = song.duration {
+                            playbackTimeLabel(duration)
                         }
                     }
+                    if showProgress, let position = song.position,
+                       let duration = song.duration, duration > 0 {
+                        NowPlayingProgressLine(
+                            position: position,
+                            duration: duration,
+                            tint: appearance.accentColor
+                        )
+                    }
+                }
+                .onTapGesture {
+                    MenuBarPopup.show(rect: widgetFrame, id: "nowplaying") {
+                        NowPlayingPopup()
+                    }
+                }
             }
         }
         .background(
@@ -73,9 +96,52 @@ struct NowPlayingWidget: View {
     private var albumMaxLength: Int { configProvider.config["album-max-length"]?.intValue ?? 20 }
     private var separator: String { configProvider.config["separator"]?.stringValue ?? " - " }
     private var showVisualizer: Bool { configProvider.config["show-visualizer"]?.boolValue ?? true }
+    private var showPosition: Bool { configProvider.config["show-position"]?.boolValue ?? false }
+    private var showProgress: Bool { configProvider.config["show-progress"]?.boolValue ?? false }
+    private var showDuration: Bool { configProvider.config["show-duration"]?.boolValue ?? false }
+    private var timeSeparator: String { configProvider.config["time-separator"]?.stringValue ?? " / " }
+    private var contentSpacing: CGFloat { configProvider.config["content-spacing"]?.doubleValue ?? 5 }
+    private var timeOpacity: Double { configProvider.config["time-opacity"]?.doubleValue ?? 0.72 }
     private var visualizerPosition: VisualizerPosition {
         let raw = configProvider.config["visualizer-position"]?.stringValue ?? "right"
         return VisualizerPosition(rawValue: raw) ?? .right
+    }
+}
+
+struct NowPlayingProgressLine: View {
+    let position: Double
+    let duration: Double
+    let tint: Color
+
+    private var fraction: CGFloat {
+        guard duration > 0 else { return 0 }
+        return CGFloat(min(max(position / duration, 0), 1))
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(tint.opacity(0.28))
+                Capsule().fill(tint).frame(width: max(2, geometry.size.width * fraction))
+            }
+        }
+        .frame(width: 34, height: 3)
+    }
+}
+
+private extension NowPlayingWidget {
+    func playbackTimeLabel(_ seconds: Double) -> some View {
+        Text(formatPlaybackTime(seconds))
+            .font(widgetFont.toFont())
+            .monospacedDigit()
+            .opacity(timeOpacity)
+    }
+
+    func playbackTimeRange(position: Double, duration: Double) -> some View {
+        Text("\(formatPlaybackTime(position))\(timeSeparator)\(formatPlaybackTime(duration))")
+            .font(widgetFont.toFont())
+            .monospacedDigit()
+            .opacity(timeOpacity)
     }
 }
 
@@ -96,6 +162,7 @@ struct MusicIconView: View {
 // MARK: - Now Playing Content
 
 struct NowPlayingContent: View {
+    @EnvironmentObject private var configProvider: ConfigProvider
     let song: NowPlayingSong
     let showIcon: Bool
     let showTitle: Bool
@@ -127,7 +194,7 @@ struct NowPlayingContent: View {
 
             let parts = textParts
             if !parts.isEmpty {
-                Text(parts.joined(separator: separator))
+                Text(formatMusicLabel(parts: parts, separator: separator, maxLength: Int(configProvider.config["label-max-length"]?.doubleValue ?? 0)))
                     .font(widgetFont.toFont())
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -137,7 +204,7 @@ struct NowPlayingContent: View {
                 visualizer
             }
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, configProvider.config["content-padding"]?.doubleValue ?? 4)
     }
 
     private var visualizer: some View {
@@ -150,11 +217,15 @@ struct NowPlayingContent: View {
 
     private var textParts: [String] {
         var parts: [String] = []
+        let artistFirst = configProvider.config["artist-first"]?.boolValue ?? false
+        if artistFirst, showArtist, !song.artist.isEmpty {
+            parts.append(truncate(song.artist, max: artistMaxLength))
+        }
 
         if showTitle, !song.title.isEmpty {
             parts.append(truncate(song.title, max: titleMaxLength))
         }
-        if showArtist, !song.artist.isEmpty {
+        if !artistFirst, showArtist, !song.artist.isEmpty {
             parts.append(truncate(song.artist, max: artistMaxLength))
         }
         if showAlbum, !song.album.isEmpty {

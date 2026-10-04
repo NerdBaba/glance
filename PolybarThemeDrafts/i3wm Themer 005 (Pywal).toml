@@ -1,0 +1,94 @@
+theme = "system"
+preset = "flat-dark"
+use-pywal = true
+
+[appearance]
+roundness = 0
+use-single-font = true
+border-width = 0
+fill-opacity = 0.97
+glow-opacity = 0
+shadow-opacity = 0.45
+shadow-radius = 6
+shadow-y = 5
+foreground-color = "#b0c4bb"
+accent-color = "#81a2be"
+widget-background-color = "#2f2f38"
+bar-font-name = "SourceCodePro-Semibold"
+bar-font-size = 13.3333
+bar-font-weight = 3
+
+[experimental.foreground]
+reference-width = 1360
+formation = "full"
+position = "top"
+height = 27
+top-margin = 0
+margin = 0
+horizontal-padding = 0
+spacing = 0
+center-group-offset = -10
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["default.network", "spacer", "default.spaces", "spacer", "default.time", "default.power"]
+
+[widgets.default.network]
+display-mode = "ip"
+show-icon = true
+glyph = ""
+icon-font-name = "FontAwesome5Free-Solid"
+icon-font-size = 13.3333
+content-spacing = 8
+format-background = "pywal:12"
+format-foreground = "pywal:0"
+format-padding = 16
+format-min-width = 125
+format-alignment = "left"
+
+[widgets.default.spaces]
+format-padding = 0
+
+[widgets.default.spaces.space]
+display-mode = "blocks"
+cell-width = 40
+focused-background = "pywal:4"
+unfocused-background = "pywal:12"
+focused-foreground = "pywal:15"
+unfocused-foreground = "pywal:0"
+
+[widgets.default.time]
+format = "HH:mm"
+show-icon = true
+glyph = ""
+icon-font-name = "FontAwesome5Free-Solid"
+icon-font-size = 13.3333
+content-spacing = 8
+format-background = "pywal:12"
+format-foreground = "pywal:0"
+format-padding = 16
+format-min-width = 93
+
+[widgets.default.time.calendar]
+show-events = false
+
+[widgets.default.power]
+glyph = ""
+icon-font-name = "FontAwesome5Free-Solid"
+icon-font-size = 13.3333
+format-foreground = "pywal:12"
+format-padding = 20
+format-min-width = 53
+
+[widgets.widget-colors]
+mode = "disabled"
+
+[widgets.pywal]
+foreground-index = 15
+accent-index = 12
+background-index = 0

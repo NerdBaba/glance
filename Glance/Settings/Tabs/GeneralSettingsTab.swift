@@ -1,1162 +1,1409 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum GeneralSettingsPage {
+  case appearance, layout, application
+  var title: String {
+    switch self {
+    case .appearance: return "Appearance"
+    case .layout: return "Bar layout"
+    case .application: return "Preferences"
+    }
+  }
+  var summary: String {
+    switch self {
+    case .appearance: return "Global colors, surfaces, and the look of your bar."
+    case .layout: return "Position, dimensions, spacing, and bar groups."
+    case .application: return "Keyboard shortcuts and configuration files."
+    }
+  }
+}
+
 struct GeneralSettingsTab: View {
-    @ObservedObject var configManager = ConfigManager.shared
-    @ObservedObject var customPresets = CustomPresetStore.shared
+  var page: GeneralSettingsPage = .appearance
+  @State private var synchronizedValues: [String: String] = [:]
+  @ObservedObject var configManager = ConfigManager.shared
+  @ObservedObject var customPresets = CustomPresetStore.shared
 
-    @State private var selectedPreset: String = "liquid-glass"
-    @State private var showPresetEditor: Bool = false
-    @State private var editingPresetName: String?
-    @State private var roundness: Double = 50
-    @State private var borderWidth: Double = 1.0
-    @State private var borderOpacity: Double = 0.4
-    @State private var fillOpacity: Double = 0.04
-    @State private var glowOpacity: Double = 0.05
-    @State private var shadowOpacity: Double = 0.08
-    @State private var shadowRadius: Double = 4.0
-    @State private var barHeight: Double = 55
-    @State private var horizontalPadding: Double = 25
-    @State private var widgetSpacing: Double = 15
-    @State private var showWidgetBackgrounds: Bool = false
-    @State private var blurWallpaper: Bool = true
-    @State private var selectedFormation: String = "islands"
-    @State private var selectedPosition: String = "top"
-    @State private var topMargin: Double = 0
-    @State private var formationMargin: Double = 8
-    @State private var formationGap: Double = 10
-    @State private var foregroundColor: Color = .white
-    @State private var accentColor: Color = .blue
-    @State private var widgetBackgroundColor: Color = .black.opacity(0.5)
-    @State private var borderColor: Color = .blue
-    @State private var borderColor2: Color = .purple
-    @State private var glowColor: Color = .blue
-    @State private var neonColor: Color = Color(red: 1, green: 0.27, blue: 0.8)
-    @State private var neonColor2: Color = Color(red: 0.27, green: 0.8, blue: 1)
-    @State private var useGradient: Bool = false
-    @State private var usePywal: Bool = false
-    @State private var pywalForegroundIndex: Int = -1
-    @State private var pywalAccentIndex: Int = -1
-    @State private var pywalBorder1Index: Int = -1
-    @State private var pywalBorder2Index: Int = -1
-    @State private var pywalBgIndex: Int = -1
-    @State private var widgetColorMode: WidgetColorMode = .disabled
-    @State private var widgetColorIndices: [String: Int] = [:]
-    @State private var widgetColorsFirstSync: Bool = true
-    @State private var hotkeyString: String = "ctrl+option+b"
-    @State private var hotkeyValid: Bool = true
-    @State private var isSyncing: Bool = false
+  @State private var selectedPreset: String = "liquid-glass"
+  @State private var showPresetEditor: Bool = false
+  @State private var editingPresetName: String?
+  @State private var roundness: Double = 50
+  @State private var borderWidth: Double = 1.0
+  @State private var borderOpacity: Double = 0.4
+  @State private var fillOpacity: Double = 0.04
+  @State private var glowOpacity: Double = 0.05
+  @State private var shadowOpacity: Double = 0.08
+  @State private var shadowRadius: Double = 4.0
+  @State private var shadowY: Double = 0
+  @State private var barHeight: Double = 55
+  @State private var horizontalPadding: Double = 25
+  @State private var widgetSpacing: Double = 15
+  @State private var showWidgetBackgrounds: Bool = false
+  @State private var blurWallpaper: Bool = true
+  @State private var selectedFormation: String = "islands"
+  @State private var selectedPosition: String = "top"
+  @State private var topMargin: Double = 0
+  @State private var formationMargin: Double = 8
+  @State private var formationGap: Double = 10
+  @State private var floatingWidth: Double = 0
+  @State private var floatingAlignment: String = "center"
+  @State private var leftGroupWidth: Double = 0
+  @State private var leftGroupOffset: Double = 0
+  @State private var centerGroupWidth: Double = 0
+  @State private var rightGroupWidth: Double = 0
+  @State private var centerGroupOffset: Double = 0
+  @State private var referenceWidth: Double = 0
+  @State private var foregroundColor: Color = .white
+  @State private var accentColor: Color = .blue
+  @State private var widgetBackgroundColor: Color = .black.opacity(0.5)
+  @State private var borderColor: Color = .blue
+  @State private var borderColor2: Color = .purple
+  @State private var glowColor: Color = .blue
+  @State private var neonColor: Color = Color(red: 1, green: 0.27, blue: 0.8)
+  @State private var neonColor2: Color = Color(red: 0.27, green: 0.8, blue: 1)
+  @State private var useGradient: Bool = false
+  @State private var usePywal: Bool = false
+  @State private var pywalForegroundIndex: Int = -1
+  @State private var pywalAccentIndex: Int = -1
+  @State private var pywalBorder1Index: Int = -1
+  @State private var pywalBorder2Index: Int = -1
+  @State private var pywalBgIndex: Int = -1
+  @State private var widgetColorMode: WidgetColorMode = .disabled
+  @State private var widgetColorIndices: [String: Int] = [:]
+  @State private var widgetColorsFirstSync: Bool = true
+  @State private var hotkeyString: String = "ctrl+option+b"
+  @State private var hotkeyValid: Bool = true
+  @State private var isSyncing: Bool = false
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // MARK: - Preset
-                SettingsSection(title: "Preset") {
-                    Picker("Preset", selection: $selectedPreset) {
-                        ForEach(Preset.allCases, id: \.rawValue) { preset in
-                            Text(presetDisplayName(preset)).tag(preset.rawValue)
-                        }
-                        if !customPresets.presetNames.isEmpty {
-                            Divider()
-                            ForEach(customPresets.presetNames, id: \.self) { name in
-                                Text(name).tag("custom:\(name)")
-                            }
-                        }
-                    }
-                    .labelsHidden()
-                    .onChange(of: selectedPreset) { _, newValue in
-                        guard !isSyncing else { return }
-                        if newValue.hasPrefix("custom:") {
-                            applyCustomPreset(name: String(newValue.dropFirst(7)))
-                        } else if let preset = Preset(rawValue: newValue) {
-                            applyBuiltinPreset(preset)
-                        }
-                    }
+  var body: some View {
+    SettingsPage {
+      SettingsPageHeader(title: page.title, summary: page.summary)
+      switch page {
+      case .appearance:
+        presetSection
+        neonSection
+        paletteSection
+        if !usePywal { customColorsSection }
+        surfaceSection
+        shadowSection
+      case .layout:
+        formationSection
+        barLayoutSection
+        groupLayoutSection
+        scalingSection
+      case .application:
+        hotkeySection
+        configurationSection
+      }
+    }
+    .onAppear { syncFromConfig() }
+    .onChange(of: configManager.config.updatedAt) { _, _ in
+      syncFromConfig()
+    }
+  }
 
-                    HStack(spacing: 8) {
-                        Button("Create Preset...") {
-                            editingPresetName = nil
-                            showPresetEditor = true
-                        }
-                        if selectedPreset.hasPrefix("custom:") {
-                            Button("Edit...") {
-                                editingPresetName = String(selectedPreset.dropFirst(7))
-                                showPresetEditor = true
-                            }
-                            Button("Delete") {
-                                let name = String(selectedPreset.dropFirst(7))
-                                customPresets.delete(name: name)
-                                selectedPreset = "liquid-glass"
-                            }
-                            .foregroundStyle(.red)
-                        }
-                    }
-                    .sheet(isPresented: $showPresetEditor, onDismiss: {
-                        // If a new preset was created/edited, select it
-                        if let name = editingPresetName ?? customPresets.presetNames.last {
-                            if customPresets.presetNames.contains(name) {
-                                selectedPreset = "custom:\(name)"
-                            }
-                        }
-                    }) {
-                        PresetEditorView(
-                            store: customPresets,
-                            editingName: editingPresetName
-                        )
-                    }
-                }
-
-                // MARK: - Neon Colors (only when Neon preset)
-                if selectedPreset == "neon" {
-                    SettingsSection(title: "Neon Colors") {
-                        HStack {
-                            Text("Accent Color")
-                                .frame(width: 130, alignment: .leading)
-                            ColorPicker("", selection: $neonColor, supportsOpacity: false)
-                                .labelsHidden()
-                                .onChange(of: neonColor) { _, newValue in
-                                    guard !isSyncing else { return }
-                                    configManager.updateConfigValue(
-                                        key: "appearance.neon-color",
-                                        newValue: newValue.toHex())
-                                }
-                        }
-                        Toggle("Gradient Border", isOn: $useGradient)
-                            .onChange(of: useGradient) { _, newValue in
-                                guard !isSyncing else { return }
-                                if newValue {
-                                    configManager.updateConfigValue(
-                                        key: "appearance.neon-color2",
-                                        newValue: neonColor2.toHex())
-                                } else {
-                                    configManager.updateConfigValue(
-                                        key: "appearance.neon-color2",
-                                        newValue: "")
-                                }
-                            }
-                        if useGradient {
-                            HStack {
-                                Text("Second Color")
-                                    .frame(width: 130, alignment: .leading)
-                                ColorPicker("", selection: $neonColor2, supportsOpacity: false)
-                                    .labelsHidden()
-                                    .onChange(of: neonColor2) { _, newValue in
-                                        guard !isSyncing else { return }
-                                        configManager.updateConfigValue(
-                                            key: "appearance.neon-color2",
-                                            newValue: newValue.toHex())
-                                    }
-                            }
-                        }
-                    }
-                }
-
-                // MARK: - Appearance Overrides
-                SettingsSection(title: "Appearance") {
-                    Toggle("Use Pywal Colors", isOn: $usePywal)
-                        .onChange(of: usePywal) { _, newValue in
-                            guard !isSyncing else { return }
-                            configManager.updateConfigValue(key: "use-pywal", newValue: newValue ? "true" : "false")
-                        }
-                    
-                    if usePywal {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Pywal Color Indices")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            
-                            HStack(spacing: 16) {
-                                PywalColorPicker(
-                                    label: "Foreground",
-                                    selectedIndex: $pywalForegroundIndex,
-                                    onChange: { index in
-                                        configManager.updateConfigValue(
-                                            key: "widgets.pywal.foreground-index",
-                                            newValue: String(index))
-                                    }
-                                )
-                                
-                                PywalColorPicker(
-                                    label: "Accent",
-                                    selectedIndex: $pywalAccentIndex,
-                                    onChange: { index in
-                                        configManager.updateConfigValue(
-                                            key: "widgets.pywal.accent-index",
-                                            newValue: String(index))
-                                    }
-                                )
-                            }
-                            
-                            HStack(spacing: 16) {
-                                PywalColorPicker(
-                                    label: "Border 1",
-                                    selectedIndex: $pywalBorder1Index,
-                                    onChange: { index in
-                                        configManager.updateConfigValue(
-                                            key: "widgets.pywal.border1-index",
-                                            newValue: String(index))
-                                    }
-                                )
-                                
-                                PywalColorPicker(
-                                    label: "Border 2",
-                                    selectedIndex: $pywalBorder2Index,
-                                    onChange: { index in
-                                        configManager.updateConfigValue(
-                                            key: "widgets.pywal.border2-index",
-                                            newValue: String(index))
-                                    }
-                                )
-                            }
-                            
-                            PywalColorPicker(
-                                label: "Widget Background",
-                                selectedIndex: $pywalBgIndex,
-                                onChange: { index in
-                                    configManager.updateConfigValue(
-                                        key: "widgets.pywal.background-index",
-                                        newValue: String(index))
-                                }
-                            )
-                        }
-                        .padding(.top, 8)
-                    }
-
-                    // Per-widget foreground colors
-                    if usePywal, configManager.pywalColors != nil {
-                        Divider().padding(.vertical, 4)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("Per-Widget Foreground Colors")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                Spacer()
-                                Picker("", selection: $widgetColorMode) {
-                                    Text("Disabled").tag(WidgetColorMode.disabled)
-                                    Text("Pywal Index").tag(WidgetColorMode.pywalIndex)
-                                }
-                                .pickerStyle(.segmented)
-                                .frame(width: 160)
-                                .onChange(of: widgetColorMode) { _, newValue in
-                                    guard !isSyncing else { return }
-                                    commitWidgetColors(mode: newValue)
-                                }
-                            }
-
-                            if widgetColorMode == .pywalIndex {
-                                HStack {
-                                    Button(action: randomizeWidgetColors) {
-                                        Label("Randomize", systemImage: "dice")
-                                    }
-                                }
-
-                                let widgetIds = configManager.config.rootToml.widgets?.displayed
-                                    .map(\.id)
-                                    .filter { $0 != "spacer" && $0 != "divider" && $0 != "system-banner" }
-                                    ?? []
-
-                                if !widgetIds.isEmpty {
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 12) {
-                                            ForEach(widgetIds, id: \.self) { wid in
-                                                WidgetColorSwatch(
-                                                    widgetId: wid,
-                                                    index: Binding(
-                                                        get: { widgetColorIndices[wid, default: 8] },
-                                                        set: { widgetColorIndices[wid] = $0 }
-                                                    ),
-                                                    onChange: { idx in
-                                                        widgetColorIndices[wid] = idx
-                                                        commitWidgetColors(mode: .pywalIndex)
-                                                    }
-                                                )
-                                            }
-                                        }
-                                        .padding(.vertical, 4)
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    SliderRow(label: "Roundness", value: $roundness, range: 0...50, step: 1, format: "%.0f") {
-                        configManager.updateConfigValue(key: "appearance.roundness", newValue: String(Int(roundness)))
-                    }
-                    SliderRow(label: "Border Width", value: $borderWidth, range: 0...3, step: 0.1, format: "%.1f") {
-                        configManager.updateConfigValue(key: "appearance.border-width", newValue: String(format: "%.1f", borderWidth))
-                    }
-                    SliderRow(label: "Border Opacity", value: $borderOpacity, range: 0...1, step: 0.01, format: "%.2f") {
-                        configManager.updateConfigValue(key: "appearance.border-opacity", newValue: String(format: "%.2f", borderOpacity))
-                    }
-                    SliderRow(label: "Fill Opacity", value: $fillOpacity, range: 0...1, step: 0.01, format: "%.2f") {
-                        configManager.updateConfigValue(key: "appearance.fill-opacity", newValue: String(format: "%.2f", fillOpacity))
-                    }
-                    SliderRow(label: "Glow Opacity", value: $glowOpacity, range: 0...0.5, step: 0.01, format: "%.2f") {
-                        configManager.updateConfigValue(key: "appearance.glow-opacity", newValue: String(format: "%.2f", glowOpacity))
-                    }
-                    SliderRow(label: "Shadow Opacity", value: $shadowOpacity, range: 0...0.5, step: 0.01, format: "%.2f") {
-                        configManager.updateConfigValue(key: "appearance.shadow-opacity", newValue: String(format: "%.2f", shadowOpacity))
-                    }
-                    SliderRow(label: "Shadow Radius", value: $shadowRadius, range: 0...20, step: 1, format: "%.0f") {
-                        configManager.updateConfigValue(key: "appearance.shadow-radius", newValue: String(format: "%.0f", shadowRadius))
-                    }
-
-                    HStack {
-                        Text("Foreground Color")
-                            .frame(width: 130, alignment: .leading)
-                        ColorPicker("", selection: $foregroundColor, supportsOpacity: false)
-                            .labelsHidden()
-                            .onChange(of: foregroundColor) { _, newValue in
-                                guard !isSyncing else { return }
-                                configManager.updateConfigValue(key: "appearance.foreground-color", newValue: newValue.toHex())
-                            }
-                    }
-                    HStack {
-                        Text("Accent Color")
-                            .frame(width: 130, alignment: .leading)
-                        ColorPicker("", selection: $accentColor, supportsOpacity: false)
-                            .labelsHidden()
-                            .onChange(of: accentColor) { _, newValue in
-                                guard !isSyncing else { return }
-                                configManager.updateConfigValue(key: "appearance.accent-color", newValue: newValue.toHex())
-                            }
-                    }
-                    HStack {
-                        Text("Widget Background")
-                            .frame(width: 130, alignment: .leading)
-                        ColorPicker("", selection: $widgetBackgroundColor, supportsOpacity: true)
-                            .labelsHidden()
-                            .onChange(of: widgetBackgroundColor) { _, newValue in
-                                guard !isSyncing else { return }
-                                configManager.updateConfigValue(key: "appearance.widget-background-color", newValue: newValue.toHex())
-                            }
-                    }
-                    HStack {
-                        Text("Border Color")
-                            .frame(width: 130, alignment: .leading)
-                        ColorPicker("", selection: $borderColor, supportsOpacity: false)
-                            .labelsHidden()
-                            .onChange(of: borderColor) { _, newValue in
-                                guard !isSyncing else { return }
-                                configManager.updateConfigValue(key: "appearance.border-color", newValue: newValue.toHex())
-                            }
-                    }
-                    HStack {
-                        Text("Border Color 2")
-                            .frame(width: 130, alignment: .leading)
-                        ColorPicker("", selection: $borderColor2, supportsOpacity: false)
-                            .labelsHidden()
-                            .onChange(of: borderColor2) { _, newValue in
-                                guard !isSyncing else { return }
-                                configManager.updateConfigValue(key: "appearance.border-color2", newValue: newValue.toHex())
-                            }
-                    }
-                    HStack {
-                        Text("Glow Color")
-                            .frame(width: 130, alignment: .leading)
-                        ColorPicker("", selection: $glowColor, supportsOpacity: false)
-                            .labelsHidden()
-                            .onChange(of: glowColor) { _, newValue in
-                                guard !isSyncing else { return }
-                                configManager.updateConfigValue(key: "appearance.glow-color", newValue: newValue.toHex())
-                            }
-                    }
-                }
-
-                // MARK: - Formation
-                SettingsSection(title: "Formation") {
-                    Picker("Formation", selection: $selectedFormation) {
-                        Text("Full").tag("full")
-                        Text("Floating").tag("floating")
-                        Text("Islands").tag("islands")
-                        Text("Pills").tag("pills")
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: selectedFormation) { _, newValue in
-                        guard !isSyncing else { return }
-                        configManager.updateConfigValue(
-                            key: "experimental.foreground.formation",
-                            newValue: newValue)
-                    }
-                    
-                    Picker("Position", selection: $selectedPosition) {
-                        Text("Top").tag("top")
-                        Text("Bottom").tag("bottom")
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: selectedPosition) { _, newValue in
-                        guard !isSyncing else { return }
-                        configManager.updateConfigValue(
-                            key: "experimental.foreground.position",
-                            newValue: newValue)
-                        
-                        // Update yabai external_bar config
-                        updateYabaiExternalBar(position: newValue)
-                    }
-                }
-
-                // MARK: - Bar Layout
-                SettingsSection(title: "Bar Layout") {
-                    Toggle("Blur Wallpaper", isOn: $blurWallpaper)
-                        .onChange(of: blurWallpaper) { _, newValue in
-                            guard !isSyncing else { return }
-                            configManager.updateConfigValue(key: "experimental.background.displayed", newValue: newValue ? "true" : "false")
-                        }
-                    SliderRow(label: "Bar Height", value: $barHeight, range: 25...80, step: 1, format: "%.0f px") {
-                        configManager.updateConfigValue(key: "experimental.foreground.height", newValue: String(Int(barHeight)))
-                    }
-                    SliderRow(label: "Top Margin", value: $topMargin, range: 0...100, step: 1, format: "%.0f px") {
-                        configManager.updateConfigValue(key: "experimental.foreground.top-margin", newValue: String(Int(topMargin)))
-                    }
-                    SliderRow(label: "Horizontal Margin", value: $formationMargin, range: 0...60, step: 1, format: "%.0f px") {
-                        configManager.updateConfigValue(
-                            key: "experimental.foreground.margin",
-                            newValue: String(Int(formationMargin)))
-                    }
-                    SliderRow(label: "Horizontal Padding", value: $horizontalPadding, range: 0...60, step: 1, format: "%.0f px") {
-                        configManager.updateConfigValue(key: "experimental.foreground.horizontal-padding", newValue: String(Int(horizontalPadding)))
-                    }
-                    SliderRow(label: "Widget Spacing", value: $widgetSpacing, range: 4...30, step: 1, format: "%.0f px") {
-                        configManager.updateConfigValue(key: "experimental.foreground.spacing", newValue: String(Int(widgetSpacing)))
-                    }
-                    Toggle("Show Widget Backgrounds", isOn: $showWidgetBackgrounds)
-                        .onChange(of: showWidgetBackgrounds) { _, newValue in
-                            guard !isSyncing else { return }
-                            configManager.updateConfigValue(key: "experimental.foreground.widgets-background.displayed", newValue: newValue ? "true" : "false")
-                        }
-                    if selectedFormation == "pills" {
-                        SliderRow(label: "Group Gap", value: $formationGap, range: 4...30, step: 1, format: "%.0f px") {
-                            configManager.updateConfigValue(
-                                key: "experimental.foreground.gap",
-                                newValue: String(Int(formationGap)))
-                        }
-                    }
-                }
-
-                // MARK: - Hotkey
-                SettingsSection(title: "Global Hotkey") {
-                    HStack {
-                        Text("Toggle bar")
-                            .frame(width: 130, alignment: .leading)
-                        TextField("ctrl+option+b", text: $hotkeyString)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 200)
-                            .onChange(of: hotkeyString) { _, newValue in
-                                guard !isSyncing else { return }
-                                let trimmed = newValue.trimmingCharacters(in: .whitespaces)
-                                if trimmed == "false" || HotkeyManager.parse(trimmed) != nil {
-                                    hotkeyValid = true
-                                    configManager.updateConfigValue(key: "hotkey", newValue: trimmed)
-                                } else {
-                                    hotkeyValid = false
-                                }
-                            }
-                        if !hotkeyValid {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.yellow)
-                        }
-                    }
-                    Text("Format: modifier+modifier+key (e.g. ctrl+option+b, cmd+shift+space). Set to \"false\" to disable.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                // MARK: - Config
-                SettingsSection(title: "Configuration") {
-                    HStack(spacing: 12) {
-                        Button("Export Config...") { exportConfig() }
-                        Button("Import Config...") { importConfig() }
-                    }
-                    Text("Export saves your current config to a file. Import replaces it.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-            }
-            .padding(24)
+  private var presetSection: some View {
+    SettingsSection(title: "Preset") {
+      Picker("Preset", selection: $selectedPreset) {
+        ForEach(Preset.allCases, id: \.rawValue) { preset in
+          Text(presetDisplayName(preset)).tag(preset.rawValue)
         }
-        .onAppear { syncFromConfig() }
-        .onChange(of: configManager.config.updatedAt) { _, _ in
-            syncFromConfig()
+        if !customPresets.presetNames.isEmpty {
+          Divider()
+          ForEach(customPresets.presetNames, id: \.self) { name in
+            Text(name).tag("custom:\(name)")
+          }
         }
-    }
+      }
+      .labelsHidden()
+      .onChange(of: selectedPreset) { _, newValue in
+        guard String(describing: newValue) != synchronizedValues["selectedPreset"] else { return }
+        guard !isSyncing else { return }
+        if newValue.hasPrefix("custom:") {
+          applyCustomPreset(name: String(newValue.dropFirst(7)))
+        } else if let preset = Preset(rawValue: newValue) {
+          applyBuiltinPreset(preset)
+        }
+      }
 
-    // MARK: - Export / Import
-
-    private func exportConfig() {
-        guard let sourcePath = configManager.configFilePath else { return }
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = "glance-config.toml"
-        panel.allowedContentTypes = [.init(filenameExtension: "toml") ?? .plainText]
-        panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let dest = panel.url else { return }
-        try? FileManager.default.copyItem(at: URL(fileURLWithPath: sourcePath), to: dest)
-    }
-
-    private func importConfig() {
-        guard let destPath = configManager.configFilePath else { return }
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.init(filenameExtension: "toml") ?? .plainText]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        guard panel.runModal() == .OK, let source = panel.url else { return }
-        try? FileManager.default.removeItem(atPath: destPath)
-        try? FileManager.default.copyItem(at: source, to: URL(fileURLWithPath: destPath))
-    }
-
-    private func syncFromConfig() {
-        isSyncing = true
-        defer { isSyncing = false }
-
-        let config = configManager.config
-        let root = config.rootToml
-
-        if let presetName = root.preset {
-            selectedPreset = presetName
-        } else if let style = root.style {
-            selectedPreset = Preset.fromLegacyStyle(style).rawValue
-        } else {
+      HStack(spacing: 8) {
+        Button("Create Preset...") {
+          editingPresetName = nil
+          showPresetEditor = true
+        }
+        if selectedPreset.hasPrefix("custom:") {
+          Button("Edit...") {
+            editingPresetName = String(selectedPreset.dropFirst(7))
+            showPresetEditor = true
+          }
+          Button("Delete") {
+            let name = String(selectedPreset.dropFirst(7))
+            customPresets.delete(name: name)
             selectedPreset = "liquid-glass"
+          }
+          .foregroundStyle(.red)
         }
-
-        let a = config.appearance
-        roundness = a.roundness
-        borderWidth = a.borderWidth
-        borderOpacity = a.borderTopOpacity
-        fillOpacity = a.fillOpacity
-        glowOpacity = a.glowOpacity
-        shadowOpacity = a.shadowOpacity
-        shadowRadius = a.shadowRadius
-        foregroundColor = a.foregroundColor
-        accentColor = a.accentColor
-        widgetBackgroundColor = a.widgetBackgroundColor
-        borderColor = a.borderColor
-        borderColor2 = a.borderColor2 ?? .purple
-        glowColor = a.glowColor
-
-        let exp = config.experimental
-        barHeight = exp.foreground.resolveHeight()
-        horizontalPadding = exp.foreground.horizontalPadding
-        widgetSpacing = exp.foreground.spacing
-        showWidgetBackgrounds = exp.foreground.widgetsBackground.displayed
-        blurWallpaper = exp.background.displayed
-        selectedFormation = exp.foreground.formation.rawValue
-        selectedPosition = exp.foreground.position
-        topMargin = exp.foreground.topMargin
-        formationMargin = exp.foreground.margin
-        formationGap = exp.foreground.gap
-        usePywal = root.usePywal ?? false
-        
-        // Sync Pywal color indices from config ONLY on first load (not on every config update)
-        // This prevents resetting user's picker selection during live updates
-        if pywalForegroundIndex == -1 {
-            let pywalConfig = config.buildPywalConfig()
-            pywalForegroundIndex = pywalConfig.foregroundIndex
-            pywalAccentIndex = pywalConfig.accentIndex
-            pywalBorder1Index = pywalConfig.border1Index
-            pywalBorder2Index = pywalConfig.border2Index
-            pywalBgIndex = pywalConfig.backgroundIndex
+      }
+      .sheet(
+        isPresented: $showPresetEditor,
+        onDismiss: {
+          // If a new preset was created/edited, select it
+          if let name = editingPresetName ?? customPresets.presetNames.last {
+            if customPresets.presetNames.contains(name) {
+              selectedPreset = "custom:\(name)"
+            }
+          }
         }
-        
-        hotkeyString = root.hotkey ?? "ctrl+option+b"
-        hotkeyValid = true
-        syncNeonColors()
-        syncWidgetColors()
-    }
-
-    private func syncWidgetColors() {
-        guard widgetColorsFirstSync else { return }
-        widgetColorsFirstSync = false
-        if let wc = configManager.config.rootToml.widgets?.widgetColors {
-            widgetColorMode = wc.mode
-            widgetColorIndices = wc.indices
-        } else {
-            widgetColorMode = .disabled
-            widgetColorIndices = [:]
-        }
-    }
-
-    private func syncNeonColors() {
-        let overrides = configManager.config.rootToml.appearanceOverrides
-        if let hex = overrides?.neonColor, let c = AppearanceConfig.parseHex(hex) {
-            neonColor = c
-        }
-        if let hex2 = overrides?.neonColor2, !hex2.isEmpty, let c = AppearanceConfig.parseHex(hex2) {
-            neonColor2 = c
-            useGradient = true
-        } else {
-            useGradient = false
-        }
-    }
-
-    private func commitWidgetColors(mode: WidgetColorMode) {
-        configManager.updateWidgetColors(mode: mode, indices: widgetColorIndices)
-    }
-
-    private func randomizeWidgetColors() {
-        guard configManager.pywalColors != nil else { return }
-        let ids = configManager.config.rootToml.widgets?.displayed
-            .map(\.id)
-            .filter { $0 != "spacer" && $0 != "divider" && $0 != "system-banner" }
-            ?? []
-        var newIndices: [String: Int] = [:]
-        for wid in ids {
-            newIndices[wid] = Int.random(in: 8...15)
-        }
-        widgetColorIndices = newIndices
-        commitWidgetColors(mode: .pywalIndex)
-    }
-
-    // MARK: - Preset apply/save helpers
-
-    private func applyBuiltinPreset(_ preset: Preset) {
-        let d = preset.defaults
-        isSyncing = true
-        withAnimation(.easeInOut(duration: 0.2)) {
-            roundness = d.roundness
-            borderWidth = d.borderWidth
-            borderOpacity = d.borderTopOpacity
-            fillOpacity = d.fillOpacity
-            glowOpacity = d.glowOpacity
-            shadowOpacity = d.shadowOpacity
-            shadowRadius = d.shadowRadius
-        }
-        isSyncing = false
-
-        var pairs: [(key: String, value: String)] = [
-            ("preset", preset.rawValue),
-            ("appearance.roundness", String(Int(d.roundness))),
-            ("appearance.border-width", String(format: "%.1f", d.borderWidth)),
-            ("appearance.border-opacity", String(format: "%.2f", d.borderTopOpacity)),
-            ("appearance.fill-opacity", String(format: "%.2f", d.fillOpacity)),
-            ("appearance.glow-opacity", String(format: "%.2f", d.glowOpacity)),
-            ("appearance.shadow-opacity", String(format: "%.2f", d.shadowOpacity)),
-            ("appearance.shadow-radius", String(format: "%.0f", d.shadowRadius)),
-        ]
-        if preset.rawValue != "neon" {
-            pairs.append(("appearance.neon-color", ""))
-            pairs.append(("appearance.neon-color2", ""))
-        }
-        configManager.updateConfigValues(pairs: pairs)
-    }
-
-    private func applyCustomPreset(name: String) {
-        guard let values = customPresets.load(name: name) else { return }
-        isSyncing = true
-        if let v = values["roundness"], let d = Double(v) { roundness = d }
-        if let v = values["border-width"], let d = Double(v) { borderWidth = d }
-        if let v = values["border-top-opacity"], let d = Double(v) { borderOpacity = d }
-        if let v = values["fill-opacity"], let d = Double(v) { fillOpacity = d }
-        if let v = values["glow-opacity"], let d = Double(v) { glowOpacity = d }
-        if let v = values["shadow-opacity"], let d = Double(v) { shadowOpacity = d }
-        if let v = values["shadow-radius"], let d = Double(v) { shadowRadius = d }
-        isSyncing = false
-
-        // Determine the rendering style to pick the right base preset
-        let style = values["rendering-style"] ?? "glass"
-        let basePreset: String
-        switch style {
-        case "solid": basePreset = "flat-dark"
-        case "minimal": basePreset = "minimal"
-        default: basePreset = "liquid-glass"
-        }
-
-        var pairs: [(key: String, value: String)] = [
-            ("preset", basePreset),
-            ("appearance.roundness", String(Int(roundness))),
-            ("appearance.border-width", String(format: "%.1f", borderWidth)),
-            ("appearance.border-opacity", String(format: "%.2f", borderOpacity)),
-            ("appearance.fill-opacity", String(format: "%.2f", fillOpacity)),
-            ("appearance.glow-opacity", String(format: "%.2f", glowOpacity)),
-            ("appearance.shadow-opacity", String(format: "%.2f", shadowOpacity)),
-            ("appearance.shadow-radius", String(format: "%.0f", shadowRadius)),
-        ]
-        // Apply custom colors via neon-color overrides (accent/border/glow)
-        if let ac = values["accent-color"] { pairs.append(("appearance.neon-color", ac)) }
-        if let bc2 = values["border-color2"] { pairs.append(("appearance.neon-color2", bc2)) }
-        configManager.updateConfigValues(pairs: pairs)
-    }
-
-    private func presetDisplayName(_ preset: Preset) -> String {
-        switch preset {
-        case .liquidGlass: return "Liquid Glass"
-        case .frosted:     return "Frosted"
-        case .flatDark:    return "Flat Dark"
-        case .minimal:     return "Minimal"
-        case .neon:        return "Neon"
-        case .tokyoNight:  return "Tokyo Night"
-        case .dracula:     return "Dracula"
-        case .gruvbox:     return "Gruvbox"
-        case .nord:        return "Nord"
-        case .catppuccin:  return "Catppuccin"
-        case .solarized:   return "Solarized"
-        }
-    }
-    
-    // MARK: - Yabai Integration
-    
-    private func updateYabaiExternalBar(position: String) {
-        let fg = configManager.config.experimental.foreground
-        let barHeight = fg.resolveHeight()
-        let topMargin = fg.topMargin
-        
-        YabaiConfigManager.shared.updateExternalBarConfig(
-            position: position,
-            barHeight: barHeight,
-            topMargin: topMargin
+      ) {
+        PresetEditorView(
+          store: customPresets,
+          editingName: editingPresetName
         )
+      }
     }
+
+  }
+
+  @ViewBuilder private var neonSection: some View {
+    // MARK: - Neon Colors (only when Neon preset)
+    if selectedPreset == "neon" {
+      SettingsSection(title: "Neon Colors") {
+        HStack {
+          Text("Accent Color")
+            .frame(width: 130, alignment: .leading)
+          ColorPicker("", selection: $neonColor, supportsOpacity: false)
+            .labelsHidden()
+            .onChange(of: neonColor) { _, newValue in
+              guard String(describing: newValue) != synchronizedValues["neonColor"] else { return }
+              guard !isSyncing else { return }
+              configManager.updateConfigValue(
+                key: "appearance.neon-color",
+                newValue: newValue.toHex())
+            }
+        }
+        Toggle("Gradient Border", isOn: $useGradient)
+          .onChange(of: useGradient) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["useGradient"] else { return }
+            guard !isSyncing else { return }
+            if newValue {
+              configManager.updateConfigValue(
+                key: "appearance.neon-color2",
+                newValue: neonColor2.toHex())
+            } else {
+              configManager.updateConfigValue(
+                key: "appearance.neon-color2",
+                newValue: "")
+            }
+          }
+        if useGradient {
+          HStack {
+            Text("Second Color")
+              .frame(width: 130, alignment: .leading)
+            ColorPicker("", selection: $neonColor2, supportsOpacity: false)
+              .labelsHidden()
+              .onChange(of: neonColor2) { _, newValue in
+                guard String(describing: newValue) != synchronizedValues["neonColor2"] else {
+                  return
+                }
+                guard !isSyncing else { return }
+                configManager.updateConfigValue(
+                  key: "appearance.neon-color2",
+                  newValue: newValue.toHex())
+              }
+          }
+        }
+      }
+    }
+
+  }
+
+  private var paletteSection: some View {
+    SettingsSection(title: "Colors") {
+      Toggle("Use Pywal Colors", isOn: $usePywal)
+        .onChange(of: usePywal) { _, newValue in
+          guard String(describing: newValue) != synchronizedValues["usePywal"] else { return }
+          guard !isSyncing else { return }
+          configManager.updateConfigValue(key: "use-pywal", newValue: newValue ? "true" : "false")
+        }
+
+      if usePywal {
+        VStack(alignment: .leading, spacing: 12) {
+          Text("Pywal Color Indices")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+          HStack(spacing: 16) {
+            PywalColorPicker(
+              label: "Foreground",
+              selectedIndex: $pywalForegroundIndex,
+              onChange: { index in
+                configManager.updateConfigValue(
+                  key: "widgets.pywal.foreground-index",
+                  newValue: String(index))
+              }
+            )
+
+            PywalColorPicker(
+              label: "Accent",
+              selectedIndex: $pywalAccentIndex,
+              onChange: { index in
+                configManager.updateConfigValue(
+                  key: "widgets.pywal.accent-index",
+                  newValue: String(index))
+              }
+            )
+          }
+
+          HStack(spacing: 16) {
+            PywalColorPicker(
+              label: "Border 1",
+              selectedIndex: $pywalBorder1Index,
+              onChange: { index in
+                configManager.updateConfigValue(
+                  key: "widgets.pywal.border1-index",
+                  newValue: String(index))
+              }
+            )
+
+            PywalColorPicker(
+              label: "Border 2",
+              selectedIndex: $pywalBorder2Index,
+              onChange: { index in
+                configManager.updateConfigValue(
+                  key: "widgets.pywal.border2-index",
+                  newValue: String(index))
+              }
+            )
+          }
+
+          PywalColorPicker(
+            label: "Widget Background",
+            selectedIndex: $pywalBgIndex,
+            onChange: { index in
+              configManager.updateConfigValue(
+                key: "widgets.pywal.background-index",
+                newValue: String(index))
+            }
+          )
+        }
+        .padding(.top, 8)
+      }
+
+      // Per-widget foreground colors
+      if usePywal, configManager.pywalColors != nil {
+        Divider().padding(.vertical, 4)
+
+        VStack(alignment: .leading, spacing: 12) {
+          HStack {
+            Text("Per-Widget Foreground Colors")
+              .font(.subheadline)
+              .fontWeight(.semibold)
+            Spacer()
+            Picker("", selection: $widgetColorMode) {
+              Text("Disabled").tag(WidgetColorMode.disabled)
+              Text("Pywal Index").tag(WidgetColorMode.pywalIndex)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 160)
+            .onChange(of: widgetColorMode) { _, newValue in
+              guard String(describing: newValue) != synchronizedValues["widgetColorMode"] else {
+                return
+              }
+              guard !isSyncing else { return }
+              commitWidgetColors(mode: newValue)
+            }
+          }
+
+          if widgetColorMode == .pywalIndex {
+            HStack {
+              Button(action: randomizeWidgetColors) {
+                Label("Randomize", systemImage: "dice")
+              }
+            }
+
+            let widgetIds =
+              configManager.config.rootToml.widgets?.displayed
+              .map(\.id)
+              .filter { $0 != "spacer" && $0 != "divider" && $0 != "system-banner" }
+              ?? []
+
+            if !widgetIds.isEmpty {
+              ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                  ForEach(widgetIds, id: \.self) { wid in
+                    WidgetColorSwatch(
+                      widgetId: wid,
+                      index: Binding(
+                        get: { widgetColorIndices[wid, default: 8] },
+                        set: { widgetColorIndices[wid] = $0 }
+                      ),
+                      onChange: { idx in
+                        widgetColorIndices[wid] = idx
+                        commitWidgetColors(mode: .pywalIndex)
+                      }
+                    )
+                  }
+                }
+                .padding(.vertical, 4)
+              }
+            }
+          }
+        }
+      }
+
+    }
+  }
+
+  private var surfaceSection: some View {
+    SettingsSection(title: "Shape & fill") {
+      SliderRow(label: "Roundness", value: $roundness, range: 0...50, step: 1, format: "%.0f") {
+        configManager.updateConfigValue(
+          key: "appearance.roundness", newValue: String(Int(roundness)))
+      }
+      SliderRow(label: "Border Width", value: $borderWidth, range: 0...3, step: 0.1, format: "%.1f")
+      {
+        configManager.updateConfigValue(
+          key: "appearance.border-width", newValue: String(format: "%.1f", borderWidth))
+      }
+      SliderRow(
+        label: "Border Opacity", value: $borderOpacity, range: 0...1, step: 0.01, format: "%.2f"
+      ) {
+        configManager.updateConfigValue(
+          key: "appearance.border-opacity", newValue: String(format: "%.2f", borderOpacity))
+      }
+      SliderRow(
+        label: "Fill Opacity", value: $fillOpacity, range: 0...1, step: 0.01, format: "%.2f"
+      ) {
+        configManager.updateConfigValue(
+          key: "appearance.fill-opacity", newValue: String(format: "%.2f", fillOpacity))
+      }
+    }
+  }
+
+  private var shadowSection: some View {
+    SettingsSection(title: "Glow & shadow") {
+      SliderRow(
+        label: "Glow Opacity", value: $glowOpacity, range: 0...0.5, step: 0.01, format: "%.2f"
+      ) {
+        configManager.updateConfigValue(
+          key: "appearance.glow-opacity", newValue: String(format: "%.2f", glowOpacity))
+      }
+      SliderRow(
+        label: "Shadow Opacity", value: $shadowOpacity, range: 0...1, step: 0.01, format: "%.2f"
+      ) {
+        configManager.updateConfigValue(
+          key: "appearance.shadow-opacity", newValue: String(format: "%.2f", shadowOpacity))
+      }
+      SliderRow(
+        label: "Shadow Radius", value: $shadowRadius, range: 0...20, step: 1, format: "%.0f"
+      ) {
+        configManager.updateConfigValue(
+          key: "appearance.shadow-radius", newValue: String(format: "%.0f", shadowRadius))
+      }
+      SliderRow(
+        label: "Shadow Vertical Offset", value: $shadowY, range: -20...20, step: 1, format: "%.0f"
+      ) {
+        configManager.updateConfigValue(
+          key: "appearance.shadow-y", newValue: String(format: "%.0f", shadowY))
+      }
+
+    }
+  }
+
+  private var customColorsSection: some View {
+    SettingsSection(title: "Custom colors") {
+      HStack {
+        Text("Foreground Color")
+          .frame(width: 130, alignment: .leading)
+        ColorPicker("", selection: $foregroundColor, supportsOpacity: false)
+          .labelsHidden()
+          .onChange(of: foregroundColor) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["foregroundColor"] else {
+              return
+            }
+            guard !isSyncing else { return }
+            configManager.updateConfigValue(
+              key: "appearance.foreground-color", newValue: newValue.toHex())
+          }
+      }
+      HStack {
+        Text("Accent Color")
+          .frame(width: 130, alignment: .leading)
+        ColorPicker("", selection: $accentColor, supportsOpacity: false)
+          .labelsHidden()
+          .onChange(of: accentColor) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["accentColor"] else { return }
+            guard !isSyncing else { return }
+            configManager.updateConfigValue(
+              key: "appearance.accent-color", newValue: newValue.toHex())
+          }
+      }
+      HStack {
+        Text("Widget Background")
+          .frame(width: 130, alignment: .leading)
+        ColorPicker("", selection: $widgetBackgroundColor, supportsOpacity: true)
+          .labelsHidden()
+          .onChange(of: widgetBackgroundColor) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["widgetBackgroundColor"] else {
+              return
+            }
+            guard !isSyncing else { return }
+            configManager.updateConfigValue(
+              key: "appearance.widget-background-color", newValue: newValue.toHex())
+          }
+      }
+      HStack {
+        Text("Border Color")
+          .frame(width: 130, alignment: .leading)
+        ColorPicker("", selection: $borderColor, supportsOpacity: false)
+          .labelsHidden()
+          .onChange(of: borderColor) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["borderColor"] else { return }
+            guard !isSyncing else { return }
+            configManager.updateConfigValue(
+              key: "appearance.border-color", newValue: newValue.toHex())
+          }
+      }
+      HStack {
+        Text("Border Color 2")
+          .frame(width: 130, alignment: .leading)
+        ColorPicker("", selection: $borderColor2, supportsOpacity: false)
+          .labelsHidden()
+          .onChange(of: borderColor2) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["borderColor2"] else { return }
+            guard !isSyncing else { return }
+            configManager.updateConfigValue(
+              key: "appearance.border-color2", newValue: newValue.toHex())
+          }
+      }
+      HStack {
+        Text("Glow Color")
+          .frame(width: 130, alignment: .leading)
+        ColorPicker("", selection: $glowColor, supportsOpacity: false)
+          .labelsHidden()
+          .onChange(of: glowColor) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["glowColor"] else { return }
+            guard !isSyncing else { return }
+            configManager.updateConfigValue(
+              key: "appearance.glow-color", newValue: newValue.toHex())
+          }
+      }
+    }
+  }
+
+  private var formationSection: some View {
+    // MARK: - Formation
+    SettingsSection(title: "Formation") {
+      Picker("Formation", selection: $selectedFormation) {
+        Text("Full").tag("full")
+        Text("Floating").tag("floating")
+        Text("Islands").tag("islands")
+        Text("Pills").tag("pills")
+      }
+      .pickerStyle(.segmented)
+      .onChange(of: selectedFormation) { _, newValue in
+        guard String(describing: newValue) != synchronizedValues["selectedFormation"] else {
+          return
+        }
+        guard !isSyncing else { return }
+        configManager.updateConfigValue(
+          key: "experimental.foreground.formation",
+          newValue: newValue)
+      }
+
+      Picker("Position", selection: $selectedPosition) {
+        Text("Top").tag("top")
+        Text("Bottom").tag("bottom")
+      }
+      .pickerStyle(.segmented)
+      .onChange(of: selectedPosition) { _, newValue in
+        guard String(describing: newValue) != synchronizedValues["selectedPosition"] else { return }
+        guard !isSyncing else { return }
+        configManager.updateConfigValue(
+          key: "experimental.foreground.position",
+          newValue: newValue)
+
+        // Update yabai external_bar config
+        updateYabaiExternalBar(position: newValue)
+      }
+    }
+
+  }
+
+  private var barLayoutSection: some View {
+    // MARK: - Bar Layout
+    SettingsSection(title: "Bar Layout") {
+      Toggle("Blur Wallpaper", isOn: $blurWallpaper)
+        .onChange(of: blurWallpaper) { _, newValue in
+          guard String(describing: newValue) != synchronizedValues["blurWallpaper"] else { return }
+          guard !isSyncing else { return }
+          configManager.updateConfigValue(
+            key: "experimental.background.displayed", newValue: newValue ? "true" : "false")
+        }
+      SliderRow(label: "Bar Height", value: $barHeight, range: 25...80, step: 1, format: "%.0f px")
+      {
+        configManager.updateConfigValue(
+          key: "experimental.foreground.height", newValue: String(Int(barHeight)))
+      }
+      SliderRow(label: "Top Margin", value: $topMargin, range: 0...100, step: 1, format: "%.0f px")
+      {
+        configManager.updateConfigValue(
+          key: "experimental.foreground.top-margin", newValue: String(Int(topMargin)))
+      }
+      SliderRow(
+        label: "Horizontal Margin", value: $formationMargin, range: 0...60, step: 1,
+        format: "%.0f px"
+      ) {
+        configManager.updateConfigValue(
+          key: "experimental.foreground.margin",
+          newValue: String(Int(formationMargin)))
+      }
+      SliderRow(
+        label: "Horizontal Padding", value: $horizontalPadding, range: 0...60, step: 1,
+        format: "%.0f px"
+      ) {
+        configManager.updateConfigValue(
+          key: "experimental.foreground.horizontal-padding",
+          newValue: String(Int(horizontalPadding)))
+      }
+      SliderRow(
+        label: "Widget Spacing", value: $widgetSpacing, range: 0...80, step: 1, format: "%.0f px"
+      ) {
+        configManager.updateConfigValue(
+          key: "experimental.foreground.spacing", newValue: String(Int(widgetSpacing)))
+      }
+      if selectedFormation == "floating" {
+        Picker("Bar alignment", selection: $floatingAlignment) {
+          Text("Left").tag("left")
+          Text("Center").tag("center")
+          Text("Right").tag("right")
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: floatingAlignment) { _, value in
+          guard String(describing: value) != synchronizedValues["floatingAlignment"] else { return }
+          configManager.updateConfigValue(
+            key: "experimental.foreground.horizontal-alignment",
+            newValue: value)
+        }
+        SliderRow(
+          label: "Floating Width", value: $floatingWidth, range: 0...1000, step: 10,
+          format: "%.0f px"
+        ) {
+          configManager.updateConfigValue(
+            key: "experimental.foreground.floating-width",
+            newValue: String(Int(floatingWidth)))
+        }
+        Text("Set width to 0 to fill the available bar area.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Toggle("Show Widget Backgrounds", isOn: $showWidgetBackgrounds)
+        .onChange(of: showWidgetBackgrounds) { _, newValue in
+          guard String(describing: newValue) != synchronizedValues["showWidgetBackgrounds"] else {
+            return
+          }
+          guard !isSyncing else { return }
+          configManager.updateConfigValue(
+            key: "experimental.foreground.widgets-background.displayed",
+            newValue: newValue ? "true" : "false")
+        }
+    }
+  }
+
+  @ViewBuilder private var groupLayoutSection: some View {
+    if selectedFormation == "pills" {
+      SettingsSection(title: "Pill groups") {
+        SliderRow(
+          label: "Group Gap", value: $formationGap, range: 0...30, step: 1, format: "%.0f px"
+        ) {
+          configManager.updateConfigValue(
+            key: "experimental.foreground.gap",
+            newValue: String(Int(formationGap)))
+        }
+        SliderRow(
+          label: "Left Capsule", value: $leftGroupWidth, range: 0...800, step: 10, format: "%.0f px"
+        ) {
+          configManager.updateConfigValue(
+            key: "experimental.foreground.left-group-width",
+            newValue: String(Int(leftGroupWidth)))
+        }
+        SliderRow(
+          label: "Left Capsule Offset", value: $leftGroupOffset, range: 0...1400, step: 10,
+          format: "%.0f px"
+        ) {
+          configManager.updateConfigValue(
+            key: "experimental.foreground.left-group-offset",
+            newValue: String(Int(leftGroupOffset)))
+        }
+        SliderRow(
+          label: "Center Capsule", value: $centerGroupWidth, range: 0...800, step: 10,
+          format: "%.0f px"
+        ) {
+          configManager.updateConfigValue(
+            key: "experimental.foreground.center-group-width",
+            newValue: String(Int(centerGroupWidth)))
+        }
+        SliderRow(
+          label: "Center Capsule Offset", value: $centerGroupOffset, range: -500...500, step: 10,
+          format: "%.0f px"
+        ) {
+          configManager.updateConfigValue(
+            key: "experimental.foreground.center-group-offset",
+            newValue: String(Int(centerGroupOffset)))
+        }
+        SliderRow(
+          label: "Right Capsule", value: $rightGroupWidth, range: 0...800, step: 10,
+          format: "%.0f px"
+        ) {
+          configManager.updateConfigValue(
+            key: "experimental.foreground.right-group-width",
+            newValue: String(Int(rightGroupWidth)))
+        }
+        Text("Set a capsule width to 0 to fit its widgets exactly.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+    }
+  }
+
+  private var scalingSection: some View {
+    SettingsSection(title: "Screenshot scaling") {
+      DisclosureGroup("Scale to a reference image") {
+        VStack(alignment: .leading, spacing: 16) {
+          SliderRow(
+            label: "Reference Image Width", value: $referenceWidth, range: 0...3840, step: 10,
+            format: "%.0f px"
+          ) {
+            configManager.updateConfigValue(
+              key: "experimental.foreground.reference-width",
+              newValue: String(Int(referenceWidth)))
+          }
+          Text(
+            "Set the original screenshot width to scale the whole bar to your display. Use 0 for the normal display layout."
+          )
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        }.padding(.top, 12)
+      }
+    }
+  }
+
+  private var hotkeySection: some View {
+    // MARK: - Hotkey
+    SettingsSection(title: "Global Hotkey") {
+      HStack {
+        Text("Toggle bar")
+          .frame(width: 130, alignment: .leading)
+        TextField("ctrl+option+b", text: $hotkeyString)
+          .textFieldStyle(.roundedBorder)
+          .frame(maxWidth: 200)
+          .onChange(of: hotkeyString) { _, newValue in
+            guard String(describing: newValue) != synchronizedValues["hotkeyString"] else { return }
+            guard !isSyncing else { return }
+            let trimmed = newValue.trimmingCharacters(in: .whitespaces)
+            if trimmed == "false" || HotkeyManager.parse(trimmed) != nil {
+              hotkeyValid = true
+              configManager.updateConfigValue(key: "hotkey", newValue: trimmed)
+            } else {
+              hotkeyValid = false
+            }
+          }
+        if !hotkeyValid {
+          Image(systemName: "exclamationmark.triangle.fill")
+            .foregroundStyle(.yellow)
+        }
+      }
+      Text(
+        "Format: modifier+modifier+key (e.g. ctrl+option+b, cmd+shift+space). Set to \"false\" to disable."
+      )
+      .font(.caption)
+      .foregroundStyle(.secondary)
+    }
+
+  }
+
+  private var configurationSection: some View {
+    SettingsSection(title: "Configuration files") {
+      HStack(spacing: 12) {
+        Button("Export Config…") { exportConfig() }
+        Button("Import Config…") { importConfig() }
+      }
+      Text("Export saves your current config to a file. Import replaces it.")
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  // MARK: - Export / Import
+
+  private func exportConfig() {
+    guard let sourcePath = configManager.configFilePath else { return }
+    let panel = NSSavePanel()
+    panel.nameFieldStringValue = "glance-config.toml"
+    panel.allowedContentTypes = [.init(filenameExtension: "toml") ?? .plainText]
+    panel.canCreateDirectories = true
+    guard panel.runModal() == .OK, let dest = panel.url else { return }
+    try? FileManager.default.copyItem(at: URL(fileURLWithPath: sourcePath), to: dest)
+  }
+
+  private func importConfig() {
+    guard let destPath = configManager.configFilePath else { return }
+    let panel = NSOpenPanel()
+    panel.allowedContentTypes = [.init(filenameExtension: "toml") ?? .plainText]
+    panel.allowsMultipleSelection = false
+    panel.canChooseDirectories = false
+    guard panel.runModal() == .OK, let source = panel.url else { return }
+    try? FileManager.default.removeItem(atPath: destPath)
+    try? FileManager.default.copyItem(at: source, to: URL(fileURLWithPath: destPath))
+  }
+
+  private func syncFromConfig() {
+    isSyncing = true
+    defer { isSyncing = false }
+
+    let config = configManager.config
+    let root = config.rootToml
+
+    if let presetName = root.preset {
+      selectedPreset = presetName
+    } else if let style = root.style {
+      selectedPreset = Preset.fromLegacyStyle(style).rawValue
+    } else {
+      selectedPreset = "liquid-glass"
+    }
+
+    let a = config.appearance
+    roundness = a.roundness
+    borderWidth = a.borderWidth
+    borderOpacity = a.borderTopOpacity
+    fillOpacity = a.fillOpacity
+    glowOpacity = a.glowOpacity
+    shadowOpacity = a.shadowOpacity
+    shadowRadius = a.shadowRadius
+    shadowY = a.shadowY
+    foregroundColor = a.foregroundColor
+    accentColor = a.accentColor
+    widgetBackgroundColor = a.widgetBackgroundColor
+    borderColor = a.borderColor
+    borderColor2 = a.borderColor2 ?? .purple
+    glowColor = a.glowColor
+
+    let exp = config.experimental
+    barHeight = exp.foreground.resolveHeight()
+    horizontalPadding = exp.foreground.horizontalPadding
+    widgetSpacing = exp.foreground.spacing
+    showWidgetBackgrounds = exp.foreground.widgetsBackground.displayed
+    blurWallpaper = exp.background.displayed
+    selectedFormation = exp.foreground.formation.rawValue
+    selectedPosition = exp.foreground.position
+    topMargin = exp.foreground.topMargin
+    formationMargin = exp.foreground.margin
+    formationGap = exp.foreground.gap
+    floatingWidth = exp.foreground.floatingWidth
+    floatingAlignment = exp.foreground.horizontalAlignment
+    leftGroupWidth = exp.foreground.leftGroupWidth
+    leftGroupOffset = exp.foreground.leftGroupOffset
+    centerGroupWidth = exp.foreground.centerGroupWidth
+    rightGroupWidth = exp.foreground.rightGroupWidth
+    centerGroupOffset = exp.foreground.centerGroupOffset
+    referenceWidth = exp.foreground.referenceWidth
+    usePywal = root.usePywal ?? false
+
+    // Sync Pywal color indices from config ONLY on first load (not on every config update)
+    // This prevents resetting user's picker selection during live updates
+    if pywalForegroundIndex == -1 {
+      let pywalConfig = config.buildPywalConfig()
+      pywalForegroundIndex = pywalConfig.foregroundIndex
+      pywalAccentIndex = pywalConfig.accentIndex
+      pywalBorder1Index = pywalConfig.border1Index
+      pywalBorder2Index = pywalConfig.border2Index
+      pywalBgIndex = pywalConfig.backgroundIndex
+    }
+
+    hotkeyString = root.hotkey ?? "ctrl+option+b"
+    hotkeyValid = true
+    syncNeonColors()
+    syncWidgetColors()
+    synchronizedValues = [
+      "selectedPreset": String(describing: selectedPreset),
+      "roundness": String(describing: roundness),
+      "borderWidth": String(describing: borderWidth),
+      "borderOpacity": String(describing: borderOpacity),
+      "fillOpacity": String(describing: fillOpacity),
+      "glowOpacity": String(describing: glowOpacity),
+      "shadowOpacity": String(describing: shadowOpacity),
+      "shadowRadius": String(describing: shadowRadius),
+      "shadowY": String(describing: shadowY),
+      "barHeight": String(describing: barHeight),
+      "horizontalPadding": String(describing: horizontalPadding),
+      "widgetSpacing": String(describing: widgetSpacing),
+      "showWidgetBackgrounds": String(describing: showWidgetBackgrounds),
+      "blurWallpaper": String(describing: blurWallpaper),
+      "selectedFormation": String(describing: selectedFormation),
+      "selectedPosition": String(describing: selectedPosition),
+      "topMargin": String(describing: topMargin),
+      "formationMargin": String(describing: formationMargin),
+      "formationGap": String(describing: formationGap),
+      "floatingWidth": String(describing: floatingWidth),
+      "floatingAlignment": String(describing: floatingAlignment),
+      "leftGroupWidth": String(describing: leftGroupWidth),
+      "leftGroupOffset": String(describing: leftGroupOffset),
+      "centerGroupWidth": String(describing: centerGroupWidth),
+      "rightGroupWidth": String(describing: rightGroupWidth),
+      "centerGroupOffset": String(describing: centerGroupOffset),
+      "referenceWidth": String(describing: referenceWidth),
+      "foregroundColor": String(describing: foregroundColor),
+      "accentColor": String(describing: accentColor),
+      "widgetBackgroundColor": String(describing: widgetBackgroundColor),
+      "borderColor": String(describing: borderColor),
+      "borderColor2": String(describing: borderColor2),
+      "glowColor": String(describing: glowColor),
+      "neonColor": String(describing: neonColor),
+      "neonColor2": String(describing: neonColor2),
+      "useGradient": String(describing: useGradient),
+      "usePywal": String(describing: usePywal),
+      "pywalForegroundIndex": String(describing: pywalForegroundIndex),
+      "pywalAccentIndex": String(describing: pywalAccentIndex),
+      "pywalBorder1Index": String(describing: pywalBorder1Index),
+      "pywalBorder2Index": String(describing: pywalBorder2Index),
+      "pywalBgIndex": String(describing: pywalBgIndex),
+      "widgetColorMode": String(describing: widgetColorMode),
+      "widgetColorIndices": String(describing: widgetColorIndices),
+      "hotkeyString": String(describing: hotkeyString),
+    ]
+  }
+
+  private func syncWidgetColors() {
+    guard widgetColorsFirstSync else { return }
+    widgetColorsFirstSync = false
+    if let wc = configManager.config.rootToml.widgets?.widgetColors {
+      widgetColorMode = wc.mode
+      widgetColorIndices = wc.indices
+    } else {
+      widgetColorMode = .disabled
+      widgetColorIndices = [:]
+    }
+  }
+
+  private func syncNeonColors() {
+    let overrides = configManager.config.rootToml.appearanceOverrides
+    if let hex = overrides?.neonColor, let c = AppearanceConfig.parseHex(hex) {
+      neonColor = c
+    }
+    if let hex2 = overrides?.neonColor2, !hex2.isEmpty, let c = AppearanceConfig.parseHex(hex2) {
+      neonColor2 = c
+      useGradient = true
+    } else {
+      useGradient = false
+    }
+  }
+
+  private func commitWidgetColors(mode: WidgetColorMode) {
+    configManager.updateWidgetColors(mode: mode, indices: widgetColorIndices)
+  }
+
+  private func randomizeWidgetColors() {
+    guard configManager.pywalColors != nil else { return }
+    let ids =
+      configManager.config.rootToml.widgets?.displayed
+      .map(\.id)
+      .filter { $0 != "spacer" && $0 != "divider" && $0 != "system-banner" }
+      ?? []
+    var newIndices: [String: Int] = [:]
+    for wid in ids {
+      newIndices[wid] = Int.random(in: 8...15)
+    }
+    widgetColorIndices = newIndices
+    commitWidgetColors(mode: .pywalIndex)
+  }
+
+  // MARK: - Preset apply/save helpers
+
+  private func applyBuiltinPreset(_ preset: Preset) {
+    let d = preset.defaults
+    isSyncing = true
+    withAnimation(.easeInOut(duration: 0.2)) {
+      roundness = d.roundness
+      borderWidth = d.borderWidth
+      borderOpacity = d.borderTopOpacity
+      fillOpacity = d.fillOpacity
+      glowOpacity = d.glowOpacity
+      shadowOpacity = d.shadowOpacity
+      shadowRadius = d.shadowRadius
+      shadowY = d.shadowY
+    }
+    isSyncing = false
+
+    var pairs: [(key: String, value: String)] = [
+      ("preset", preset.rawValue),
+      ("appearance.roundness", String(Int(d.roundness))),
+      ("appearance.border-width", String(format: "%.1f", d.borderWidth)),
+      ("appearance.border-opacity", String(format: "%.2f", d.borderTopOpacity)),
+      ("appearance.fill-opacity", String(format: "%.2f", d.fillOpacity)),
+      ("appearance.glow-opacity", String(format: "%.2f", d.glowOpacity)),
+      ("appearance.shadow-opacity", String(format: "%.2f", d.shadowOpacity)),
+      ("appearance.shadow-radius", String(format: "%.0f", d.shadowRadius)),
+      ("appearance.shadow-y", String(format: "%.0f", d.shadowY)),
+    ]
+    if preset.rawValue != "neon" {
+      pairs.append(("appearance.neon-color", ""))
+      pairs.append(("appearance.neon-color2", ""))
+    }
+    configManager.updateConfigValues(pairs: pairs)
+  }
+
+  private func applyCustomPreset(name: String) {
+    guard let values = customPresets.load(name: name) else { return }
+    isSyncing = true
+    if let v = values["roundness"], let d = Double(v) { roundness = d }
+    if let v = values["border-width"], let d = Double(v) { borderWidth = d }
+    if let v = values["border-top-opacity"], let d = Double(v) { borderOpacity = d }
+    if let v = values["fill-opacity"], let d = Double(v) { fillOpacity = d }
+    if let v = values["glow-opacity"], let d = Double(v) { glowOpacity = d }
+    if let v = values["shadow-opacity"], let d = Double(v) { shadowOpacity = d }
+    if let v = values["shadow-radius"], let d = Double(v) { shadowRadius = d }
+    if let v = values["shadow-y"], let d = Double(v) { shadowY = d }
+    isSyncing = false
+
+    // Determine the rendering style to pick the right base preset
+    let style = values["rendering-style"] ?? "glass"
+    let basePreset: String
+    switch style {
+    case "solid": basePreset = "flat-dark"
+    case "minimal": basePreset = "minimal"
+    default: basePreset = "liquid-glass"
+    }
+
+    var pairs: [(key: String, value: String)] = [
+      ("preset", basePreset),
+      ("appearance.roundness", String(Int(roundness))),
+      ("appearance.border-width", String(format: "%.1f", borderWidth)),
+      ("appearance.border-opacity", String(format: "%.2f", borderOpacity)),
+      ("appearance.fill-opacity", String(format: "%.2f", fillOpacity)),
+      ("appearance.glow-opacity", String(format: "%.2f", glowOpacity)),
+      ("appearance.shadow-opacity", String(format: "%.2f", shadowOpacity)),
+      ("appearance.shadow-radius", String(format: "%.0f", shadowRadius)),
+      ("appearance.shadow-y", String(format: "%.0f", shadowY)),
+    ]
+    // Apply custom colors via neon-color overrides (accent/border/glow)
+    if let ac = values["accent-color"] { pairs.append(("appearance.neon-color", ac)) }
+    if let bc2 = values["border-color2"] { pairs.append(("appearance.neon-color2", bc2)) }
+    configManager.updateConfigValues(pairs: pairs)
+  }
+
+  private func presetDisplayName(_ preset: Preset) -> String {
+    switch preset {
+    case .liquidGlass: return "Liquid Glass"
+    case .frosted: return "Frosted"
+    case .flatDark: return "Flat Dark"
+    case .minimal: return "Minimal"
+    case .neon: return "Neon"
+    case .tokyoNight: return "Tokyo Night"
+    case .dracula: return "Dracula"
+    case .gruvbox: return "Gruvbox"
+    case .nord: return "Nord"
+    case .catppuccin: return "Catppuccin"
+    case .solarized: return "Solarized"
+    }
+  }
+
+  // MARK: - Yabai Integration
+
+  private func updateYabaiExternalBar(position: String) {
+    let fg = configManager.config.experimental.foreground
+    let barHeight = fg.resolveHeight()
+    let topMargin = fg.topMargin
+
+    YabaiConfigManager.shared.updateExternalBarConfig(
+      position: position,
+      barHeight: barHeight,
+      topMargin: topMargin
+    )
+  }
 }
 
 // MARK: - Color Hex Extension
 
 extension Color {
-    func toHex() -> String {
-        guard let components = NSColor(self).usingColorSpace(.sRGB) else { return "#ff44cc" }
-        let r = Int(round(components.redComponent * 255))
-        let g = Int(round(components.greenComponent * 255))
-        let b = Int(round(components.blueComponent * 255))
-        return String(format: "#%02x%02x%02x", r, g, b)
-    }
+  func toHex() -> String {
+    guard let components = NSColor(self).usingColorSpace(.sRGB) else { return "#ff44cc" }
+    let r = Int(round(components.redComponent * 255))
+    let g = Int(round(components.greenComponent * 255))
+    let b = Int(round(components.blueComponent * 255))
+    return String(format: "#%02x%02x%02x", r, g, b)
+  }
 }
 
 // MARK: - Reusable Components
 
-struct SettingsSection<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-            VStack(alignment: .leading, spacing: 10) {
-                content
-            }
-            .padding(16)
-            .background(.quaternary.opacity(0.5))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-        }
-    }
-}
-
-struct SliderRow: View {
-    let label: String
-    @Binding var value: Double
-    let range: ClosedRange<Double>
-    var step: Double = 1
-    var format: String = "%.0f"
-    var onCommit: () -> Void = {}
-
-    @State private var isEditing = false
-
-    var body: some View {
-        HStack {
-            Text(label)
-                .frame(width: 130, alignment: .leading)
-            Slider(value: $value, in: range, step: step, onEditingChanged: { editing in
-                isEditing = editing
-                if !editing {
-                    onCommit()
-                }
-            })
-            Text(String(format: format, value))
-                .monospacedDigit()
-                .frame(width: 55, alignment: .trailing)
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
 // MARK: - Formation Picker
 
 private struct FormationPicker: View {
-    @Binding var selected: String
-    var onSelect: (String) -> Void
-    
-    @State private var focusedIndex: Int = 0
+  @Binding var selected: String
+  var onSelect: (String) -> Void
 
-    private let formations: [(id: String, label: String)] = [
-        ("full", "Full"),
-        ("floating", "Floating"),
-        ("islands", "Islands"),
-        ("pills", "Pills"),
-    ]
+  @State private var focusedIndex: Int = 0
 
-    var body: some View {
-        HStack(spacing: 10) {
-            ForEach(Array(formations.enumerated()), id: \.element.id) { index, f in
-                VStack(spacing: 8) {
-                    FormationDiagram(formation: f.id)
-                        .frame(height: 32)
+  private let formations: [(id: String, label: String)] = [
+    ("full", "Full"),
+    ("floating", "Floating"),
+    ("islands", "Islands"),
+    ("pills", "Pills"),
+  ]
 
-                    Text(f.label)
-                        .font(.caption)
-                        .fontWeight(selected == f.id ? .semibold : .regular)
-                        .foregroundStyle(selected == f.id ? .primary : .secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .padding(.horizontal, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(selected == f.id ? Color.accentColor.opacity(0.15) : Color.clear)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(
-                            selected == f.id ? Color.accentColor : Color.white.opacity(0.08),
-                            lineWidth: selected == f.id ? 1.5 : 0.5
-                        )
-                )
-                .onTapGesture {
-                    print("Tapped: \(f.id)")
-                    selected = f.id
-                    onSelect(f.id)
-                }
-                .focusable()
-                .onKeyPress(.leftArrow) {
-                    if index > 0 {
-                        focusedIndex = index - 1
-                    }
-                    return .handled
-                }
-                .onKeyPress(.rightArrow) {
-                    if index < formations.count - 1 {
-                        focusedIndex = index + 1
-                    }
-                    return .handled
-                }
-                .onKeyPress(.space) {
-                    selected = f.id
-                    onSelect(f.id)
-                    return .handled
-                }
-            }
+  var body: some View {
+    HStack(spacing: 10) {
+      ForEach(Array(formations.enumerated()), id: \.element.id) { index, f in
+        VStack(spacing: 8) {
+          FormationDiagram(formation: f.id)
+            .frame(height: 32)
+
+          Text(f.label)
+            .font(.caption)
+            .fontWeight(selected == f.id ? .semibold : .regular)
+            .foregroundStyle(selected == f.id ? .primary : .secondary)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 6)
+        .background(
+          RoundedRectangle(cornerRadius: 8)
+            .fill(selected == f.id ? Color.accentColor.opacity(0.15) : Color.clear)
+        )
+        .overlay(
+          RoundedRectangle(cornerRadius: 8)
+            .strokeBorder(
+              selected == f.id ? Color.accentColor : Color.white.opacity(0.08),
+              lineWidth: selected == f.id ? 1.5 : 0.5
+            )
+        )
+        .onTapGesture {
+          print("Tapped: \(f.id)")
+          selected = f.id
+          onSelect(f.id)
+        }
+        .focusable()
+        .onKeyPress(.leftArrow) {
+          if index > 0 {
+            focusedIndex = index - 1
+          }
+          return .handled
+        }
+        .onKeyPress(.rightArrow) {
+          if index < formations.count - 1 {
+            focusedIndex = index + 1
+          }
+          return .handled
+        }
+        .onKeyPress(.space) {
+          selected = f.id
+          onSelect(f.id)
+          return .handled
+        }
+      }
     }
+  }
 }
 
 private struct FormationCard: View {
-    let id: String
-    let label: String
-    let isSelected: Bool
-    let action: () -> Void
+  let id: String
+  let label: String
+  let isSelected: Bool
+  let action: () -> Void
 
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                FormationDiagram(formation: id)
-                    .frame(height: 32)
+  var body: some View {
+    Button(action: action) {
+      VStack(spacing: 8) {
+        FormationDiagram(formation: id)
+          .frame(height: 32)
 
-                Text(label)
-                    .font(.caption)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(
-                        isSelected ? Color.accentColor : Color.white.opacity(0.08),
-                        lineWidth: isSelected ? 1.5 : 0.5
-                    )
-            )
-        }
-        .buttonStyle(.plain)
+        Text(label)
+          .font(.caption)
+          .fontWeight(isSelected ? .semibold : .regular)
+          .foregroundStyle(isSelected ? .primary : .secondary)
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 10)
+      .padding(.horizontal, 6)
+      .background(
+        RoundedRectangle(cornerRadius: 8)
+          .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+      )
+      .overlay(
+        RoundedRectangle(cornerRadius: 8)
+          .strokeBorder(
+            isSelected ? Color.accentColor : Color.white.opacity(0.08),
+            lineWidth: isSelected ? 1.5 : 0.5
+          )
+      )
     }
+    .buttonStyle(.plain)
+  }
 }
 
 // MARK: - Formation Diagrams (Schematic Drawings)
 
 private struct FormationDiagram: View {
-    let formation: String
+  let formation: String
 
-    var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
+  var body: some View {
+    GeometryReader { geo in
+      let w = geo.size.width
+      let h = geo.size.height
 
-            switch formation {
-            case "full":
-                fullDiagram(w: w, h: h)
-            case "floating":
-                floatingDiagram(w: w, h: h)
-            case "islands":
-                islandsDiagram(w: w, h: h)
-            case "pills":
-                pillsDiagram(w: w, h: h)
-            default:
-                EmptyView()
-            }
-        }
+      switch formation {
+      case "full":
+        fullDiagram(w: w, h: h)
+      case "floating":
+        floatingDiagram(w: w, h: h)
+      case "islands":
+        islandsDiagram(w: w, h: h)
+      case "pills":
+        pillsDiagram(w: w, h: h)
+      default:
+        EmptyView()
+      }
     }
+  }
 
-    // Full: flat edge-to-edge bar like macOS menubar (no rounding)
-    @ViewBuilder
-    private func fullDiagram(w: CGFloat, h: CGFloat) -> some View {
-        let barH: CGFloat = 10
+  // Full: flat edge-to-edge bar like macOS menubar (no rounding)
+  @ViewBuilder
+  private func fullDiagram(w: CGFloat, h: CGFloat) -> some View {
+    let barH: CGFloat = 10
 
-        screenOutline(w: w, h: h)
+    screenOutline(w: w, h: h)
 
-        // Flat bar — no corner radius, touching screen edges
-        Rectangle()
-            .fill(Color.white.opacity(0.35))
-            .frame(width: w - 2, height: barH)
-            .position(x: w / 2, y: barH / 2 + 1)
+    // Flat bar — no corner radius, touching screen edges
+    Rectangle()
+      .fill(Color.white.opacity(0.35))
+      .frame(width: w - 2, height: barH)
+      .position(x: w / 2, y: barH / 2 + 1)
 
-        widgetDots(count: 6, in: CGRect(x: 4, y: 1, width: w - 8, height: barH))
-    }
+    widgetDots(count: 6, in: CGRect(x: 4, y: 1, width: w - 8, height: barH))
+  }
 
-    // Floating: continuous bar with margins
-    @ViewBuilder
-    private func floatingDiagram(w: CGFloat, h: CGFloat) -> some View {
-        let barH: CGFloat = 10
-        let margin: CGFloat = 10
-        let y = (h - barH) / 2
+  // Floating: continuous bar with margins
+  @ViewBuilder
+  private func floatingDiagram(w: CGFloat, h: CGFloat) -> some View {
+    let barH: CGFloat = 10
+    let margin: CGFloat = 10
+    let y = (h - barH) / 2
 
-        screenOutline(w: w, h: h)
+    screenOutline(w: w, h: h)
 
+    RoundedRectangle(cornerRadius: 4)
+      .fill(Color.white.opacity(0.35))
+      .frame(width: w - 8 - margin * 2, height: barH)
+      .position(x: w / 2, y: y + barH / 2 + 2)
+
+    widgetDots(
+      count: 5, in: CGRect(x: 6 + margin, y: y + 2, width: w - 12 - margin * 2, height: barH))
+  }
+
+  // Islands: separate capsules
+  @ViewBuilder
+  private func islandsDiagram(w: CGFloat, h: CGFloat) -> some View {
+    let barH: CGFloat = 10
+    let y = (h - barH) / 2 + 2
+    let gap: CGFloat = 4
+    let capsuleWidths: [CGFloat] = [0.25, 0.12, 0.18, 0.1, 0.15]
+    let totalRatio = capsuleWidths.reduce(0, +)
+    let usableW = w - 8 - gap * CGFloat(capsuleWidths.count - 1)
+
+    screenOutline(w: w, h: h)
+
+    HStack(spacing: gap) {
+      ForEach(0..<capsuleWidths.count, id: \.self) { i in
         RoundedRectangle(cornerRadius: 4)
-            .fill(Color.white.opacity(0.35))
-            .frame(width: w - 8 - margin * 2, height: barH)
-            .position(x: w / 2, y: y + barH / 2 + 2)
-
-        widgetDots(count: 5, in: CGRect(x: 6 + margin, y: y + 2, width: w - 12 - margin * 2, height: barH))
+          .fill(Color.white.opacity(0.35))
+          .frame(width: usableW * capsuleWidths[i] / totalRatio, height: barH)
+      }
     }
+    .position(x: w / 2, y: y + barH / 2)
+  }
 
-    // Islands: separate capsules
-    @ViewBuilder
-    private func islandsDiagram(w: CGFloat, h: CGFloat) -> some View {
-        let barH: CGFloat = 10
-        let y = (h - barH) / 2 + 2
-        let gap: CGFloat = 4
-        let capsuleWidths: [CGFloat] = [0.25, 0.12, 0.18, 0.1, 0.15]
-        let totalRatio = capsuleWidths.reduce(0, +)
-        let usableW = w - 8 - gap * CGFloat(capsuleWidths.count - 1)
+  // Pills: 2-3 grouped segments separated by space
+  @ViewBuilder
+  private func pillsDiagram(w: CGFloat, h: CGFloat) -> some View {
+    let barH: CGFloat = 10
+    let y = (h - barH) / 2 + 2
+    let groupGap: CGFloat = 8
+    let usableW = w - 8 - groupGap * 2
 
-        screenOutline(w: w, h: h)
+    screenOutline(w: w, h: h)
 
-        HStack(spacing: gap) {
-            ForEach(0..<capsuleWidths.count, id: \.self) { i in
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white.opacity(0.35))
-                    .frame(width: usableW * capsuleWidths[i] / totalRatio, height: barH)
-            }
-        }
-        .position(x: w / 2, y: y + barH / 2)
-    }
-
-    // Pills: 2-3 grouped segments separated by space
-    @ViewBuilder
-    private func pillsDiagram(w: CGFloat, h: CGFloat) -> some View {
-        let barH: CGFloat = 10
-        let y = (h - barH) / 2 + 2
-        let groupGap: CGFloat = 8
-        let usableW = w - 8 - groupGap * 2
-
-        screenOutline(w: w, h: h)
-
-        HStack(spacing: groupGap) {
-            // Left pill (wider)
-            ZStack {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white.opacity(0.35))
-                smallDots(count: 3)
-            }
-            .frame(width: usableW * 0.38, height: barH)
-
-            Spacer(minLength: 0)
-
-            // Center pill
-            ZStack {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white.opacity(0.35))
-                smallDots(count: 2)
-            }
-            .frame(width: usableW * 0.25, height: barH)
-
-            Spacer(minLength: 0)
-
-            // Right pill
-            ZStack {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white.opacity(0.35))
-                smallDots(count: 3)
-            }
-            .frame(width: usableW * 0.30, height: barH)
-        }
-        .padding(.horizontal, 4)
-        .position(x: w / 2, y: y + barH / 2)
-    }
-
-    // MARK: - Shared drawing helpers
-
-    @ViewBuilder
-    private func screenOutline(w: CGFloat, h: CGFloat) -> some View {
+    HStack(spacing: groupGap) {
+      // Left pill (wider)
+      ZStack {
         RoundedRectangle(cornerRadius: 4)
-            .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
-            .frame(width: w - 2, height: h - 2)
-            .position(x: w / 2, y: h / 2)
-    }
+          .fill(Color.white.opacity(0.35))
+        smallDots(count: 3)
+      }
+      .frame(width: usableW * 0.38, height: barH)
 
-    @ViewBuilder
-    private func widgetDots(count: Int, in rect: CGRect) -> some View {
-        HStack(spacing: 4) {
-            ForEach(0..<count, id: \.self) { _ in
-                Circle()
-                    .fill(Color.white.opacity(0.5))
-                    .frame(width: 4, height: 4)
-            }
-        }
-        .position(x: rect.midX, y: rect.midY)
-    }
+      Spacer(minLength: 0)
 
-    @ViewBuilder
-    private func smallDots(count: Int) -> some View {
-        HStack(spacing: 3) {
-            ForEach(0..<count, id: \.self) { _ in
-                Circle()
-                    .fill(Color.white.opacity(0.5))
-                    .frame(width: 3, height: 3)
-            }
-        }
+      // Center pill
+      ZStack {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(Color.white.opacity(0.35))
+        smallDots(count: 2)
+      }
+      .frame(width: usableW * 0.25, height: barH)
+
+      Spacer(minLength: 0)
+
+      // Right pill
+      ZStack {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(Color.white.opacity(0.35))
+        smallDots(count: 3)
+      }
+      .frame(width: usableW * 0.30, height: barH)
     }
+    .padding(.horizontal, 4)
+    .position(x: w / 2, y: y + barH / 2)
+  }
+
+  // MARK: - Shared drawing helpers
+
+  @ViewBuilder
+  private func screenOutline(w: CGFloat, h: CGFloat) -> some View {
+    RoundedRectangle(cornerRadius: 4)
+      .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+      .frame(width: w - 2, height: h - 2)
+      .position(x: w / 2, y: h / 2)
+  }
+
+  @ViewBuilder
+  private func widgetDots(count: Int, in rect: CGRect) -> some View {
+    HStack(spacing: 4) {
+      ForEach(0..<count, id: \.self) { _ in
+        Circle()
+          .fill(Color.white.opacity(0.5))
+          .frame(width: 4, height: 4)
+      }
+    }
+    .position(x: rect.midX, y: rect.midY)
+  }
+
+  @ViewBuilder
+  private func smallDots(count: Int) -> some View {
+    HStack(spacing: 3) {
+      ForEach(0..<count, id: \.self) { _ in
+        Circle()
+          .fill(Color.white.opacity(0.5))
+          .frame(width: 3, height: 3)
+      }
+    }
+  }
 }
 
 // MARK: - Pywal Color Index Picker
 
 private struct PywalColorPicker: View {
-    let label: String
-    @Binding var selectedIndex: Int
-    let onChange: (Int) -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            
-            HStack(spacing: 8) {
-                // Show current color preview (larger)
-                if let pywalColors = ConfigManager.shared.pywalColors {
-                    Circle()
-                        .fill(pywalColors.colors[selectedIndex])
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Circle()
-                                .strokeBorder(Color.white.opacity(0.5), lineWidth: 2)
-                        )
-                        .shadow(color: pywalColors.colors[selectedIndex].opacity(0.5), radius: 4)
-                        .id("pywal-preview-\(label)-\(selectedIndex)")
-                    
-                    // Show all 16 colors as small swatches
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 3) {
-                            ForEach(0..<16, id: \.self) { index in
-                                Circle()
-                                    .fill(pywalColors.colors[index])
-                                    .frame(width: 12, height: 12)
-                                    .overlay(
-                                        Circle()
-                                            .strokeBorder(
-                                                selectedIndex == index ? Color.white : Color.clear,
-                                                lineWidth: 2
-                                            )
-                                    )
-                                    .onTapGesture {
-                                        selectedIndex = index
-                                        onChange(index)
-                                    }
-                            }
-                        }
-                    }
-                    .frame(height: 16)
-                }
-                
-                Spacer()
-                
-                // Stepper for increment/decrement
-                Stepper("", value: $selectedIndex, in: 0...15)
-                    .labelsHidden()
-                    .frame(width: 80)
-                    .onChange(of: selectedIndex) { _, newValue in
-                        onChange(newValue)
-                    }
+  let label: String
+  @Binding var selectedIndex: Int
+  let onChange: (Int) -> Void
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack {
+        Text(label)
+        Spacer()
+        Text("Color \(max(0, selectedIndex))").font(.caption).foregroundStyle(.secondary)
+      }
+      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 8), spacing: 8)
+      {
+        ForEach(0..<16, id: \.self) { index in
+          Button {
+            guard selectedIndex != index else { return }
+            selectedIndex = index
+            onChange(index)
+          } label: {
+            VStack(spacing: 4) {
+              RoundedRectangle(cornerRadius: 5).fill(color(index)).frame(height: 24)
+                .overlay(
+                  RoundedRectangle(cornerRadius: 5).strokeBorder(
+                    selectedIndex == index ? Color.primary : .clear, lineWidth: 2))
+              Text(String(index)).font(.caption2).monospacedDigit()
             }
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("\(label), Pywal color \(index)")
         }
+      }
     }
+    .frame(maxWidth: .infinity)
+  }
+
+  private func color(_ index: Int) -> Color {
+    let colors = ConfigManager.shared.pywalColors?.colors ?? []
+    return colors.indices.contains(index) ? colors[index] : .gray
+  }
 }
 
 private struct WidgetColorSwatch: View {
-    let widgetId: String
-    @Binding var index: Int
-    let onChange: (Int) -> Void
+  let widgetId: String
+  @Binding var index: Int
+  let onChange: (Int) -> Void
 
-    private var displayName: String {
-        if widgetId.hasPrefix("default.") {
-            return String(widgetId.dropFirst(8)).capitalized
-                .replacingOccurrences(of: "-", with: " ")
-        }
-        if widgetId.hasPrefix("script.") {
-            return "Script: \(String(widgetId.dropFirst(7)))"
-        }
-        return widgetId
+  private var displayName: String {
+    if widgetId.hasPrefix("default.") {
+      return String(widgetId.dropFirst(8)).capitalized
+        .replacingOccurrences(of: "-", with: " ")
     }
+    if widgetId.hasPrefix("script.") {
+      return "Script: \(String(widgetId.dropFirst(7)))"
+    }
+    return widgetId
+  }
 
-    var body: some View {
-        VStack(spacing: 6) {
-            Text(displayName)
-                .font(.caption)
-                .lineLimit(1)
-                .frame(width: 90, alignment: .leading)
+  var body: some View {
+    VStack(spacing: 6) {
+      Text(displayName)
+        .font(.caption)
+        .lineLimit(1)
+        .frame(width: 90, alignment: .leading)
 
-            if let pywal = ConfigManager.shared.pywalColors {
-                Circle()
-                    .fill(pywal.colors[index])
-                    .frame(width: 28, height: 28)
-                    .overlay(Circle().strokeBorder(Color.white.opacity(0.5), lineWidth: 1.5))
+      if let pywal = ConfigManager.shared.pywalColors {
+        Circle()
+          .fill(pywal.colors[index])
+          .frame(width: 28, height: 28)
+          .overlay(Circle().strokeBorder(Color.white.opacity(0.5), lineWidth: 1.5))
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 2) {
-                        ForEach(8..<16, id: \.self) { i in
-                            Circle()
-                                .fill(pywal.colors[i])
-                                .frame(width: 10, height: 10)
-                                .overlay(
-                                    Circle().strokeBorder(
-                                        index == i ? Color.white : Color.clear,
-                                        lineWidth: 1.5
-                                    )
-                                )
-                                .onTapGesture {
-                                    index = i
-                                    onChange(i)
-                                }
-                        }
-                    }
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 2) {
+            ForEach(8..<16, id: \.self) { i in
+              Circle()
+                .fill(pywal.colors[i])
+                .frame(width: 10, height: 10)
+                .overlay(
+                  Circle().strokeBorder(
+                    index == i ? Color.white : Color.clear,
+                    lineWidth: 1.5
+                  )
+                )
+                .onTapGesture {
+                  index = i
+                  onChange(i)
                 }
-                .frame(height: 14)
-
-                Stepper("", value: $index, in: 8...15)
-                    .labelsHidden()
-                    .frame(width: 70)
-                    .onChange(of: index) { _, newValue in
-                        onChange(newValue)
-                    }
             }
+          }
         }
-        .padding(8)
-        .background(.quaternary.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .frame(width: 110)
+        .frame(height: 14)
+
+        Stepper("", value: $index, in: 8...15)
+          .labelsHidden()
+          .frame(width: 70)
+          .onChange(of: index) { _, newValue in
+            onChange(newValue)
+          }
+      }
     }
+    .padding(8)
+    .background(.quaternary.opacity(0.5))
+    .clipShape(RoundedRectangle(cornerRadius: 8))
+    .frame(width: 110)
+  }
 }

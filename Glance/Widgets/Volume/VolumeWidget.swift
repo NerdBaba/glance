@@ -3,12 +3,51 @@ import SwiftUI
 struct VolumeWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
     @Environment(\.widgetFont) var widgetFont
-    @StateObject private var viewModel = VolumeViewModel()
+    @StateObject private var viewModel: VolumeViewModel
     @State private var rect: CGRect = .zero
+
+    init() {
+        _viewModel = StateObject(
+            wrappedValue: VolumeViewModel(previewMode: Self.isPreviewRender)
+        )
+    }
+
+    private static var isPreviewRender: Bool {
+        ProcessInfo.processInfo.environment["GLANCE_PREVIEW_BAR_PATH"] != nil
+            || CommandLine.arguments.contains("--export-bar")
+            || CommandLine.arguments.contains("--preview-panel")
+    }
 
     private var displayMode: String { configProvider.config["display-mode"]?.stringValue ?? "icon-value" }
     private var label: String { configProvider.config["label"]?.stringValue ?? "" }
     private var maxLength: Int { configProvider.config["max-length"]?.intValue ?? 10 }
+    private var contentSpacing: CGFloat { configProvider.config["content-spacing"]?.doubleValue ?? 5 }
+    private var previewPercent: Int {
+        min(max(ProcessInfo.processInfo.environment["GLANCE_PREVIEW_VOLUME_PERCENT"].flatMap(Int.init) ?? 55, 0), 100)
+    }
+
+    private var rampGlyph: String? {
+        guard Self.isPreviewRender || !viewModel.isMuted else { return nil }
+        let ramps = configProvider.config.compactMap { key, value -> (Int, String)? in
+            guard key.hasPrefix("ramp-volume-"), let index = Int(key.dropFirst("ramp-volume-".count)),
+                  let glyph = value.stringValue else { return nil }
+            return (index, glyph)
+        }.sorted { $0.0 < $1.0 }
+        guard !ramps.isEmpty else { return nil }
+        let percent = Self.isPreviewRender ? previewPercent : viewModel.volumePercent
+        let index = min(ramps.count - 1, max(0, percent) * ramps.count / 100)
+        return ramps[index].1
+    }
+
+    @ViewBuilder
+    private var volumeIcon: some View {
+        if let glyph = rampGlyph {
+            PolybarIcon(config: configProvider, glyph: glyph, systemName: "speaker.wave.2.fill")
+        } else {
+            Image(systemName: Self.isPreviewRender ? "speaker.wave.2.fill" : viewModel.volumeIconName)
+                .barStatusSymbol(opticalYOffset: -0.2)
+        }
+    }
 
     private var scrollStep: Float {
         let configuredStep = configProvider.config["scroll-step"]?.doubleValue ?? 3
@@ -29,10 +68,60 @@ struct VolumeWidget: View {
 
     @ViewBuilder
     private var content: some View {
+        if Self.isPreviewRender {
+            previewContent
+        } else {
+            liveContent
+        }
+    }
+
+    @ViewBuilder
+    private var previewContent: some View {
         switch displayMode {
         case "icon":
-            Image(systemName: viewModel.volumeIconName)
-                .barStatusSymbol(opticalYOffset: -0.2)
+            volumeIcon
+        case "value":
+            Text("\(previewPercent)%")
+                .font(widgetFont.toFont())
+                .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
+        case "label-value":
+            Text(previewDisplayText)
+                .font(widgetFont.toFont())
+                .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
+        case "icon-label-value":
+            HStack(spacing: contentSpacing) {
+                volumeIcon
+                Text(previewDisplayText)
+                    .font(widgetFont.toFont())
+                    .monospacedDigit()
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+        case "off":
+            EmptyView()
+        default:
+            HStack(spacing: contentSpacing) {
+                volumeIcon
+                Text("\(previewPercent)%")
+                    .font(widgetFont.toFont())
+                    .monospacedDigit()
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+    }
+
+    private var previewDisplayText: String {
+        let full = label.isEmpty ? "\(previewPercent)%" : label + " \(previewPercent)%"
+        guard full.count > maxLength, maxLength > 3 else { return full }
+        return String(full.prefix(maxLength - 3)) + "..."
+    }
+
+    @ViewBuilder
+    private var liveContent: some View {
+        switch displayMode {
+        case "icon":
+            volumeIcon
         case "value":
             Text(valueText)
                 .font(widgetFont.toFont())
@@ -44,9 +133,8 @@ struct VolumeWidget: View {
                 .monospacedDigit()
                 .fixedSize(horizontal: true, vertical: false)
         case "icon-label-value":
-            HStack(spacing: 5) {
-                Image(systemName: viewModel.volumeIconName)
-                    .barStatusSymbol(opticalYOffset: -0.2)
+            HStack(spacing: contentSpacing) {
+                volumeIcon
                 Text(displayText)
                     .font(widgetFont.toFont())
                     .monospacedDigit()
@@ -55,9 +143,8 @@ struct VolumeWidget: View {
         case "off":
             EmptyView()
         default: // "icon-value"
-            HStack(spacing: 5) {
-                Image(systemName: viewModel.volumeIconName)
-                    .barStatusSymbol(opticalYOffset: -0.2)
+            HStack(spacing: contentSpacing) {
+                volumeIcon
                 Text(valueText)
                     .font(widgetFont.toFont())
                     .monospacedDigit()
@@ -79,11 +166,13 @@ struct VolumeWidget: View {
             .experimentalConfiguration()
             .frame(maxHeight: .infinity)
             .background(.black.opacity(0.001))
-            .overlay(
-                VolumeScrollOverlay { delta in
-                    viewModel.adjustVolume(by: delta > 0 ? -scrollStep : scrollStep)
+            .overlay {
+                if !Self.isPreviewRender {
+                    VolumeScrollOverlay { delta in
+                        viewModel.adjustVolume(by: delta > 0 ? -scrollStep : scrollStep)
+                    }
                 }
-            )
+            }
             .onTapGesture {
                 MenuBarPopup.show(rect: rect, id: "volume") {
                     VolumePopup(viewModel: viewModel)

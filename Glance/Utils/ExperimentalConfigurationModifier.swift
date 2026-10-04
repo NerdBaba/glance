@@ -3,11 +3,14 @@ import SwiftUI
 private struct ExperimentalConfigurationModifier: ViewModifier {
     @Environment(\.resolvedForegroundConfig) private var resolvedFG
     @Environment(\.appearance) private var appearance
+    @Environment(\.usesPolybarModuleLayout) private var usesPolybarModuleLayout
 
     let horizontalPadding: CGFloat
 
     func body(content: Content) -> some View {
-        if let fg = resolvedFG {
+        if usesPolybarModuleLayout {
+            content
+        } else if let fg = resolvedFG {
             let showIndividualBg = fg.formation == .islands && fg.widgetsBackgroundDisplayed
 
             Group {

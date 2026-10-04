@@ -20,6 +20,19 @@ class SpacesViewModel: ObservableObject {
     private let debounceInterval: TimeInterval = 0.15
 
     init() {
+        let isPreviewRender = ProcessInfo.processInfo.environment["GLANCE_PREVIEW_BAR_PATH"] != nil
+            || CommandLine.arguments.contains("--export-bar")
+            || CommandLine.arguments.contains("--preview-panel")
+        if isPreviewRender {
+            let previewSpaceID = ProcessInfo.processInfo.environment["GLANCE_PREVIEW_SPACE_ID"] ?? "2"
+            let previewIDs = ProcessInfo.processInfo.environment["GLANCE_PREVIEW_SPACE_IDS"]?
+                .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            spaces = (previewIDs?.isEmpty == false ? previewIDs! : [previewSpaceID])
+                .map { AnySpace(id: $0, isFocused: $0 == previewSpaceID) }
+            return
+        }
+
         let runningApps = NSWorkspace.shared.runningApplications.compactMap {
             $0.localizedName?.lowercased()
         }

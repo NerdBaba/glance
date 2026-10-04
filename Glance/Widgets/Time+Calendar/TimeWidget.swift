@@ -23,8 +23,17 @@ struct TimeWidget: View {
     init(configProvider: ConfigProvider) {
         self.configProvider = configProvider
         _calendarManager = StateObject(
-            wrappedValue: CalendarManager(configProvider: configProvider)
+            wrappedValue: CalendarManager(
+                configProvider: configProvider,
+                previewMode: Self.isPreviewRender
+            )
         )
+    }
+
+    private static var isPreviewRender: Bool {
+        ProcessInfo.processInfo.environment["GLANCE_PREVIEW_BAR_PATH"] != nil
+            || CommandLine.arguments.contains("--export-bar")
+            || CommandLine.arguments.contains("--preview-panel")
     }
 
     @Environment(\.appearance) var appearance
@@ -32,9 +41,16 @@ struct TimeWidget: View {
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
-            Text(timeProvider.formattedTime(pattern: format, timeZone: timeZone))
-                .fontWeight(.semibold)
-                .font(widgetFont.toFont())
+            HStack(spacing: config["content-spacing"]?.doubleValue ?? 8) {
+                if config["show-icon"]?.boolValue ?? false {
+                    PolybarIcon(config: configProvider, glyph: config["glyph"]?.stringValue, systemName: "clock.fill")
+                }
+                Text(Self.isPreviewRender
+                    ? ProcessInfo.processInfo.environment["GLANCE_PREVIEW_TIME_LABEL"] ?? timeProvider.formattedTime(pattern: format, timeZone: timeZone)
+                    : timeProvider.formattedTime(pattern: format, timeZone: timeZone))
+                    .fontWeight(widgetFont.weight)
+                    .font(widgetFont.toFont())
+            }
             if let event = calendarManager.nextEvent, calendarShowEvents {
                 Text(eventText(for: event))
                     .opacity(0.8)

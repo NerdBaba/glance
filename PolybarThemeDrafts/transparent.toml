@@ -1,0 +1,101 @@
+# Randomazzo preset inspired by kiddae/polybar-themes/transparent.
+# Bundled and imported without overwriting existing presets.
+theme = "system"
+preset = "minimal"
+use-pywal = true
+
+[appearance]
+roundness = 0
+border-width = 0.0
+border-opacity = 0.45
+fill-opacity = 0.2
+shadow-opacity = 0.0
+shadow-radius = 0.0
+bar-font-name = "Helvetica Neue"
+bar-font-size = 10
+bar-font-weight = 4
+widget-font-name = "Helvetica Neue"
+widget-font-size = 10
+widget-font-weight = 4
+
+[experimental.foreground]
+formation = "full"
+position = "top"
+height = 33
+top-margin = 8
+margin = 0
+horizontal-padding = 12
+spacing = 6
+gap = 8
+
+floating-width = 0
+horizontal-alignment = "center"
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["default.launcher", "default.spaces", "default.activeapp", "spacer", "default.nowplaying", "default.volume", "default.time", "default.power"]
+[widgets.default.spaces.space]
+display-mode = "numbers"
+highlight = "opacity"
+icon-style = "sf-symbols"
+tint-icons = true
+show-key = true
+
+[widgets.default.nowplaying]
+show-icon = true
+show-title = true
+show-artist = true
+show-album = false
+show-visualizer = false
+title-max-length = 28
+artist-max-length = 18
+
+[widgets.default.time]
+format = "d MMM, H:mm"
+calendar.format = "H:mm"
+calendar.show-events = false
+
+[widgets.default.volume]
+display-mode = "icon-value"
+show-percentage = true
+
+[widgets.default.systemmonitor]
+cpu-display-mode = "icon-value"
+mem-display-mode = "icon-value"
+
+[widgets.default.launcher]
+display-mode = "icon"
+label = "Apps"
+symbol = "chevron.up"
+
+[widgets.default.power]
+display-mode = "icon"
+label = "Power"
+symbol = "power"
+
+[widgets.widget-colors]
+mode = "pywal-index"
+"default.spaces" = 8
+"default.activeapp" = 9
+"default.nowplaying" = 10
+"default.weather" = 11
+"default.time" = 12
+"default.energy" = 13
+"default.fan" = 14
+"default.temperature" = 15
+"default.systemmonitor" = 8
+"default.network" = 9
+"default.volume" = 10
+"default.power" = 11
+"default.launcher" = 12
+
+
+"default.mediacontrols" = 10
+[widgets.default.mediacontrols]
+show-previous = true
+show-play-pause = true
+show-next = true

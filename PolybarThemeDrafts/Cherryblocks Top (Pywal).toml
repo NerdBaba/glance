@@ -1,0 +1,154 @@
+# Measured cherryblocks-top layout. Dynamic colors; no battery or wallpaper blur.
+theme = "system"
+preset = "flat-dark"
+use-pywal = true
+
+[appearance]
+roundness = 0
+use-single-font = true
+border-width = 0
+fill-opacity = 1
+glow-opacity = 0
+shadow-opacity = 0.6
+shadow-radius = 7
+shadow-y = 8
+foreground-color = "#a2a8a2"
+accent-color = "#d9bdbc"
+widget-background-color = "#151c22"
+bar-font-name = "SF Mono"
+bar-font-size = 14.6667
+bar-font-weight = 2
+widget-font-name = "SF Mono"
+widget-font-size = 14.6667
+widget-font-weight = 2
+
+[experimental.foreground]
+reference-width = 1920
+formation = "pills"
+position = "top"
+height = 44
+top-margin = 8
+margin = 10
+horizontal-padding = 0
+spacing = 0
+gap = 0
+left-group-width = 672
+center-group-width = 538
+right-group-width = 298
+center-group-offset = 365
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["default.spaces", "default.activeapp", "spacer", "default.mediacontrols", "default.nowplaying", "spacer", "default.volume", "default.time", "default.power"]
+
+[widgets.default.spaces]
+format-background = "pywal:2"
+format-foreground = "pywal:0"
+format-padding = 9
+format-min-width = 169
+format-alignment = "left"
+group-fixed-width = true
+
+[widgets.default.spaces.space]
+display-mode = "dots-number"
+show-key = true
+dot-size = 12
+dot-cell-width = 31
+dot-stroke-width = 1
+number-gap = 9
+
+[widgets.default.activeapp]
+format-foreground = "pywal:2"
+format-padding = 18
+format-tracking = -0.2667
+format-offset-y = 1
+
+[widgets.default.mediacontrols]
+show-previous = true
+show-play-pause = true
+show-next = true
+icon-prev = ""
+icon-play = ""
+icon-pause = ""
+icon-next = ""
+icon-font-name = "FontAwesome5Free-Solid"
+icon-font-size = 12
+control-spacing = 9
+format-background = "pywal:4"
+format-foreground = "pywal:0"
+format-padding = 18
+format-min-width = 91
+group-fixed-width = true
+
+[widgets.default.nowplaying]
+show-icon = false
+show-title = true
+show-artist = true
+artist-first = true
+show-album = false
+show-visualizer = false
+title-max-length = 100
+artist-max-length = 100
+label-max-length = 30
+show-position = true
+show-progress = false
+show-duration = true
+time-separator = " / "
+time-opacity = 1
+content-spacing = 33
+content-padding = 0
+format-foreground = "pywal:4"
+format-padding = 18
+format-tracking = -0.2667
+format-offset-y = 1
+
+[widgets.default.volume]
+display-mode = "icon-value"
+content-spacing = 8
+ramp-volume-0 = ""
+ramp-volume-1 = ""
+ramp-volume-2 = ""
+icon-font-name = "FontAwesome5Free-Solid"
+icon-font-size = 12
+format-background = "pywal:6"
+format-foreground = "pywal:0"
+format-padding = 18
+format-min-width = 96
+format-alignment = "left"
+format-tracking = -0.2667
+format-offset-y = 1
+group-fixed-width = true
+
+[widgets.default.time]
+format = "d MMM, HH:mm"
+format-foreground = "pywal:6"
+format-padding = 18
+format-padding-right = 17.6
+format-tracking = -0.2667
+format-offset-y = 1
+
+[widgets.default.time.calendar]
+show-events = false
+
+[widgets.default.power]
+glyph = ""
+icon-font-name = "FontAwesome5Free-Solid"
+icon-font-size = 12
+icon-offset-y = 1
+format-foreground = "pywal:6"
+format-padding = 20
+format-min-width = 52
+format-alignment = "left"
+
+[widgets.widget-colors]
+mode = "disabled"
+
+[widgets.pywal]
+foreground-index = 2
+accent-index = 4
+background-index = 0

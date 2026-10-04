@@ -50,6 +50,12 @@ struct AnySpace: Identifiable, Equatable {
     let isFocused: Bool
     let windows: [AnyWindow]
 
+    init(id: String, isFocused: Bool, windows: [AnyWindow] = []) {
+        self.id = id
+        self.isFocused = isFocused
+        self.windows = windows
+    }
+
     init<S: SpaceModel>(_ space: S) {
         if let aero = space as? AeroSpace {
             self.id = aero.workspace

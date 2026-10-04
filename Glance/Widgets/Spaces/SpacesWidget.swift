@@ -6,10 +6,13 @@ enum SpacesDisplayMode: String {
     case icons         = "icons"        // Space number + app icons + focused window title (default)
     case numbers       = "numbers"      // Just space numbers in styled containers
     case dots          = "dots"         // Small circles: filled/hollow/focused
+    case dotsNumber    = "dots-number"  // Equal-size circles followed by current number
+    case blocks        = "blocks"       // Full-height, independently colored number cells
     case iconsOnly     = "icons-only"   // App icons only, no numbers
     case focusedOnly   = "focused-only" // Only show the focused space
     case customIcons   = "custom-icons" // Custom SF Symbol icon per space
     case words         = "words"        // Custom user-defined words per space
+    case focusedNumber = "focused-number" // Focused space number only
 }
 
 enum SpacesHighlight: String {
@@ -24,6 +27,7 @@ enum NumeralSystem: String {
     case arabic     = "arabic"       // Western digits: 1, 2, 3
     case arabicIndic = "arabic-indic" // Eastern Arabic-Indic: ١, ٢, ٣
     case japanese   = "japanese"     // Japanese Kanji: 一, 二, 三
+    case roman      = "roman"        // Roman numerals: I, II, III
 }
 
 // MARK: - Numeral Conversion Utility
@@ -40,6 +44,8 @@ extension String {
             return number.toArabicIndic()
         case .japanese:
             return number.toJapaneseKanji()
+        case .roman:
+            return number.toRomanNumeral()
         }
     }
 }
@@ -113,6 +119,24 @@ private extension Int {
         // Fallback to regular digits for larger numbers
         return String(self)
     }
+
+    func toRomanNumeral() -> String {
+        guard self > 0 else { return String(self) }
+        let symbols: [(Int, String)] = [
+            (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
+            (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
+            (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+        ]
+        var value = self
+        var result = ""
+        for (amount, symbol) in symbols {
+            while value >= amount {
+                result += symbol
+                value -= amount
+            }
+        }
+        return result
+    }
 }
 
 // MARK: - Inline Table Parser
@@ -137,6 +161,8 @@ func parseInlineTable(_ str: String) -> [String: String] {
 
 struct SpacesWidget: View {
     @StateObject var viewModel = SpacesViewModel()
+    @EnvironmentObject var configProvider: ConfigProvider
+    @Environment(\.widgetFont) private var widgetFont
 
     @ObservedObject var configManager = ConfigManager.shared
     var foregroundHeight: CGFloat { configManager.config.experimental.foreground.resolveHeight() }
@@ -147,6 +173,10 @@ struct SpacesWidget: View {
                 Text("Spaces unavailable")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
+            } else if configProvider.config["space.display-mode"]?.stringValue == "dots-number" {
+                dotsAndNumber
+            } else if configProvider.config["space.display-mode"]?.stringValue == "blocks" {
+                numberBlocks
             } else {
                 HStack(spacing: foregroundHeight < 30 ? 0 : 8) {
                     ForEach(viewModel.spaces) { space in
@@ -160,6 +190,64 @@ struct SpacesWidget: View {
         .environmentObject(viewModel)
         .widgetFontStyle()
     }
+
+    private func metric(_ key: String, default fallback: CGFloat, range: ClosedRange<CGFloat>) -> CGFloat {
+        min(max(CGFloat(configProvider.config["space.\(key)"]?.doubleValue ?? Double(fallback)), range.lowerBound), range.upperBound)
+    }
+
+    private var dotsAndNumber: some View {
+        let diameter = metric("dot-size", default: 10, range: 1...32)
+        let cellWidth = metric("dot-cell-width", default: 28, range: 4...80)
+        let stroke = metric("dot-stroke-width", default: 1, range: 0.5...4)
+        let numberGap = metric("number-gap", default: 4, range: 0...80)
+        let numeralSystem = spacesNumeralSystem
+        return HStack(spacing: 0) {
+            ForEach(viewModel.spaces) { space in
+                spaceDot(space, diameter: diameter, cellWidth: cellWidth, stroke: stroke)
+            }
+            if configProvider.config["space.show-key"]?.boolValue ?? true,
+               let focused = viewModel.spaces.first(where: \.isFocused) {
+                Text(focused.id.convertToNumeralSystem(numeralSystem))
+                    .font(widgetFont.toFont())
+                    .padding(.leading, numberGap)
+                    .fixedSize()
+            }
+        }
+    }
+
+    private func spaceDot(_ space: AnySpace, diameter: CGFloat, cellWidth: CGFloat, stroke: CGFloat) -> some View {
+        Circle()
+            .fill(ForegroundStyle())
+            .opacity(space.isFocused ? 1 : 0)
+            .overlay { Circle().strokeBorder(ForegroundStyle(), lineWidth: stroke) }
+            .frame(width: diameter, height: diameter)
+            .frame(width: cellWidth, height: max(foregroundHeight - 4, 1))
+            .contentShape(Rectangle())
+            .onTapGesture { viewModel.switchToSpace(space, needWindowFocus: true) }
+            .accessibilityLabel(space.isFocused ? "Space \(space.id), current" : "Space \(space.id)")
+    }
+
+    private var spacesNumeralSystem: NumeralSystem {
+        configProvider.config["space.numeral-system"]?.stringValue.flatMap(NumeralSystem.init(rawValue:)) ?? .arabic
+    }
+
+    private var numberBlocks: some View {
+        let palette = configManager.config.pywalColors?.colors ?? []
+        let width = metric("cell-width", default: 40, range: 8...100)
+        return HStack(spacing: 0) {
+            ForEach(viewModel.spaces) { space in
+                let state = space.isFocused ? "focused" : "unfocused"
+                Text(space.id.convertToNumeralSystem(spacesNumeralSystem))
+                    .font(widgetFont.toFont())
+                    .frame(width: width, height: foregroundHeight)
+                    .background(PolybarModuleStyle.color(configProvider.config["space.\(state)-background"]?.stringValue, palette: palette) ?? Color.clear)
+                    .foregroundStyle(PolybarModuleStyle.color(configProvider.config["space.\(state)-foreground"]?.stringValue, palette: palette) ?? configManager.config.appearance.foregroundColor)
+                    .contentShape(Rectangle())
+                    .onTapGesture { viewModel.switchToSpace(space, needWindowFocus: true) }
+                    .accessibilityLabel("Space \(space.id)\(space.isFocused ? ", current" : "")")
+            }
+        }
+    }
 }
 
 // MARK: - Space View (routes to display mode)
@@ -168,6 +256,7 @@ private struct SpaceView: View {
     @EnvironmentObject var configProvider: ConfigProvider
     @EnvironmentObject var viewModel: SpacesViewModel
     @Environment(\.appearance) private var appearance
+    @Environment(\.widgetFont) private var widgetFont
 
     var config: ConfigData { configProvider.config }
 
@@ -219,11 +308,12 @@ private struct SpaceView: View {
     @State var isHovered = false
 
     var body: some View {
-        let isFocused = space.windows.contains { $0.isFocused } || space.isFocused
+        let isSpaceFocused = space.isFocused
+        let isFocused = space.windows.contains { $0.isFocused } || isSpaceFocused
         let isOccupied = !space.windows.isEmpty
 
-        // In focused-only mode, hide non-focused spaces
-        if displayMode == .focusedOnly && !isFocused {
+        // In focused-only modes, hide every space except the active desktop.
+        if (displayMode == .focusedOnly || displayMode == .focusedNumber) && !isSpaceFocused {
             EmptyView()
         } else {
             spaceContent(isFocused: isFocused, isOccupied: isOccupied)
@@ -255,10 +345,14 @@ private struct SpaceView: View {
         switch displayMode {
         case .icons, .focusedOnly:
             iconsContent(isFocused: isFocused)
+        case .focusedNumber:
+            numbersContent(isFocused: isFocused)
         case .numbers:
             numbersContent(isFocused: isFocused)
-        case .dots:
+        case .dots, .dotsNumber:
             dotsContent(isFocused: isFocused, isOccupied: isOccupied)
+        case .blocks:
+            numbersContent(isFocused: isFocused)
         case .iconsOnly:
             iconsOnlyContent(isFocused: isFocused)
         case .customIcons:
@@ -296,9 +390,9 @@ private struct SpaceView: View {
     @ViewBuilder
     private func numbersContent(isFocused: Bool) -> some View {
         Text(space.id.convertToNumeralSystem(numeralSystem))
-            .font(.system(size: 12, weight: isFocused ? .bold : .medium, design: .rounded))
+            .font(widgetFont.toFont())
             .monospacedDigit()
-            .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
+            .opacity(isFocused ? 1 : 0.5)
             .frame(width: 24, alignment: .center)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 4)
@@ -311,12 +405,20 @@ private struct SpaceView: View {
     private func dotsContent(isFocused: Bool, isOccupied: Bool) -> some View {
         let dotSize: CGFloat = isFocused ? 8 : 6
 
-        Circle()
-            .fill(isFocused ? appearance.accentColor : (isOccupied ? Color.white.opacity(0.7) : Color.white.opacity(0.25)))
-            .frame(width: dotSize, height: dotSize)
-            .animation(.smooth(duration: 0.2), value: isFocused)
-            .padding(.horizontal, 3)
-            .frame(height: 30)
+        HStack(spacing: 3) {
+            Circle()
+                .fill(isFocused ? appearance.accentColor : (isOccupied ? Color.white.opacity(0.7) : Color.white.opacity(0.25)))
+                .frame(width: dotSize, height: dotSize)
+                .animation(.smooth(duration: 0.2), value: isFocused)
+            if showKey && isFocused {
+                Text(space.id.convertToNumeralSystem(numeralSystem))
+                    .font(.system(size: 9, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(appearance.foregroundColor.opacity(0.8))
+            }
+        }
+        .padding(.horizontal, 3)
+        .frame(height: 30)
     }
 
     // MARK: - Icons Only Mode (app icons, no numbers)

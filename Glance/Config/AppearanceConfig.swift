@@ -9,6 +9,9 @@ struct FontConfig: Equatable {
     /// Create a custom font from the config (includes weight).
     func toFont() -> Font {
         if let fontName = fontName, !fontName.isEmpty {
+            if ["SF Mono", "SFMono-Regular"].contains(fontName) {
+                return Font.system(size: fontSize, weight: weight, design: .monospaced)
+            }
             return Font.custom(fontName, size: fontSize).weight(weight)
         } else {
             return Font.system(size: fontSize, weight: weight)
@@ -104,7 +107,7 @@ struct AppearanceConfig {
             glowRadius: glowRadius,
             shadowOpacity: shadowOpacityCGFloat ?? shadowOpacity,
             shadowRadius: shadowRadiusCGFloat ?? shadowRadius,
-            shadowY: shadowY,
+            shadowY: o.shadowY.map { CGFloat($0) } ?? shadowY,
             blurMaterial: blurMaterial,
             popupDarkTint: popupDarkTint,
             popupRoundness: popupRoundness,
@@ -184,6 +187,7 @@ struct AppearanceOverrides: Decodable {
     let glowOpacity: Double?
     let shadowOpacity: Double?
     let shadowRadius: Double?
+    let shadowY: Double?
     let foregroundColor: String?
     let accentColor: String?
     let widgetBackgroundColor: String?
@@ -210,6 +214,7 @@ struct AppearanceOverrides: Decodable {
         case glowOpacity = "glow-opacity"
         case shadowOpacity = "shadow-opacity"
         case shadowRadius = "shadow-radius"
+        case shadowY = "shadow-y"
         case foregroundColor = "foreground-color"
         case accentColor = "accent-color"
         case widgetBackgroundColor = "widget-background-color"
@@ -276,6 +281,7 @@ struct AppearanceOverrides: Decodable {
         glowOpacity = try decodeNumber(for: .glowOpacity)
         shadowOpacity = try decodeNumber(for: .shadowOpacity)
         shadowRadius = try decodeNumber(for: .shadowRadius)
+        shadowY = try decodeNumber(for: .shadowY)
         foregroundColor = try container.decodeIfPresent(String.self, forKey: .foregroundColor)
         accentColor = try container.decodeIfPresent(String.self, forKey: .accentColor)
         widgetBackgroundColor = try container.decodeIfPresent(String.self, forKey: .widgetBackgroundColor)
