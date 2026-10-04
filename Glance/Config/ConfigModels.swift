@@ -52,14 +52,18 @@ struct Config: Equatable {
     let pywalColors: PywalColors?
     /// Timestamp to ensure each Config update is seen as a new value by SwiftUI
     let updatedAt: UInt64
+    private let resolvedAppearance: AppearanceConfig
 
     init(rootToml: RootToml = RootToml(), pywalColors: PywalColors? = nil) {
         self.rootToml = rootToml
         self.pywalColors = pywalColors
         self.updatedAt = Date().timeIntervalSince1970.bitPattern
+        self.resolvedAppearance = Self.resolveAppearance(rootToml: rootToml, pywalColors: pywalColors)
     }
 
-    var appearance: AppearanceConfig {
+    var appearance: AppearanceConfig { resolvedAppearance }
+
+    private static func resolveAppearance(rootToml: RootToml, pywalColors: PywalColors?) -> AppearanceConfig {
         let base: Preset
         if let presetName = rootToml.preset,
             let preset = Preset(rawValue: presetName) {
@@ -71,7 +75,7 @@ struct Config: Equatable {
         }
         var config = base.defaults.applying(overrides: rootToml.appearanceOverrides)
         if let pywal = pywalColors, rootToml.usePywal == true {
-            let pywalConfig = buildPywalConfig()
+            let pywalConfig = buildPywalConfig(rootToml: rootToml)
             AppLogger.shared.info("Applying Pywal colors with config: fg=\(pywalConfig.foregroundIndex), accent=\(pywalConfig.accentIndex), border1=\(pywalConfig.border1Index), border2=\(pywalConfig.border2Index), bg=\(pywalConfig.backgroundIndex)", category: .config)
             config = config.applyingPywal(pywal, pywalConfig: pywalConfig)
         }
@@ -79,6 +83,10 @@ struct Config: Equatable {
     }
     
     func buildPywalConfig() -> PywalConfig {
+        Self.buildPywalConfig(rootToml: rootToml)
+    }
+
+    private static func buildPywalConfig(rootToml: RootToml) -> PywalConfig {
         var pywalConfig = PywalConfig()
         
         if let widgetsSection = rootToml.widgets,
@@ -187,6 +195,8 @@ class ConfigProvider: ObservableObject {
 struct WidgetsSection: Decodable {
     let displayed: [TomlWidgetItem]
     let others: [String: ConfigData]
+    /// Immutable index built once when this configuration snapshot is decoded.
+    private let configurations: [String: ConfigData]
     var widgetColors: WidgetColorsConfig?
 
     private struct DynamicKey: CodingKey {
@@ -207,6 +217,7 @@ struct WidgetsSection: Decodable {
     ) {
         self.displayed = displayed
         self.others = others
+        self.configurations = Self.indexConfigurations(others)
         self.widgetColors = widgetColors
     }
 
@@ -252,33 +263,39 @@ struct WidgetsSection: Decodable {
         }
 
         self.others = tempDict
+        self.configurations = Self.indexConfigurations(tempDict)
     }
 
     func config(for widgetId: String) -> ConfigData? {
-        // TOML decoders may expose nested tables as dictionaries (default ->
-        // spaces -> space) or as flattened dotted sections. Keep parent
-        // dictionaries for widgets such as TimeWidget's calendar config while
-        // also indexing every nested leaf by its dot path.
-        var flattened: ConfigData = [:]
-        for (section, values) in others {
-            flatten(values, under: section, into: &flattened)
-        }
-
-        let prefix = widgetId + "."
-        var result: ConfigData = [:]
-        for (key, value) in flattened where key.hasPrefix(prefix) {
-            result[String(key.dropFirst(prefix.count))] = value
-        }
-        if let base = flattened[widgetId], let nested = base.dictionaryValue {
-            result.merge(nested) { _, latest in latest }
-        }
-        return result.isEmpty ? nil : result
+        configurations[widgetId]
     }
 
-    private func flatten(_ values: ConfigData, under path: String, into result: inout ConfigData) {
-        if !path.isEmpty {
-            result[path] = .dictionary(values)
+    private static func indexConfigurations(_ sections: [String: ConfigData]) -> [String: ConfigData] {
+        // Retain parent dictionaries and dotted leaves, matching the previous
+        // per-query flattening behavior for nested and flattened TOML tables.
+        var flattened: ConfigData = [:]
+        for (section, values) in sections {
+            flatten(values, under: section, into: &flattened)
         }
+        var index: [String: ConfigData] = [:]
+        for (path, value) in flattened {
+            for separator in path.indices where path[separator] == "." {
+                let parent = String(path[..<separator])
+                let suffix = String(path[path.index(after: separator)...])
+                index[parent, default: [:]][suffix] = value
+            }
+        }
+        // Direct child dictionaries take precedence, as in config(for:).
+        for (path, value) in flattened {
+            if let nested = value.dictionaryValue, !nested.isEmpty {
+                index[path, default: [:]].merge(nested) { _, latest in latest }
+            }
+        }
+        return index
+    }
+
+    private static func flatten(_ values: ConfigData, under path: String, into result: inout ConfigData) {
+        if !path.isEmpty { result[path] = .dictionary(values) }
         for (key, value) in values {
             let childPath = path.isEmpty ? key : "\(path).\(key)"
             if let nested = value.dictionaryValue {

@@ -71,6 +71,9 @@ struct TimeWidget: View {
         .frame(maxHeight: .infinity)
         .background(.black.opacity(0.001))
         .monospacedDigit()
+        .onAppear { timeProvider.configure(pattern: format, timeZone: timeZone) }
+        .onChange(of: format) { _, _ in timeProvider.configure(pattern: format, timeZone: timeZone) }
+        .onChange(of: timeZone) { _, _ in timeProvider.configure(pattern: format, timeZone: timeZone) }
         .onTapGesture {
             MenuBarPopup.show(rect: rect, id: "calendar") {
                 CalendarPopup(
@@ -92,61 +95,46 @@ struct TimeWidget: View {
     }
 }
 
-/// Background timer + time formatting — keeps timer work off main thread.
-class TimeProvider: ObservableObject {
-    @Published var formattedTime: String = ""
-
-    /// Wrapper for widget use — formats with custom pattern/timeZone.
-    func formattedTime(pattern: String, timeZone: String?) -> String {
-        format(pattern: pattern, date: Date(), timeZone: timeZone)
-    }
-
+/// Publishes only changes to the configured clock label. A one-second timer
+/// still supports patterns containing seconds, but minute-only clocks avoid
+/// 59 redundant SwiftUI invalidations each minute.
+final class TimeProvider: ObservableObject {
+    @Published private(set) var formattedTime = ""
+    private let formattingCache = DateFormattingCache()
+    private var pattern = "E d, J:mm"
+    private var timeZone: String?
     private var timer: Timer?
-    private var formatter = DateFormatter()
-    private var lastPattern: String = ""
-    private var lastTimeZone: String?
-    private let timerQueue = DispatchQueue(label: "com.glance.timeprovider", qos: .utility)
 
     init() {
-        updateFormattedTime()
-        timerQueue.async { [weak self] in
-            self?.startTimer()
-            RunLoop.current.run()
-        }
-    }
-
-    deinit {
-        timer?.invalidate()
-    }
-
-    private func startTimer() {
+        update(at: Date())
+        // TimeProvider is owned by the main-thread SwiftUI view. Timer and
+        // publication stay on that run loop; no dedicated running thread is needed.
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.updateFormattedTime()
+            self?.update(at: Date())
         }
         timer?.tolerance = 0.1
     }
 
-    private func updateFormattedTime() {
-        let now = Date()
-        let text = format(pattern: "E d, J:mm", date: now, timeZone: nil)
-        DispatchQueue.main.async { [weak self] in
-            self?.formattedTime = text
-        }
+    deinit { timer?.invalidate() }
+
+    func configure(pattern: String, timeZone: String?) {
+        guard self.pattern != pattern || self.timeZone != timeZone else { return }
+        self.pattern = pattern
+        self.timeZone = timeZone
+        update(at: Date())
+    }
+
+    func update(at date: Date) {
+        let text = format(pattern: pattern, date: date, timeZone: timeZone)
+        if text != formattedTime { formattedTime = text }
+    }
+
+    func formattedTime(pattern: String, timeZone: String?) -> String {
+        format(pattern: pattern, date: Date(), timeZone: timeZone)
     }
 
     func format(pattern: String, date: Date, timeZone: String?) -> String {
-        if pattern != lastPattern || timeZone != lastTimeZone {
-            formatter = DateFormatter()
-            formatter.dateFormat = pattern
-            if let timeZone = timeZone, let tz = TimeZone(identifier: timeZone) {
-                formatter.timeZone = tz
-            } else {
-                formatter.timeZone = TimeZone.current
-            }
-            lastPattern = pattern
-            lastTimeZone = timeZone
-        }
-        return formatter.string(from: date)
+        formattingCache.string(pattern: pattern, date: date, timeZone: timeZone)
     }
 }
 

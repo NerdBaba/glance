@@ -1,0 +1,86 @@
+{
+  "clock_alternating_formats": {
+    "consumed": 173875,
+    "iterations": 2000,
+    "median_ns_per_op": 960.2085,
+    "runs": 7,
+    "samples_ms": [
+      1.905583,
+      1.884417,
+      1.934042,
+      1.915917,
+      1.954208,
+      1.920417,
+      1.945083
+    ]
+  },
+  "clock_fingerprint": "7a184aa9c29785c897e4ad1980566fbdf5aa5a5fd19846a131e10dc0e011ba5d",
+  "clock_same_format": {
+    "consumed": 70500,
+    "iterations": 2000,
+    "median_ns_per_op": 561.8125,
+    "runs": 7,
+    "samples_ms": [
+      1.123625,
+      1.107375,
+      1.132333,
+      1.092625,
+      1.0965,
+      1.132958,
+      1.170833
+    ]
+  },
+  "concurrent_date_checks": 256,
+  "minute_clock_publications_120_ticks": 2,
+  "polybar_render": {
+    "consumed": 23970,
+    "iterations": 2000,
+    "median_ns_per_op": 18654.125,
+    "runs": 7,
+    "samples_ms": [
+      37.141167,
+      37.047875,
+      36.907625,
+      37.30825,
+      38.094708,
+      39.094708,
+      39.869542
+    ]
+  },
+  "render_fingerprint": "c0c6a406754bf1f1c91e080a7c63111cc2ba33db544998aa42fcd5f04ac7c1c9",
+  "second_clock_publications_120_ticks": 120,
+  "theme_fixtures": 21,
+  "widget_fingerprint": "b04663d74c735acda37164b6894dd0d7c5faf66290a43663469601b031b36c70",
+  "widget_index_build": {
+    "consumed": 14400,
+    "iterations": 100,
+    "median_ns_per_op": 410824.17,
+    "runs": 7,
+    "samples_ms": [
+      41.42125,
+      41.009792,
+      41.601041,
+      42.204041,
+      41.082417,
+      40.296,
+      40.5115
+    ]
+  },
+  "widget_lookup": {
+    "consumed": 201360,
+    "iterations": 2000,
+    "median_ns_per_op": 33.333,
+    "runs": 7,
+    "samples_ms": [
+      0.073875,
+      0.066958,
+      0.066666,
+      0.066667,
+      0.066583,
+      0.066625,
+      0.066584
+    ]
+  },
+  "optimized": true,
+  "comparison_baseline": "0ee47e4"
+}

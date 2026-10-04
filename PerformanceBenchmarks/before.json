@@ -1,0 +1,84 @@
+{
+  "clock_alternating_formats": {
+    "consumed": 173875,
+    "iterations": 2000,
+    "median_ns_per_op": 38944.167,
+    "runs": 7,
+    "samples_ms": [
+      77.888334,
+      78.76475,
+      79.406167,
+      77.259167,
+      77.500083,
+      78.153541,
+      77.103709
+    ]
+  },
+  "clock_fingerprint": "7a184aa9c29785c897e4ad1980566fbdf5aa5a5fd19846a131e10dc0e011ba5d",
+  "clock_same_format": {
+    "consumed": 70500,
+    "iterations": 2000,
+    "median_ns_per_op": 344.9585,
+    "runs": 7,
+    "samples_ms": [
+      0.686792,
+      0.688916,
+      0.688042,
+      0.689917,
+      0.699292,
+      0.713916,
+      0.70275
+    ]
+  },
+  "minute_clock_publications_120_ticks": 120,
+  "polybar_render": {
+    "consumed": 23970,
+    "iterations": 2000,
+    "median_ns_per_op": 39532.3335,
+    "runs": 7,
+    "samples_ms": [
+      79.204375,
+      79.064667,
+      88.435708,
+      79.167375,
+      78.872125,
+      78.826875,
+      76.771542
+    ]
+  },
+  "render_fingerprint": "c0c6a406754bf1f1c91e080a7c63111cc2ba33db544998aa42fcd5f04ac7c1c9",
+  "theme_fixtures": 21,
+  "widget_fingerprint": "b04663d74c735acda37164b6894dd0d7c5faf66290a43663469601b031b36c70",
+  "widget_index_build": {
+    "consumed": 14400,
+    "iterations": 100,
+    "median_ns_per_op": 78935.83,
+    "runs": 7,
+    "samples_ms": [
+      7.820625,
+      7.893583,
+      7.895042,
+      7.890625,
+      7.887208,
+      7.904042,
+      7.906416
+    ]
+  },
+  "widget_lookup": {
+    "consumed": 201360,
+    "iterations": 2000,
+    "median_ns_per_op": 79341.6665,
+    "runs": 7,
+    "samples_ms": [
+      159.402625,
+      158.706959,
+      160.576625,
+      155.418417,
+      156.830875,
+      158.683333,
+      156.523084
+    ]
+  },
+  "optimized": false,
+  "comparison_baseline": "0ee47e4"
+}

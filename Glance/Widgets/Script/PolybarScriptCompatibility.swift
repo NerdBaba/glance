@@ -62,6 +62,26 @@ enum PolybarScriptPiece {
 /// The component names follow Polybar's `<label>`, `<ramp-NAME>`, and
 /// `<bar-NAME>` formatting syntax.
 enum PolybarScriptRenderer {
+    private static let componentRegex = try? NSRegularExpression(pattern: "<([A-Za-z][A-Za-z0-9_-]*)>")
+    private static let tokenRegex = try? NSRegularExpression(
+        pattern: "%([A-Za-z][A-Za-z0-9_-]*)(?::(-?[0-9]*))?(?::(-?[0-9]*))?(?::([^%]*))?%"
+    )
+    private static let numberRegex = try? NSRegularExpression(pattern: "[-+]?[0-9]*\\.?[0-9]+")
+    // NSCache is thread safe and bounded; edited user patterns cannot accumulate forever.
+    private static let valueRegexes: NSCache<NSString, NSRegularExpression> = {
+        let cache = NSCache<NSString, NSRegularExpression>()
+        cache.countLimit = 64
+        return cache
+    }()
+
+    private static func valueRegex(_ pattern: String) -> NSRegularExpression? {
+        let key = pattern as NSString
+        if let cached = valueRegexes.object(forKey: key) { return cached }
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        valueRegexes.setObject(regex, forKey: key)
+        return regex
+    }
+
     static func render(
         output: String,
         config: ConfigData,
@@ -136,7 +156,7 @@ enum PolybarScriptRenderer {
         pid: Int32?,
         animationTime: TimeInterval
     ) -> String {
-        guard let regex = try? NSRegularExpression(pattern: "<([A-Za-z][A-Za-z0-9_-]*)>") else {
+        guard let regex = componentRegex else {
             return format
         }
         let nsFormat = format as NSString
@@ -247,9 +267,7 @@ enum PolybarScriptRenderer {
             "counter": String(counter),
             "pid": pid.map(String.init) ?? ""
         ]
-        guard let regex = try? NSRegularExpression(
-            pattern: "%([A-Za-z][A-Za-z0-9_-]*)(?::(-?[0-9]*))?(?::(-?[0-9]*))?(?::([^%]*))?%"
-        ) else { return text }
+        guard let regex = tokenRegex else { return text }
         let source = text as NSString
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: source.length))
         var result = text
@@ -287,7 +305,7 @@ enum PolybarScriptRenderer {
         if let configured = options.double("value") { return configured }
         let source = output.trimmingCharacters(in: .whitespacesAndNewlines)
         if let pattern = options.string("value-regex"),
-           let regex = try? NSRegularExpression(pattern: pattern),
+           let regex = valueRegex(pattern),
            let match = regex.firstMatch(in: source, range: NSRange(source.startIndex..., in: source)) {
             let range = match.numberOfRanges > 1 ? match.range(at: 1) : match.range(at: 0)
             if let swiftRange = Range(range, in: source),
@@ -295,7 +313,7 @@ enum PolybarScriptRenderer {
                 return number
             }
         }
-        guard let regex = try? NSRegularExpression(pattern: "[-+]?[0-9]*\\.?[0-9]+") else { return 0 }
+        guard let regex = numberRegex else { return 0 }
         let range = NSRange(source.startIndex..., in: source)
         guard let match = regex.firstMatch(in: source, range: range),
               let swiftRange = Range(match.range, in: source) else { return 0 }
