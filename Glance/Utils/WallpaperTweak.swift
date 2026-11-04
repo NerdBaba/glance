@@ -47,8 +47,7 @@ enum TweakProviderFactory {
         case "typesafe-jev":
             return try TypeSafeJevTweakProvider(apiKey: apiKey ?? "", model: model ?? "jev-latest", baseURL: baseURL)
         case "openai-compatible":
-            throw NSError(domain: "Glance", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "The OpenAI-compatible backend is not implemented yet."])
+            return try OpenAICompatibleTweakProvider(apiKey: apiKey ?? "", model: model ?? "gpt-4o-mini", baseURL: baseURL)
         default:
             throw NSError(domain: "Glance", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "Unknown tweak provider type '\(type)'."])
@@ -200,5 +199,102 @@ struct TypeSafeJevTweakProvider: TweakProvider {
         case "density": return "density"
         default: return key
         }
+    }
+}
+
+/// OpenAI-compatible chat backend. Unlike Jev it is a generative LLM, so we
+/// constrain it with a strict JSON response and validate every returned value
+/// against the same typed decision schema before accepting it.
+struct OpenAICompatibleTweakProvider: TweakProvider {
+
+    private let apiKey: String
+    private let model: String
+    private let endpoint: URL
+
+    init(apiKey: String, model: String, baseURL: String?) throws {
+        guard !apiKey.isEmpty else {
+            throw NSError(domain: "Glance", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "No API key configured for the OpenAI-compatible provider."])
+        }
+        self.apiKey = apiKey
+        self.model = model
+        if let raw = baseURL, !raw.isEmpty, let url = URL(string: raw) {
+            self.endpoint = url
+        } else {
+            self.endpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
+        }
+    }
+
+    func generateTweak(state: BarTweakState) async throws -> BarTweakPatch {
+        let body: [String: Any] = [
+            "model": model,
+            "temperature": 0,
+            "response_format": ["type": "json_object"],
+            "messages": [
+                ["role": "system", "content": Self.systemPrompt(state: state)],
+                ["role": "user", "content": Self.userPrompt(state: state)],
+            ],
+        ]
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 45
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        guard (200..<300).contains(http.statusCode) else {
+            let detail = String(data: data, encoding: .utf8) ?? ""
+            throw NSError(domain: "OpenAICompatible", code: http.statusCode,
+                          userInfo: [NSLocalizedDescriptionKey: "Provider error \(http.statusCode): \(detail)"])
+        }
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let first = choices.first,
+              let message = first["message"] as? [String: Any],
+              let content = message["content"] as? String,
+              let parsed = try JSONSerialization.jsonObject(with: Data(content.utf8)) as? [String: Any]
+        else {
+            throw NSError(domain: "OpenAICompatible", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "Unexpected provider response shape."])
+        }
+        return Self.parse(parsed)
+    }
+
+    private static func systemPrompt(state: BarTweakState) -> String {
+        "You are a design decision engine for a macOS status bar. Return ONLY a JSON object with these exact keys:\n" +
+        "- \"formation\": one of \"floating\", \"full\", \"islands\", \"pills\"\n" +
+        "- \"accent\": a string palette index offered below\n" +
+        "- \"density\": one of \"minimal\", \"balanced\", \"rich\"\n" +
+        "Choose values that fit the wallpaper palette and template. No prose, no markdown."
+    }
+
+    private static func userPrompt(state: BarTweakState) -> String {
+        var lines: [String] = []
+        lines.append("Template: \(state.templateName)")
+        lines.append("Current formation: \(state.formation)")
+        lines.append("Available widgets: \(state.widgetIDs.joined(separator: ", "))")
+        lines.append("Palette: \(state.paletteHex.enumerated().map { "\($0.offset)=\($0.element)" }.joined(separator: ", "))")
+        if !state.intent.isEmpty { lines.append("User intent: \(state.intent)") }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func parse(_ json: [String: Any]) -> BarTweakPatch {
+        var decisions: [BarTweakDecision] = []
+
+        if let formation = json["formation"] as? String,
+           ["floating", "full", "islands", "pills"].contains(formation) {
+            decisions.append(BarTweakDecision(key: "formation", value: formation, confidence: 1.0))
+        }
+        if let accent = json["accent"] as? String, let idx = Int(accent), (0...15).contains(idx) {
+            decisions.append(BarTweakDecision(key: "accent-index", value: String(idx), confidence: 1.0))
+        }
+        if let density = json["density"] as? String,
+           ["minimal", "balanced", "rich"].contains(density) {
+            decisions.append(BarTweakDecision(key: "density", value: density, confidence: 1.0))
+        }
+        return BarTweakPatch(decisions: decisions)
     }
 }

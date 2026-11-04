@@ -144,4 +144,31 @@ enum WallpaperThemeGenerator {
         let b = Int((srgb.blueComponent * 255).rounded())
         return String(format: "#%02X%02X%02X", r, g, b)
     }
+
+    // MARK: - Shared state building (used by Settings tab and auto-generation)
+
+    static func buildTweakState(manager: ConfigManager) -> BarTweakState {
+        let config = manager.config
+        let hexes = paletteHexes(from: manager)
+        let widgets = config.rootToml.widgets?.displayed.map(\.id) ?? []
+        let formation = config.experimental.foreground.formation.rawValue
+        let template = config.rootToml.preset ?? "current"
+        return BarTweakState(
+            paletteHex: hexes,
+            templateName: template,
+            formation: formation,
+            widgetIDs: widgets,
+            intent: "")
+    }
+
+    static func paletteHexes(from manager: ConfigManager) -> [String] {
+        if let colors = manager.config.pywalColors?.colors, !colors.isEmpty {
+            return colors.map { hex(NSColor($0)) }
+        }
+        if let url = WallpaperPalette.currentWallpaperURL(),
+           let palette = WallpaperPalette.extract(from: url) {
+            return palette.colors.map { hex(NSColor($0)) }
+        }
+        return []
+    }
 }

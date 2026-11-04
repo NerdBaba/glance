@@ -1,13 +1,12 @@
 import AppKit
 import SwiftUI
 
-/// Settings tab for wallpaper → bar generation: enter a TypeSafe/Jev API key,
-/// configure the provider, and run a typed "tweak" generation. Deciding are
-/// always previewed here — nothing is applied automatically.
+/// Settings tab for wallpaper → bar generation: enter a provider API key,
+/// configure the backend, run a typed "tweak" generation, preview the decisions,
+/// and optionally apply them to the live config.
 struct WallpaperSettingsTab: View {
 
     @ObservedObject private var configManager = ConfigManager.shared
-    private static let keyAccount = "typesafe-jev-key"
 
     @State private var apiKey = ""
     @State private var providerType = "typesafe-jev"
@@ -16,7 +15,12 @@ struct WallpaperSettingsTab: View {
     @State private var autoGenerate = false
     @State private var isLoading = false
     @State private var errorText: String?
+    @State private var statusText: String?
     @State private var decisions: [BarTweakDecision] = []
+
+    private var keyAccount: String {
+        providerType == "openai-compatible" ? "openai-key" : "typesafe-jev-key"
+    }
 
     var body: some View {
         Form {
@@ -28,13 +32,13 @@ struct WallpaperSettingsTab: View {
             Section("Provider") {
                 Picker("Backend", selection: $providerType) {
                     Text("TypeSafe Jev (decision model)").tag("typesafe-jev")
-                    Text("OpenAI-compatible (coming soon)").tag("openai-compatible").disabled(true)
+                    Text("OpenAI-compatible").tag("openai-compatible")
                 }
-                SecureField("TypeSafe API key", text: $apiKey)
+                SecureField("API key", text: $apiKey)
                     .textContentType(.password)
                 TextField("Model", text: $model)
                 TextField("Base URL (optional)", text: $baseURL)
-                Text("Key is stored in the macOS Keychain, never in your config or logs.")
+                Text("\(providerType == "openai-compatible" ? "OpenAI" : "TypeSafe") key is stored in the macOS Keychain, never in your config or logs.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -56,11 +60,22 @@ struct WallpaperSettingsTab: View {
                     .frame(maxWidth: .infinity)
                 }
                 .disabled(isLoading)
+
+                Button(action: applyDecisions) {
+                    Label("Apply decisions to config", systemImage: "checkmark.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .disabled(decisions.isEmpty || isLoading)
             }
 
             if let errorText {
                 Section {
                     Text(errorText).foregroundStyle(.red).font(.callout)
+                }
+            }
+            if let statusText {
+                Section {
+                    Text(statusText).foregroundStyle(.green).font(.callout)
                 }
             }
 
@@ -99,7 +114,7 @@ struct WallpaperSettingsTab: View {
     // MARK: - Load / save
 
     private func loadFromConfig() {
-        apiKey = KeychainStore.get(account: Self.keyAccount) ?? ""
+        apiKey = KeychainStore.get(account: keyAccount) ?? ""
         let wallpaper = configManager.config.rootToml.experimental?.wallpaper
         providerType = wallpaper?.provider?.type ?? "typesafe-jev"
         model = wallpaper?.provider?.model ?? "jev-latest"
@@ -108,7 +123,7 @@ struct WallpaperSettingsTab: View {
     }
 
     private func saveProviderConfig() {
-        KeychainStore.set(apiKey, account: Self.keyAccount)
+        KeychainStore.set(apiKey, account: keyAccount)
         configManager.updateConfigValues(pairs: [
             ("experimental.wallpaper.auto-generate", autoGenerate ? "true" : "false"),
             ("experimental.wallpaper.provider.type", providerType),
@@ -122,13 +137,14 @@ struct WallpaperSettingsTab: View {
     private func runGeneration() {
         saveProviderConfig()
         errorText = nil
+        statusText = nil
         decisions = []
         isLoading = true
         Task {
             defer { isLoading = false }
             do {
-                let state = Self.buildState(manager: configManager)
-                let key = KeychainStore.get(account: Self.keyAccount) ?? ""
+                let state = WallpaperThemeGenerator.buildTweakState(manager: configManager)
+                let key = KeychainStore.get(account: keyAccount) ?? ""
                 let provider = try TweakProviderFactory.make(
                     type: providerType,
                     baseURL: baseURL.isEmpty ? nil : baseURL,
@@ -147,36 +163,14 @@ struct WallpaperSettingsTab: View {
         }
     }
 
-    private static func buildState(manager: ConfigManager) -> BarTweakState {
-        let config = manager.config
-        let hexes = paletteHexes(from: manager)
-        let widgets = config.rootToml.widgets?.displayed.map(\.id) ?? []
-        let formation = config.experimental.foreground.formation.rawValue
-        let template = config.rootToml.preset ?? "current"
-        return BarTweakState(
-            paletteHex: hexes,
-            templateName: template,
-            formation: formation,
-            widgetIDs: widgets,
-            intent: "")
-    }
-
-    private static func paletteHexes(from manager: ConfigManager) -> [String] {
-        if let colors = manager.config.pywalColors?.colors, !colors.isEmpty {
-            return colors.map { hex(NSColor($0)) }
+    private func applyDecisions() {
+        guard !decisions.isEmpty else { return }
+        let patch = BarTweakPatch(decisions: decisions)
+        if WallpaperTweakApplier.apply(patch: patch, to: configManager) {
+            statusText = "Applied. The bar hot-reloads with the new configuration."
+            decisions = []
+        } else {
+            errorText = "Nothing to apply — no decisions were within range."
         }
-        if let url = WallpaperPalette.currentWallpaperURL(),
-           let palette = WallpaperPalette.extract(from: url) {
-            return palette.colors.map { hex(NSColor($0)) }
-        }
-        return []
-    }
-
-    private static func hex(_ color: NSColor) -> String {
-        let srgb = color.usingColorSpace(.sRGB) ?? color
-        let r = Int((srgb.redComponent * 255).rounded())
-        let g = Int((srgb.greenComponent * 255).rounded())
-        let b = Int((srgb.blueComponent * 255).rounded())
-        return String(format: "#%02X%02X%02X", r, g, b)
     }
 }

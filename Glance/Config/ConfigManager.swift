@@ -24,7 +24,13 @@ final class ConfigManager: ObservableObject {
     private(set) var configFilePath: String?
     private var pywalWatchSource: DispatchSourceFileSystemObject?
     private var pywalFileDescriptor: CInt = -1
+    private var wallpaperWatchSource: DispatchSourceFileSystemObject?
+    private var wallpaperFileDescriptor: CInt = -1
     private let logger = AppLogger.shared
+
+    // Wallpaper → bar auto-generation results (empty until a run completes).
+    @Published var lastWallpaperDecisions: [BarTweakDecision] = []
+    @Published var lastWallpaperError: String?
 
     // Session-only color placement. The source palette and TOML remain untouched.
     private var paletteOrder: [Int]?
@@ -55,6 +61,63 @@ final class ConfigManager: ObservableObject {
         if pywalColors?.colors != colors.colors { pywalColors = colors }
         config = Config(rootToml: config.rootToml, pywalColors: colors)
         return true
+    }
+
+    // MARK: - Wallpaper watching & auto-generation
+
+    /// Watch the wallpaper image file. When it changes we recolor the bar and,
+    /// if auto-generation is enabled, run a tweak generation (results are posted
+    /// to `lastWallpaperDecisions` for preview; nothing is auto-applied).
+    private func startWatchingWallpaper() {
+        guard let url = WallpaperPalette.currentWallpaperURL(),
+              FileManager.default.fileExists(atPath: url.path) else { return }
+        stopWatchingWallpaper()
+        let fd = open(url.path, O_EVTONLY)
+        guard fd != -1 else { return }
+        wallpaperFileDescriptor = fd
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .delete, .rename, .revoke],
+            queue: DispatchQueue.global())
+        source.setEventHandler { [weak self] in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                _ = self.refreshWallpaperPalette()
+                if self.config.rootToml.experimental?.wallpaper?.autoGenerate == true {
+                    self.runAutoGeneration()
+                }
+            }
+        }
+        wallpaperWatchSource = source
+        source.resume()
+    }
+
+    private func stopWatchingWallpaper() {
+        wallpaperWatchSource?.cancel()
+        wallpaperWatchSource = nil
+        if wallpaperFileDescriptor != -1 { close(wallpaperFileDescriptor); wallpaperFileDescriptor = -1 }
+    }
+
+    /// Best-effort auto-generation: build state, resolve the provider from
+    /// config + keychain, run it, and publish the decisions for preview.
+    private func runAutoGeneration() {
+        guard let providerCfg = config.rootToml.experimental?.wallpaper?.provider else { return }
+        let account = providerCfg.type == "openai-compatible" ? "openai-key" : "typesafe-jev-key"
+        let key = KeychainStore.get(account: account) ?? ""
+        let state = WallpaperThemeGenerator.buildTweakState(manager: self)
+        Task {
+            do {
+                let provider = try TweakProviderFactory.make(
+                    type: providerCfg.type,
+                    baseURL: providerCfg.baseURL,
+                    model: providerCfg.model,
+                    apiKey: key)
+                let patch = try await provider.generateTweak(state: state)
+                await MainActor.run { self.lastWallpaperDecisions = patch.decisions }
+            } catch {
+                await MainActor.run { self.lastWallpaperError = error.localizedDescription }
+            }
+        }
     }
 
     private init() {
@@ -519,8 +582,10 @@ final class ConfigManager: ObservableObject {
         if config.rootToml.experimental?.wallpaperPalette == true {
             pywalColors = WallpaperPalette.currentWallpaperURL()
                 .flatMap { WallpaperPalette.extract(from: $0) } ?? PywalColors()
+            startWatchingWallpaper()
         } else {
             pywalColors = PywalColors()
+            stopWatchingWallpaper()
         }
         startWatchingPywal()
     }
