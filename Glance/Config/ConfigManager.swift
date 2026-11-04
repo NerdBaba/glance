@@ -44,6 +44,19 @@ final class ConfigManager: ObservableObject {
         config = Config(rootToml: config.rootToml, pywalColors: renderedPywalColors)
     }
 
+    /// Re-extract the wallpaper palette and re-apply it to the current config.
+    /// Returns false when wallpaper palettes are disabled or no palette is
+    /// available (e.g. in headless previews without a wallpaper).
+    @discardableResult
+    func refreshWallpaperPalette() -> Bool {
+        guard config.rootToml.experimental?.wallpaperPalette == true,
+              let url = WallpaperPalette.currentWallpaperURL(),
+              let colors = WallpaperPalette.extract(from: url) else { return false }
+        if pywalColors?.colors != colors.colors { pywalColors = colors }
+        config = Config(rootToml: config.rootToml, pywalColors: colors)
+        return true
+    }
+
     private init() {
         self.config = Config()
         self.pywalColors = nil
@@ -503,7 +516,12 @@ final class ConfigManager: ObservableObject {
     }
 
     private func loadPywalColors() {
-        pywalColors = PywalColors()
+        if config.rootToml.experimental?.wallpaperPalette == true {
+            pywalColors = WallpaperPalette.currentWallpaperURL()
+                .flatMap { WallpaperPalette.extract(from: $0) } ?? PywalColors()
+        } else {
+            pywalColors = PywalColors()
+        }
         startWatchingPywal()
     }
 

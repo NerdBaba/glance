@@ -472,25 +472,31 @@ struct AerospaceConfig: Decodable {
 struct ExperimentalConfig: Decodable {
     let foreground: ForegroundConfig
     let background: BackgroundConfig
-    
+    /// Recolor the bar from the desktop wallpaper instead of the pywal cache.
+    let wallpaperPalette: Bool
+
     enum CodingKeys: String, CodingKey {
         case foreground, background
+        case wallpaperPalette = "wallpaper-palette"
     }
     
     init() {
         self.foreground = ForegroundConfig()
         self.background = BackgroundConfig()
+        self.wallpaperPalette = false
     }
 
-    init(foreground: ForegroundConfig, background: BackgroundConfig) {
+    init(foreground: ForegroundConfig, background: BackgroundConfig, wallpaperPalette: Bool = false) {
         self.foreground = foreground
         self.background = background
+        self.wallpaperPalette = wallpaperPalette
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         foreground = try container.decodeIfPresent(ForegroundConfig.self, forKey: .foreground) ?? ForegroundConfig()
         background = try container.decodeIfPresent(BackgroundConfig.self, forKey: .background) ?? BackgroundConfig()
+        wallpaperPalette = try container.decodeIfPresent(Bool.self, forKey: .wallpaperPalette) ?? false
     }
 }
 

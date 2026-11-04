@@ -60,6 +60,11 @@ enum GlanceEntryPoint {
             NSApp.setActivationPolicy(.prohibited)
             exit(ModuleEditorExporter.export(module: module, to: URL(fileURLWithPath: path)) ? EXIT_SUCCESS : EXIT_FAILURE)
         }
+
+        if CommandLine.arguments.contains("--generate-from-wallpaper") {
+            exit(WallpaperThemeGenerator.runFromCommandLine() ? EXIT_SUCCESS : EXIT_FAILURE)
+        }
+
         GlanceApp.main()
     }
 
