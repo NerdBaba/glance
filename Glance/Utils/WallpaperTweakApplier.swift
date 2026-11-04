@@ -41,7 +41,7 @@ enum WallpaperTweakApplier {
         return true
     }
 
-    private static func availableWidgetIDs(manager: ConfigManager) -> Set<String> {
+    static func availableWidgetIDs(manager: ConfigManager) -> Set<String> {
         var set = canonicalIDs
         if let displayed = manager.config.rootToml.widgets?.displayed {
             for widget in displayed where !["divider", "spacer"].contains(widget.id) {
@@ -51,7 +51,7 @@ enum WallpaperTweakApplier {
         return set
     }
 
-    private static func tomlArray(_ ids: [String]) -> String {
+    static func tomlArray(_ ids: [String]) -> String {
         "[" + ids.map { "\"\($0)\"" }.joined(separator: ", ") + "]"
     }
 }

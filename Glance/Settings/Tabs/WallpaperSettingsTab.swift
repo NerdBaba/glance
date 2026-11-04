@@ -17,6 +17,8 @@ struct WallpaperSettingsTab: View {
     @State private var errorText: String?
     @State private var statusText: String?
     @State private var decisions: [BarTweakDecision] = []
+    @State private var variations: [BarVariationCandidate] = []
+    @State private var generatingVariations = false
 
     private var keyAccount: String {
         providerType == "openai-compatible" ? "openai-key" : "typesafe-jev-key"
@@ -61,11 +63,61 @@ struct WallpaperSettingsTab: View {
                 }
                 .disabled(isLoading)
 
+                Button(action: generateVariations) {
+                    HStack {
+                        if generatingVariations {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "square.grid.2x2")
+                        }
+                        Text(generatingVariations ? "Rendering…" : "Next variation")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .disabled(generatingVariations || isLoading)
+
                 Button(action: applyDecisions) {
                     Label("Apply decisions to config", systemImage: "checkmark.circle")
                         .frame(maxWidth: .infinity)
                 }
                 .disabled(decisions.isEmpty || isLoading)
+            }
+
+            if !variations.isEmpty {
+                Section("Variations (headless previews)") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 14) {
+                            ForEach(variations) { variation in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    if let image = variation.image {
+                                        Image(nsImage: image)
+                                            .resizable()
+                                            .interpolation(.high)
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(height: 56)
+                                            .frame(maxWidth: 460)
+                                            .background(Color.black.opacity(0.5))
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    } else {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.gray.opacity(0.3))
+                                            .frame(width: 320, height: 56)
+                                    }
+                                    Text(variation.title).font(.headline)
+                                    Text(variation.subtitle).font(.caption).foregroundStyle(.secondary)
+                                    Button("Apply", systemImage: "checkmark.circle") {
+                                        applyVariation(variation)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    .disabled(isLoading)
+                                }
+                                .frame(width: 320)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
             }
 
             if let errorText {
@@ -171,6 +223,29 @@ struct WallpaperSettingsTab: View {
             decisions = []
         } else {
             errorText = "Nothing to apply — no decisions were within range."
+        }
+    }
+
+    /// Render the four local composition variations as headless previews.
+    private func generateVariations() {
+        errorText = nil
+        statusText = nil
+        generatingVariations = true
+        Task {
+            let candidates = WallpaperVariation.generateCandidates(manager: configManager)
+            await MainActor.run {
+                generatingVariations = false
+                variations = candidates
+                if candidates.isEmpty { errorText = "Could not render variations — is there a config to base them on?" }
+            }
+        }
+    }
+
+    private func applyVariation(_ variation: BarVariationCandidate) {
+        if WallpaperTweakApplier.apply(patch: variation.patch, to: configManager) {
+            statusText = "Applied “\(variation.title)”. The bar hot-reloads."
+        } else {
+            errorText = "Could not apply that variation."
         }
     }
 }
