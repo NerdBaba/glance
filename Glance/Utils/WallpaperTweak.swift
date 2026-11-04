@@ -28,7 +28,8 @@ struct BarTweakPatch {
 
     var formation: String? { value(for: "formation") }
     var accentIndex: Int? { value(for: "accent-index").flatMap(Int.init) }
-    var density: String? { value(for: "density") }
+    var composition: BarComposition? { value(for: "composition").flatMap(BarComposition.init(rawValue:)) }
+    var feature: String? { value(for: "feature") }
 
     func value(for key: String) -> String? {
         decisions.first { $0.key == key }?.value
@@ -54,6 +55,11 @@ enum TweakProviderFactory {
         }
     }
 }
+
+/// Anchor candidates for the "feature" question (visual anchor widget).
+private let anchorCandidates: [String] = [
+    "default.weather", "default.nowplaying", "default.systemmonitor", "default.time",
+]
 
 /// TypeSafe Jev — a System One decision model. It does not generate text; given
 /// `state` + typed `questions`, it returns choices/scores/probabilities with
@@ -128,8 +134,6 @@ struct TypeSafeJevTweakProvider: TweakProvider {
 
         var accentCriteria: [String: String] = [:]
         for (i, hexv) in state.paletteHex.enumerated() {
-            // Vivid mid-tones: skip the near-black background (0) and near-white
-            // foreground (15), offer at most 8 candidates.
             guard i > 0, i < 15, i % 2 == 1, accentCriteria.count < 8 else { continue }
             accentCriteria[String(i)] = "palette index \(i) (#\(hexv))"
         }
@@ -141,14 +145,18 @@ struct TypeSafeJevTweakProvider: TweakProvider {
             ]
         }
 
-        questions["density"] = [
+        questions["composition"] = [
             "type": "choice",
-            "instructions": "How information-dense should the bar be?",
-            "criteria": [
-                "minimal": "Only the few most essential widgets; lots of empty space.",
-                "balanced": "A comfortable set of everyday widgets.",
-                "rich": "Include monitoring and system widgets for maximum utility.",
-            ],
+            "instructions": "Which bar composition (layout arrangement) best suits this wallpaper and the user's intent?",
+            "criteria": Dictionary(uniqueKeysWithValues: BarComposition.allCases.map { ($0.rawValue, $0.label) }),
+        ]
+
+        questions["feature"] = [
+            "type": "choice",
+            "instructions": "Which widget should be the visual anchor of the bar?",
+            "criteria": Dictionary(uniqueKeysWithValues: anchorCandidates.map {
+                ($0, $0.replacingOccurrences(of: "default.", with: ""))
+            }),
         ]
 
         return questions
@@ -177,13 +185,13 @@ struct TypeSafeJevTweakProvider: TweakProvider {
             case "choice":
                 guard let choice = answer["choice"] as? String,
                       let conf = answer["confidence"] as? Double, conf >= threshold else { continue }
-                decisions.append(BarTweakDecision(key: mappedKey(key), value: choice, confidence: conf))
+                let mapped = mappedKey(key, choice: choice)
+                if let mapped { decisions.append(BarTweakDecision(key: mapped.0, value: mapped.1, confidence: conf)) }
             case "score":
                 guard let score = answer["score"] as? Double,
                       let conf = answer["confidence"] as? Double, conf >= threshold else { continue }
                 decisions.append(BarTweakDecision(key: mappedKey(key), value: String(Int(score.rounded())), confidence: conf))
             case "noul":
-                // Not used by our current question set; kept for extensibility.
                 continue
             default:
                 continue
@@ -196,8 +204,30 @@ struct TypeSafeJevTweakProvider: TweakProvider {
         switch key {
         case "formation": return "formation"
         case "accent": return "accent-index"
-        case "density": return "density"
+        case "composition": return "composition"
+        case "feature": return "feature"
         default: return key
+        }
+    }
+
+    /// Validate a choice's value against the expected vocabulary; returns
+    /// (key, validatedValue) or nil when invalid.
+    private static func mappedKey(_ key: String, choice: String) -> (String, String)? {
+        switch key {
+        case "formation":
+            guard ["floating", "full", "islands", "pills"].contains(choice) else { return nil }
+            return ("formation", choice)
+        case "accent":
+            guard let idx = Int(choice), (0...15).contains(idx) else { return nil }
+            return ("accent-index", String(idx))
+        case "composition":
+            guard BarComposition(rawValue: choice) != nil else { return nil }
+            return ("composition", choice)
+        case "feature":
+            guard anchorCandidates.contains(choice) else { return nil }
+            return ("feature", choice)
+        default:
+            return (key, choice)
         }
     }
 }
@@ -264,11 +294,15 @@ struct OpenAICompatibleTweakProvider: TweakProvider {
     }
 
     private static func systemPrompt(state: BarTweakState) -> String {
-        "You are a design decision engine for a macOS status bar. Return ONLY a JSON object with these exact keys:\n" +
-        "- \"formation\": one of \"floating\", \"full\", \"islands\", \"pills\"\n" +
-        "- \"accent\": a string palette index offered below\n" +
-        "- \"density\": one of \"minimal\", \"balanced\", \"rich\"\n" +
-        "Choose values that fit the wallpaper palette and template. No prose, no markdown."
+        let compositions = BarComposition.allCases.map { "\($0.rawValue): \($0.label)" }.joined(separator: "\n")
+        let features = anchorCandidates.map { $0.replacingOccurrences(of: "default.", with: "") }.joined(separator: ", ")
+        return
+            "You are a design decision engine for a macOS status bar. Return ONLY a JSON object with these exact keys:\n" +
+            "- \"formation\": one of \"floating\", \"full\", \"islands\", \"pills\"\n" +
+            "- \"accent\": a string palette index offered below\n" +
+            "- \"composition\": one of:\n" + compositions + "\n" +
+            "- \"feature\": one of these anchor widgets: \(features)\n" +
+            "Choose values that fit the wallpaper palette and template, and vary the composition across generations rather than repeating the same arrangement. No prose, no markdown."
     }
 
     private static func userPrompt(state: BarTweakState) -> String {
@@ -291,9 +325,12 @@ struct OpenAICompatibleTweakProvider: TweakProvider {
         if let accent = json["accent"] as? String, let idx = Int(accent), (0...15).contains(idx) {
             decisions.append(BarTweakDecision(key: "accent-index", value: String(idx), confidence: 1.0))
         }
-        if let density = json["density"] as? String,
-           ["minimal", "balanced", "rich"].contains(density) {
-            decisions.append(BarTweakDecision(key: "density", value: density, confidence: 1.0))
+        if let composition = json["composition"] as? String,
+           BarComposition(rawValue: composition) != nil {
+            decisions.append(BarTweakDecision(key: "composition", value: composition, confidence: 1.0))
+        }
+        if let feature = json["feature"] as? String, anchorCandidates.contains(feature) {
+            decisions.append(BarTweakDecision(key: "feature", value: feature, confidence: 1.0))
         }
         return BarTweakPatch(decisions: decisions)
     }

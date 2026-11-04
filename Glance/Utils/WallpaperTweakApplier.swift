@@ -1,9 +1,18 @@
 import Foundation
 
 /// Applies a confirmed `BarTweakPatch` to the live config via
-/// `ConfigManager.updateConfigValues`. Only validated, in-range decisions are
-/// written; everything else is ignored. Call after the user confirms a preview.
+/// `ConfigManager.updateConfigValues`. It writes validated scalar decisions
+/// (formation, accent) and composes the widget list from the chosen composition
+/// archetype + anchor. Call after the user confirms a preview.
 enum WallpaperTweakApplier {
+
+    private static let canonicalIDs: Set<String> = [
+        "default.spaces", "default.activeapp", "default.inputlanguage", "default.clipboard",
+        "default.weather", "default.nowplaying",
+        "default.systemmonitor", "default.disk", "default.network",
+        "default.volume", "default.brightness", "default.battery", "default.bluetooth",
+        "default.time",
+    ]
 
     @MainActor
     @discardableResult
@@ -19,39 +28,30 @@ enum WallpaperTweakApplier {
             pairs.append(("widgets.pywal.accent-index", String(accent)))
         }
 
-        let displayed = displayedWidgets(density: patch.density, manager: manager)
-        pairs.append(("widgets.displayed", displayed))
+        let composition = patch.composition ?? .classicStatus
+        let list = WallpaperComposer.compose(
+            composition,
+            anchor: patch.feature,
+            available: availableWidgetIDs(manager: manager),
+            includeSystem: true)
+        pairs.append(("widgets.displayed", tomlArray(list)))
 
         guard !pairs.isEmpty else { return false }
         manager.updateConfigValues(pairs: pairs)
         return true
     }
 
-    /// Build the TOML array value for `widgets.displayed`.
-    private static func displayedWidgets(density: String?, manager: ConfigManager) -> String {
-        let current = manager.config.rootToml.widgets?.displayed.map(\.id) ?? []
-        var base = current
-
-        switch density {
-        case "minimal":
-            let essential = ["default.spaces", "default.activeapp", "default.nowplaying", "default.time"]
-            let intersection = essential.filter { current.contains($0) }
-            base = intersection.isEmpty ? essential : intersection
-        case "rich":
-            let monitor = ["default.systemmonitor", "default.network", "default.volume",
-                           "default.brightness", "default.disk"]
-            for widget in monitor where !base.contains(widget) {
-                // Insert before the trailing time widget if present, else append.
-                if let timeIndex = base.lastIndex(of: "default.time") {
-                    base.insert(widget, at: timeIndex)
-                } else {
-                    base.append(widget)
-                }
+    private static func availableWidgetIDs(manager: ConfigManager) -> Set<String> {
+        var set = canonicalIDs
+        if let displayed = manager.config.rootToml.widgets?.displayed {
+            for widget in displayed where !["divider", "spacer"].contains(widget.id) {
+                set.insert(widget.id)
             }
-        default:
-            break // balanced keeps the template's widget set.
         }
+        return set
+    }
 
-        return "[" + base.map { "\"\($0)\"" }.joined(separator: ", ") + "]"
+    private static func tomlArray(_ ids: [String]) -> String {
+        "[" + ids.map { "\"\($0)\"" }.joined(separator: ", ") + "]"
     }
 }
