@@ -19,11 +19,11 @@ struct BarVariationCandidate: Identifiable {
 /// candidate. Applying one writes the same decisions the applier understands.
 enum WallpaperVariation {
 
-    private static let archetypes: [(BarComposition, String)] = [
-        (.classicStatus, "floating"),
-        (.flanked, "full"),
-        (.asymmetricDock, "floating"),
-        (.layeredPills, "pills"),
+    private static let archetypes: [(BarComposition, String, Bool)] = [
+        (.classicStatus, "floating", true),
+        (.flanked, "full", false),
+        (.asymmetricDock, "floating", true),
+        (.layeredPills, "pills", true),
     ]
 
     @MainActor
@@ -34,8 +34,8 @@ enum WallpaperVariation {
         let available = WallpaperTweakApplier.availableWidgetIDs(manager: manager)
         let dir = previewDirectory()
 
-        return archetypes.compactMap { composition, formation in
-            let list = WallpaperComposer.compose(composition, anchor: nil, available: available, includeSystem: true)
+        return archetypes.compactMap { composition, formation, includeSystem in
+            let list = WallpaperComposer.compose(composition, anchor: nil, available: available, includeSystem: includeSystem)
 
             var text = base
             text = inject(text, table: "experimental.foreground", key: "formation", value: formation)
@@ -69,44 +69,43 @@ enum WallpaperVariation {
         return nil
     }
 
-    /// Insert/update `key = value` inside `[table]`, creating the table if missing.
+    /// Insert/update `key = value` inside `[table]`, creating the table if
+    /// missing. If the key already exists in that table it is replaced; if not,
+    /// the key is appended at the end of the table (before the next header).
     private static func inject(_ source: String, table: String, key: String, value: String) -> String {
         let header = "[\(table)]"
         let pattern = "^\(NSRegularExpression.escapedPattern(for: key))\\s*="
-        var lines = source.components(separatedBy: "\n")
-        let foundIndex = lines.firstIndex { $0.trimmingCharacters(in: .whitespaces) == header }
+        let lines = source.components(separatedBy: "\n")
 
-        guard let found = foundIndex else {
-            lines.append("")
-            lines.append(header)
-            lines.append("\(key) = \(value)")
-            return lines.joined(separator: "\n")
+        // Locate the table span: start = header index, end = next [section] or EOF.
+        guard let start = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == header }) else {
+            var out = source
+            if !out.isEmpty && !out.hasSuffix("\n") { out += "\n" }
+            out += "\n\(header)\n\(key) = \(value)\n"
+            return out
         }
-
-        var out = lines
-        var replaced = false
-        var j = 0
-        while j < out.count {
-            let trimmed = out[j].trimmingCharacters(in: .whitespaces)
+        var end = lines.count
+        for i in (start + 1)..<lines.count {
+            let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
             if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
-                if trimmed == header && !replaced {
-                    out.insert("\(key) = \(value)", at: j + 1)
-                    replaced = true
-                    j += 1
-                }
-            } else if !replaced && trimmed.range(of: pattern, options: .regularExpression) != nil {
-                out[j] = "\(key) = \(value)"
-                replaced = true
-            }
-            j += 1
-        }
-        if !replaced {
-            if let insertAt = out.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == header }) {
-                out.insert("\(key) = \(value)", at: insertAt + 1)
-            } else {
-                out.append("\(key) = \(value)")
+                end = i
+                break
             }
         }
+
+        // Replace an existing key within the table span.
+        for i in (start + 1)..<end {
+            let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
+            if !trimmed.hasPrefix("#"), trimmed.range(of: pattern, options: .regularExpression) != nil {
+                var out = lines
+                out[i] = "\(key) = \(value)"
+                return out.joined(separator: "\n")
+            }
+        }
+
+        // Key missing: insert at the end of the table (before the next header).
+        var out = lines
+        out.insert("\(key) = \(value)", at: end)
         return out.joined(separator: "\n")
     }
 

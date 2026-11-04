@@ -33,7 +33,20 @@ enum WidgetRole {
 /// Composes a concrete `widgets.displayed` list from a composition archetype, an
 /// optional anchor widget, the available widget set, and the template's style.
 /// Stays within the given tokens — it only orders/selects real widgets.
+///
+/// Polish rules derived from OpenAI's generative-UI guidance:
+/// - Restraint: a small total budget, not every widget at once.
+/// - One focal point: the anchor is always present and prominent.
+/// - Quiet supporting clusters (status/monitor/system) are kept small.
+/// - Grouping is coherent: dividers separate families, spacers give rhythm.
 enum WallpaperComposer {
+
+    // Total visible widget budget (excluding dividers/spacers).
+    private static let totalBudget = 6
+    // Per-cluster caps keep any one group from dominating.
+    private static let statusCap = 2
+    private static let monitorCap = 2
+    private static let systemCap = 2
 
     static func role(of widget: String) -> WidgetRole {
         switch widget {
@@ -65,62 +78,74 @@ enum WallpaperComposer {
         includeSystem: Bool
     ) -> [String] {
         var out: [String] = []
-        func add(_ widget: String) {
-            if available.contains(widget) && !out.contains(widget) { out.append(widget) }
+        var count = 0
+        func add(_ widget: String, role: WidgetRole) {
+            guard count < totalBudget else { return }
+            guard available.contains(widget), !out.contains(widget) else { return }
+            // Per-cluster caps.
+            switch role {
+            case .status where out.filter { Self.role(of: $0) == .status }.count >= statusCap: return
+            case .monitor where out.filter { Self.role(of: $0) == .monitor }.count >= monitorCap: return
+            case .system where out.filter { Self.role(of: $0) == .system }.count >= systemCap: return
+            default: break
+            }
+            out.append(widget)
+            count += 1
         }
         func addRole(_ targetRole: WidgetRole, maxCount: Int = .max) {
             var added = 0
             for id in orderedIDs where Self.role(of: id) == targetRole && added < maxCount {
-                guard available.contains(id), !out.contains(id) else { continue }
-                out.append(id); added += 1
+                guard available.contains(id), !out.contains(id), count < totalBudget else { continue }
+                out.append(id)
+                count += 1
+                added += 1
             }
         }
 
         let emphasis = pickAnchor(anchor: anchor, available: available)
+        // Ensure the anchor is not double-added later.
+        add(emphasis, role: role(of: emphasis))
 
         switch composition {
         case .classicStatus:
-            // left: status · divider · anchor-center · spacer · monitor · spacer · system · divider · time
-            addRole(.status, maxCount: 2)
+            // status · divider · anchor-center · spacer · (monitor/system) · divider · clock
+            addRole(.status, maxCount: statusCap)
+            if !out.contains(emphasis) { add(emphasis, role: role(of: emphasis)) }
             out.append("divider")
-            add(emphasis)
-            out.append("spacer")
-            addRole(.monitor, maxCount: 2)
-            if includeSystem { addRole(.system, maxCount: 2) }
+            if !out.contains(emphasis) { out.append(emphasis); count += 1 }
+            if count < totalBudget { addRole(.monitor, maxCount: monitorCap) }
+            if includeSystem && count < totalBudget { addRole(.system, maxCount: systemCap) }
             out.append("divider")
             addRole(.clock, maxCount: 1)
 
         case .flanked:
-            // left cluster (status + primary), right cluster (monitor + system + clock)
-            addRole(.status, maxCount: 2)
-            addRole(.primary, maxCount: 1)
+            // left cluster (status + anchor), right cluster (monitor/system + clock), open middle
+            addRole(.status, maxCount: statusCap)
+            if !out.contains(emphasis) { add(emphasis, role: role(of: emphasis)) }
             out.append("spacer")
             out.append("spacer")
-            addRole(.monitor, maxCount: 2)
-            if includeSystem { addRole(.system, maxCount: 2) }
+            if count < totalBudget { addRole(.monitor, maxCount: monitorCap) }
+            if includeSystem && count < totalBudget { addRole(.system, maxCount: systemCap) }
             out.append("divider")
             addRole(.clock, maxCount: 1)
 
         case .asymmetricDock:
-            // docked left cluster, essentials right — a compact shelf
-            addRole(.primary, maxCount: 1)
-            addRole(.status, maxCount: 2)
+            // compact shelf: anchor first, then a few system essentials, clock pinned right
+            if !out.contains(emphasis) { add(emphasis, role: role(of: emphasis)) }
+            addRole(.status, maxCount: 1)
             out.append("spacer")
-            if includeSystem { addRole(.system, maxCount: 3) }
+            if includeSystem && count < totalBudget { addRole(.system, maxCount: systemCap) }
             out.append("divider")
             addRole(.clock, maxCount: 1)
 
         case .layeredPills:
-            // group by role into pill clusters separated by spacers
-            addRole(.status, maxCount: 2)
+            // distinct pill groups with literal spacers between
+            addRole(.status, maxCount: 1)
             out.append("spacer")
-            addRole(.primary, maxCount: 2)
+            if !out.contains(emphasis) { add(emphasis, role: role(of: emphasis)) }
+            if count < totalBudget { addRole(.monitor, maxCount: 1) }
             out.append("spacer")
-            addRole(.monitor, maxCount: 2)
-            if includeSystem {
-                out.append("spacer")
-                addRole(.system, maxCount: 2)
-            }
+            if includeSystem && count < totalBudget { addRole(.system, maxCount: 1) }
             out.append("spacer")
             addRole(.clock, maxCount: 1)
         }
