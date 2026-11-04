@@ -474,22 +474,27 @@ struct ExperimentalConfig: Decodable {
     let background: BackgroundConfig
     /// Recolor the bar from the desktop wallpaper instead of the pywal cache.
     let wallpaperPalette: Bool
+    /// Wallpaper → bar generation settings and provider.
+    let wallpaper: WallpaperConfig?
 
     enum CodingKeys: String, CodingKey {
         case foreground, background
         case wallpaperPalette = "wallpaper-palette"
+        case wallpaper
     }
     
     init() {
         self.foreground = ForegroundConfig()
         self.background = BackgroundConfig()
         self.wallpaperPalette = false
+        self.wallpaper = nil
     }
 
-    init(foreground: ForegroundConfig, background: BackgroundConfig, wallpaperPalette: Bool = false) {
+    init(foreground: ForegroundConfig, background: BackgroundConfig, wallpaperPalette: Bool = false, wallpaper: WallpaperConfig? = nil) {
         self.foreground = foreground
         self.background = background
         self.wallpaperPalette = wallpaperPalette
+        self.wallpaper = wallpaper
     }
 
     init(from decoder: Decoder) throws {
@@ -497,6 +502,66 @@ struct ExperimentalConfig: Decodable {
         foreground = try container.decodeIfPresent(ForegroundConfig.self, forKey: .foreground) ?? ForegroundConfig()
         background = try container.decodeIfPresent(BackgroundConfig.self, forKey: .background) ?? BackgroundConfig()
         wallpaperPalette = try container.decodeIfPresent(Bool.self, forKey: .wallpaperPalette) ?? false
+        wallpaper = try container.decodeIfPresent(WallpaperConfig.self, forKey: .wallpaper)
+    }
+}
+
+/// `[experimental.wallpaper]` — generation behavior.
+struct WallpaperConfig: Decodable {
+    let autoGenerate: Bool
+    let provider: WallpaperProviderConfig?
+
+    enum CodingKeys: String, CodingKey {
+        case autoGenerate = "auto-generate"
+        case provider
+    }
+
+    init() {
+        self.autoGenerate = false
+        self.provider = nil
+    }
+
+    init(autoGenerate: Bool, provider: WallpaperProviderConfig?) {
+        self.autoGenerate = autoGenerate
+        self.provider = provider
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        autoGenerate = try container.decodeIfPresent(Bool.self, forKey: .autoGenerate) ?? false
+        provider = try container.decodeIfPresent(WallpaperProviderConfig.self, forKey: .provider)
+    }
+}
+
+/// `[experimental.wallpaper.provider]` — which backend generates tweaks.
+struct WallpaperProviderConfig: Decodable {
+    /// "typesafe-jev" or "openai-compatible".
+    let type: String
+    let baseURL: String?
+    let model: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type, model
+        case baseURL = "base-url"
+    }
+
+    init() {
+        self.type = "typesafe-jev"
+        self.baseURL = nil
+        self.model = nil
+    }
+
+    init(type: String, baseURL: String?, model: String?) {
+        self.type = type
+        self.baseURL = baseURL
+        self.model = model
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decodeIfPresent(String.self, forKey: .type) ?? "typesafe-jev"
+        baseURL = try container.decodeIfPresent(String.self, forKey: .baseURL)
+        model = try container.decodeIfPresent(String.self, forKey: .model)
     }
 }
 

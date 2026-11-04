@@ -3,7 +3,7 @@ import SwiftUI
 enum SettingsDestination: Hashable {
   case appearance, layout, widgets, fonts
   case module(String)
-  case randomazzo, application, about
+  case randomazzo, wallpaper, application, about
 }
 
 struct SettingsView: View {
@@ -32,6 +32,7 @@ struct SettingsView: View {
             route("Layout", icon: "rectangle.3.group", to: .layout)
             route("Widget order", icon: "list.bullet", to: .widgets)
             route("Fonts", icon: "textformat", to: .fonts)
+            route("Wallpaper", icon: "photo.on.rectangle", to: .wallpaper)
           }
         }
         ForEach(SettingsModule.categories, id: \.self) { category in
@@ -119,6 +120,7 @@ struct SettingsView: View {
     case .module("default.time"): TimeSettingsTab()
     case .module(let id): WidgetsSettingsTab(moduleID: id)
     case .randomazzo: RandomazzoSettingsTab()
+    case .wallpaper: WallpaperSettingsTab()
     case .about: AboutSettingsTab()
     }
   }
