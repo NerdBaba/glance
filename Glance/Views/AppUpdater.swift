@@ -10,7 +10,8 @@ final class AppUpdater: ObservableObject {
     /// GitHub releases page — opened when user clicks "Update".
     static let releasesURL = URL(string: "https://github.com/azixxxxx/glance/releases/latest")!
 
-    init() {
+    init(checkAutomatically: Bool = true) {
+        guard checkAutomatically else { return }
         fetchLatestRelease()
         // Check for updates every 30 minutes
         updateTimer = Timer.scheduledTimer(

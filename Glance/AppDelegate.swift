@@ -11,6 +11,8 @@ class GlanceHostingView<Content: View>: NSHostingView<Content> {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var backgroundPanel: NSPanel?
     private var menuBarPanel: NSPanel?
+    private var additionalPanels: [String: NSPanel] = [:]
+    private var additionalManagers: [String: ConfigManager] = [:]
     private var statusItem: NSStatusItem?
     private lazy var updaterController = SPUStandardUpdaterController(
         startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
@@ -37,7 +39,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // A diagnostic panel uses stable preview widgets and does not seed
         // presets, change window gaps, or start normal application services.
-        if CommandLine.arguments.contains("--preview-panel") {
+        if CommandLine.arguments.contains("--preview-panel") || CommandLine.arguments.contains("--benchmark-panel") {
+            // The benchmark requires an explicit disposable config, uses real
+            // providers, and skips presets, hotkeys, and window-gap services.
+            if CommandLine.arguments.contains("--benchmark-panel"),
+               !CommandLine.arguments.contains("--config") { NSApp.terminate(nil); return }
             guard let screenFrame = NSScreen.main?.frame else { return }
             let previewFrame = menuBarFrame(on: screenFrame)
             setupPanel(
@@ -101,20 +107,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     /// Configures yabai external_bar based on current bar position and dimensions.
     private func configureYabaiExternalBar() {
-        let fg = ConfigManager.shared.config.experimental.foreground
-        let position = fg.position
-        let barHeight = fg.resolveHeight()
-        let topMargin = fg.topMargin
-        
+        guard let screen = NSScreen.main else { return }
+        let reserved = BarReservedSpace(config: ConfigManager.shared.config, width: screen.frame.width)
         YabaiConfigManager.shared.updateExternalBarConfig(
-            position: position,
-            barHeight: barHeight,
-            topMargin: topMargin
-        )
+            topPadding: reserved.top, bottomPadding: reserved.bottom, leftPadding: reserved.left, rightPadding: reserved.right)
     }
 
     @objc private func screenParametersDidChange(_ notification: Notification) {
         setupPanels()
+        configureYabaiExternalBar()
     }
 
     // MARK: - Status Item (Tray Icon)
@@ -192,9 +193,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Panels
 
-    private func menuBarFrame(on screenFrame: NSRect) -> NSRect {
-        let config = ConfigManager.shared.config
+    private func menuBarFrame(on screenFrame: NSRect, config: Config = ConfigManager.shared.config) -> NSRect {
         let fg = config.experimental.foreground
+        if fg.isVertical {
+            let thickness = max(24, fg.resolveHeight())
+            let edge = max(0, fg.topMargin)
+            return NSRect(x: fg.position == "left" ? screenFrame.minX + edge : screenFrame.maxX - edge - thickness,
+                          y: screenFrame.minY + max(0, fg.margin), width: thickness,
+                          height: max(1, screenFrame.height - max(0, fg.margin) * 2))
+        }
         let scale = fg.renderingScale(for: screenFrame.width)
         let height = max(fg.resolveHeight(), 1) * scale
         let insets = BarDrawingInsets(appearance: config.appearance, foreground: fg)
@@ -221,11 +228,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             frame: menuBarFrame(on: screenFrame),
             level: Int(CGWindowLevelForKey(.backstopMenu)),
             hostingRootView: AnyView(BarPanelContent()))
+        updateAdditionalPanels(on: screenFrame)
+    }
+
+    /// Adi Cuts/Hack and Pwidgets have multiple independently positioned bars.
+    private func updateAdditionalPanels(on screenFrame: NSRect) {
+        let mainConfig = ConfigManager.shared.config
+        let snapshots = mainConfig.rootToml.additionalBars ?? [:]
+        for name in Array(additionalPanels.keys) where snapshots[name] == nil {
+            additionalPanels.removeValue(forKey: name)?.close()
+            additionalManagers.removeValue(forKey: name)
+        }
+        for (name, snapshot) in snapshots {
+            let manager: ConfigManager
+            if let existing = additionalManagers[name] {
+                manager = existing
+                manager.updateSnapshot(snapshot, pywalColors: mainConfig.pywalColors)
+            } else {
+                manager = ConfigManager(snapshot: snapshot, pywalColors: mainConfig.pywalColors)
+                additionalManagers[name] = manager
+            }
+            var panel = additionalPanels[name]
+            setupPanel(&panel, frame: menuBarFrame(on: screenFrame, config: manager.config),
+                       level: Int(CGWindowLevelForKey(.backstopMenu)),
+                       hostingRootView: AnyView(BarPanelContent(configManager: manager)))
+            panel?.alphaValue = barVisible ? 1 : 0
+            additionalPanels[name] = panel
+        }
     }
 
     /// Updates the menu bar panel frame to match current config (bar height + margins).
     private func updateMenuBarPanelFrame() {
         guard let screenFrame = NSScreen.main?.frame else { return }
+        updateAdditionalPanels(on: screenFrame)
         let newFrame = menuBarFrame(on: screenFrame)
         
         if let panel = menuBarPanel {
@@ -248,7 +283,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hostingRootView: AnyView
     ) {
         if let existingPanel = panel {
-            existingPanel.setFrame(frame, display: true)
+            if existingPanel.frame != frame { existingPanel.setFrame(frame, display: true) }
             return
         }
 
@@ -291,10 +326,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func toggleBarVisibility() {
         barVisible.toggle()
         userHidBar = !barVisible
+        BarRuntimeActivity.shared.visible = barVisible
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.2
             menuBarPanel?.animator().alphaValue = barVisible ? 1 : 0
             backgroundPanel?.animator().alphaValue = barVisible ? 1 : 0
+            for panel in additionalPanels.values { panel.animator().alphaValue = barVisible ? 1 : 0 }
         }
     }
 
@@ -345,17 +382,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if shouldHide && barVisible {
             barVisible = false
+            BarRuntimeActivity.shared.visible = false
             NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = 0.3
                 menuBarPanel?.animator().alphaValue = 0
                 backgroundPanel?.animator().alphaValue = 0
+                for panel in additionalPanels.values { panel.animator().alphaValue = 0 }
             }
         } else if !shouldHide && !barVisible {
             barVisible = true
+            BarRuntimeActivity.shared.visible = true
             NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = 0.3
                 menuBarPanel?.animator().alphaValue = 1
                 backgroundPanel?.animator().alphaValue = 1
+                for panel in additionalPanels.values { panel.animator().alphaValue = 1 }
             }
         }
     }

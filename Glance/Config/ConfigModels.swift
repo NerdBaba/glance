@@ -12,9 +12,11 @@ struct RootToml: Decodable {
     var aerospace: AerospaceConfig?
     var experimental: ExperimentalConfig?
     var widgets: WidgetsSection?
+    var additionalBars: [String: RootToml]?
 
     enum CodingKeys: String, CodingKey {
         case theme, style, preset, hotkey, yabai, aerospace, experimental, widgets
+        case additionalBars = "additional-bars"
         case usePywal = "use-pywal"
         case appearanceOverrides = "appearance"
     }
@@ -30,6 +32,7 @@ struct RootToml: Decodable {
         self.aerospace = nil
         self.experimental = nil
         self.widgets = nil
+        self.additionalBars = nil
     }
 
     init(from decoder: Decoder) throws {
@@ -44,6 +47,7 @@ struct RootToml: Decodable {
         aerospace = try container.decodeIfPresent(AerospaceConfig.self, forKey: .aerospace)
         experimental = try container.decodeIfPresent(ExperimentalConfig.self, forKey: .experimental)
         widgets = try container.decodeIfPresent(WidgetsSection.self, forKey: .widgets)
+        additionalBars = try container.decodeIfPresent([String: RootToml].self, forKey: .additionalBars)
     }
 }
 
@@ -149,6 +153,8 @@ struct Config: Equatable {
 
 struct PywalColors {
     let colors: [Color]
+
+    init(colors: [Color]) { self.colors = colors }
 
     init?() {
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
@@ -506,8 +512,11 @@ struct ForegroundConfig: Decodable {
     let topMargin: CGFloat      // Offset from screen top
     let margin: CGFloat         // Horizontal screen-edge margin (all formations)
     let gap: CGFloat            // Gap between groups in pills mode
-    let position: String        // "top" or "bottom"
+    let position: String        // top, bottom, left, right
+    var isVertical: Bool { position == "left" || position == "right" }
     let floatingWidth: CGFloat  // Fixed width for a compact floating bar; 0 fills available width
+    let floatingInset: CGFloat // Total vertical inset inside the floating panel
+    let floatingFlatTop: Bool // Flush top edge with rounded bottom corners
     let horizontalAlignment: String // left, center, or right when floatingWidth is set
     let leftGroupWidth: CGFloat
     let leftGroupOffset: CGFloat
@@ -515,6 +524,7 @@ struct ForegroundConfig: Decodable {
     let rightGroupWidth: CGFloat
     let centerGroupOffset: CGFloat
     let referenceWidth: CGFloat // Optional screenshot width for uniform display scaling
+    let scaleContent: Bool // False keeps fonts and bar height at native display size
 
     init() {
         self.height = .defaultHeight
@@ -528,6 +538,8 @@ struct ForegroundConfig: Decodable {
         self.gap = 10
         self.position = "top"
         self.floatingWidth = 0
+        self.floatingInset = 4
+        self.floatingFlatTop = false
         self.horizontalAlignment = "center"
         self.leftGroupWidth = 0
         self.leftGroupOffset = 0
@@ -535,6 +547,7 @@ struct ForegroundConfig: Decodable {
         self.rightGroupWidth = 0
         self.centerGroupOffset = 0
         self.referenceWidth = 0
+        self.scaleContent = true
     }
 
     init(from decoder: Decoder) throws {
@@ -612,8 +625,11 @@ struct ForegroundConfig: Decodable {
         }
         
         // position
-        position = try container.decodeIfPresent(String.self, forKey: .position) ?? "top"
+        let decodedPosition = try container.decodeIfPresent(String.self, forKey: .position) ?? "top"
+        position = ["top", "bottom", "left", "right"].contains(decodedPosition) ? decodedPosition : "top"
         floatingWidth = Self.decodeCGFloat(container, forKey: .floatingWidth, default: 0)
+        floatingInset = min(max(Self.decodeCGFloat(container, forKey: .floatingInset, default: 4), 0), 40)
+        floatingFlatTop = try container.decodeIfPresent(Bool.self, forKey: .floatingFlatTop) ?? false
         let decodedAlignment = try container.decodeIfPresent(String.self, forKey: .horizontalAlignment) ?? "center"
         horizontalAlignment = ["left", "center", "right"].contains(decodedAlignment) ? decodedAlignment : "center"
         leftGroupWidth = Self.decodeCGFloat(container, forKey: .leftGroupWidth, default: 0)
@@ -623,6 +639,7 @@ struct ForegroundConfig: Decodable {
         centerGroupOffset = Self.decodeCGFloat(container, forKey: .centerGroupOffset, default: 0)
         let decodedReferenceWidth = Self.decodeCGFloat(container, forKey: .referenceWidth, default: 0)
         referenceWidth = decodedReferenceWidth.isFinite ? max(0, decodedReferenceWidth) : 0
+        scaleContent = try container.decodeIfPresent(Bool.self, forKey: .scaleContent) ?? true
     }
     
     enum CodingKeys: String, CodingKey {
@@ -637,6 +654,8 @@ struct ForegroundConfig: Decodable {
         case gap
         case position
         case floatingWidth = "floating-width"
+        case floatingInset = "floating-inset"
+        case floatingFlatTop = "floating-flat-top"
         case horizontalAlignment = "horizontal-alignment"
         case leftGroupWidth = "left-group-width"
         case leftGroupOffset = "left-group-offset"
@@ -644,6 +663,7 @@ struct ForegroundConfig: Decodable {
         case rightGroupWidth = "right-group-width"
         case centerGroupOffset = "center-group-offset"
         case referenceWidth = "reference-width"
+        case scaleContent = "scale-content"
     }
 
     private static func decodeCGFloat(
@@ -657,7 +677,7 @@ struct ForegroundConfig: Decodable {
     }
     
     func renderingScale(for width: CGFloat) -> CGFloat {
-        referenceWidth > 0 && width.isFinite && width > 0 ? width / referenceWidth : 1
+        scaleContent && referenceWidth > 0 && width.isFinite && width > 0 ? width / referenceWidth : 1
     }
 
     func resolveHeight() -> CGFloat {

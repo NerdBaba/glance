@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NowPlayingPopup: View {
     @ObservedObject private var playingManager = NowPlayingManager.shared
+    @State private var demand = UUID()
     @ObservedObject var configManager = ConfigManager.shared
     var appearance: AppearanceConfig { configManager.config.appearance }
 
@@ -17,9 +18,19 @@ struct NowPlayingPopup: View {
                         .lineLimit(2)
                     if !song.artist.isEmpty {
                         Text(song.artist)
-                            .font(.system(size: 12))
+                            .font(.system(size: 14))
                             .opacity(0.6)
                             .lineLimit(1)
+                    }
+                    if !song.album.isEmpty {
+                        Text(song.album).font(.system(size: 14)).opacity(0.7).lineLimit(2)
+                    }
+                    if song.position != nil || song.duration != nil {
+                        Text(GlanceMusicFormatting.time(song.position) + " / " + GlanceMusicFormatting.time(song.duration))
+                            .font(.system(size: 14, design: .monospaced)).monospacedDigit()
+                    }
+                    if let position = song.position, let duration = song.duration, duration > 0 {
+                        ProgressView(value: min(position, duration), total: duration).tint(appearance.accentColor)
                     }
                     Text("Playing through your default output device.")
                         .font(.system(size: 11))
@@ -33,6 +44,8 @@ struct NowPlayingPopup: View {
         }
         .padding(22)
         .frame(width: 264)
+        .onAppear { playingManager.setDemand(demand, enabled: true) }
+        .onDisappear { playingManager.setDemand(demand, enabled: false) }
     }
 }
 

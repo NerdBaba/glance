@@ -26,25 +26,27 @@ struct VolumeWidget: View {
         min(max(ProcessInfo.processInfo.environment["GLANCE_PREVIEW_VOLUME_PERCENT"].flatMap(Int.init) ?? 55, 0), 100)
     }
 
-    private var rampGlyph: String? {
+    private var rampEntry: (index: Int, glyph: String?)? {
         guard Self.isPreviewRender || !viewModel.isMuted else { return nil }
-        let ramps = configProvider.config.compactMap { key, value -> (Int, String)? in
-            guard key.hasPrefix("ramp-volume-"), let index = Int(key.dropFirst("ramp-volume-".count)),
-                  let glyph = value.stringValue else { return nil }
-            return (index, glyph)
-        }.sorted { $0.0 < $1.0 }
-        guard !ramps.isEmpty else { return nil }
+        var indices = Set(configProvider.config.keys.compactMap { key -> Int? in
+            if key.hasPrefix("ramp-volume-") { return Int(key.dropFirst("ramp-volume-".count)) }
+            if key.hasPrefix("symbol-ramp-volume-") { return Int(key.dropFirst("symbol-ramp-volume-".count)) }
+            return nil
+        })
+        guard !indices.isEmpty else { return nil }
+        if configProvider.config.keys.contains(where: { $0.hasPrefix("symbol-ramp-volume-") }) { indices.formUnion([0, 1, 2]) }
+        let levels = indices.sorted()
         let percent = Self.isPreviewRender ? previewPercent : viewModel.volumePercent
-        let index = min(ramps.count - 1, max(0, percent) * ramps.count / 100)
-        return ramps[index].1
+        let level = levels[min(levels.count - 1, max(0, percent) * levels.count / 100)]
+        return (level, configProvider.config["ramp-volume-" + String(level)]?.stringValue)
     }
 
-    @ViewBuilder
-    private var volumeIcon: some View {
-        if let glyph = rampGlyph {
-            PolybarIcon(config: configProvider, glyph: glyph, systemName: "speaker.wave.2.fill")
+    @ViewBuilder private var volumeIcon: some View {
+        if let entry = rampEntry {
+            PolybarIcon(config: configProvider, glyph: entry.glyph, systemName: Self.isPreviewRender ? "speaker.wave.2.fill" : viewModel.volumeIconName,
+                        symbolKey: configProvider.config["symbol-ramp-volume-" + String(entry.index)] == nil ? "symbol" : "symbol-ramp-volume-" + String(entry.index))
         } else {
-            Image(systemName: Self.isPreviewRender ? "speaker.wave.2.fill" : viewModel.volumeIconName)
+            PolybarIcon(config: configProvider, glyph: nil, systemName: Self.isPreviewRender ? "speaker.wave.2.fill" : viewModel.volumeIconName)
                 .barStatusSymbol(opticalYOffset: -0.2)
         }
     }
@@ -182,7 +184,7 @@ struct VolumeWidget: View {
 }
 
 /// Transparent NSView overlay that captures scroll wheel events.
-private struct VolumeScrollOverlay: NSViewRepresentable {
+struct VolumeScrollOverlay: NSViewRepresentable {
     let onScroll: (CGFloat) -> Void
 
     func makeNSView(context: Context) -> VolumeScrollNSView {

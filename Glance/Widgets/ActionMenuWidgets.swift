@@ -7,54 +7,16 @@ struct LauncherWidget: View {
 
     @Environment(\.widgetFont) private var widgetFont
     @State private var isPresented = false
-    @State private var searchText = ""
-    @State private var applications = LaunchableApplication.installed
-
     private var label: String { config.config["label"]?.stringValue ?? "Apps" }
     private var symbol: String { config.config["symbol"]?.stringValue ?? "square.grid.2x2" }
     private var displayMode: String { config.config["display-mode"]?.stringValue ?? "icon" }
-    private var filteredApplications: [LaunchableApplication] {
-        guard !searchText.isEmpty else { return applications }
-        return applications.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
-    }
-
     var body: some View {
         Button { isPresented.toggle() } label: {
             ActionWidgetLabel(symbol: symbol, label: label, displayMode: displayMode, font: widgetFont, config: config)
         }
         .buttonStyle(.plain)
         .experimentalConfiguration(horizontalPadding: 6)
-        .popover(isPresented: $isPresented, arrowEdge: .top) {
-            VStack(alignment: .leading, spacing: 10) {
-                TextField("Search apps", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(filteredApplications) { app in
-                            Button {
-                                NSWorkspace.shared.openApplication(
-                                    at: app.url,
-                                    configuration: NSWorkspace.OpenConfiguration(),
-                                    completionHandler: { _, _ in }
-                                )
-                                isPresented = false
-                            } label: {
-                                Label {
-                                    Text(app.name).lineLimit(1)
-                                } icon: {
-                                    Image(nsImage: app.icon).resizable().frame(width: 18, height: 18)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 3)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .frame(width: 240, height: min(CGFloat(filteredApplications.count) * 28, 320))
-            }
-            .padding(12)
-        }
+        .modifier(AppLauncherPresentation(isPresented: $isPresented))
         .help("Open app launcher")
     }
 }
@@ -66,7 +28,6 @@ struct PowerWidget: View {
 
     @Environment(\.widgetFont) private var widgetFont
     @State private var isPresented = false
-    @State private var actionToConfirm: PowerAction?
 
     private var label: String { config.config["label"]?.stringValue ?? "Power" }
     private var symbol: String { config.config["symbol"]?.stringValue ?? "power" }
@@ -78,6 +39,16 @@ struct PowerWidget: View {
         }
         .buttonStyle(.plain)
         .experimentalConfiguration(horizontalPadding: 6)
+        .modifier(PowerMenuPresentation(isPresented: $isPresented))
+        .help("Open power menu")
+    }
+}
+
+struct PowerMenuPresentation: ViewModifier {
+    @Binding var isPresented: Bool
+    @State private var actionToConfirm: PowerAction?
+    func body(content: Content) -> some View {
+        content
         .popover(isPresented: $isPresented, arrowEdge: .top) {
             VStack(alignment: .leading, spacing: 4) {
                 powerButton("Sleep", symbol: "moon.zzz", action: .sleep)
@@ -105,7 +76,7 @@ struct PowerWidget: View {
         } message: {
             Text("This will affect the whole Mac.")
         }
-        .help("Open power menu")
+
     }
 
     private func powerButton(_ title: String, symbol: String, action: PowerAction) -> some View {
@@ -187,7 +158,7 @@ private struct ActionWidgetLabel: View {
     }
 }
 
-private struct LaunchableApplication: Identifiable {
+struct LaunchableApplication: Identifiable {
     let url: URL
     let name: String
     let icon: NSImage
@@ -200,6 +171,7 @@ private struct LaunchableApplication: Identifiable {
             FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications").path,
         ]
         var seen = Set<String>()
+        var bundleIDs = Set<String>()
         var apps: [LaunchableApplication] = []
 
         for root in roots {
@@ -212,6 +184,7 @@ private struct LaunchableApplication: Identifiable {
             while let url = enumerator.nextObject() as? URL {
                 guard url.pathExtension == "app", seen.insert(url.path).inserted else { continue }
                 enumerator.skipDescendants()
+                if let bundleID = Bundle(url: url)?.bundleIdentifier, !bundleIDs.insert(bundleID).inserted { continue }
                 let name = url.deletingPathExtension().lastPathComponent
                 apps.append(LaunchableApplication(
                     url: url,
@@ -221,5 +194,46 @@ private struct LaunchableApplication: Identifiable {
             }
         }
         return apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+}
+
+
+struct AppLauncherPresentation: ViewModifier {
+    @Binding var isPresented: Bool
+    func body(content: Content) -> some View {
+        content.popover(isPresented: $isPresented, arrowEdge: .top) {
+            GlanceAppLauncher { isPresented = false }
+        }
+    }
+}
+
+private struct GlanceAppLauncher: View {
+    let dismiss: () -> Void
+    @State private var search = ""
+    @State private var apps = LaunchableApplication.installed
+    private var filtered: [LaunchableApplication] {
+        search.isEmpty ? apps : apps.filter { $0.name.localizedCaseInsensitiveContains(search) }
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            TextField("Search apps", text: $search).textFieldStyle(.roundedBorder)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2) {
+                    ForEach(filtered) { app in
+                        Button {
+                            NSWorkspace.shared.openApplication(at: app.url, configuration: .init()) { _, _ in }
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Image(nsImage: app.icon).resizable().frame(width: 20, height: 20)
+                                Text(app.name).lineLimit(1)
+                                Spacer()
+                            }.padding(.vertical, 4).contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                    }
+                    if filtered.isEmpty { Text("No matching applications").foregroundStyle(.secondary) }
+                }
+            }.frame(width: 280, height: min(CGFloat(filtered.count) * 30 + 30, 360))
+        }.padding(12)
     }
 }

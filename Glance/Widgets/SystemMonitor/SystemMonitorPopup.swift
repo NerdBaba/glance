@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SystemMonitorPopup: View {
+    @State private var demand = UUID()
     @ObservedObject var viewModel: SystemMonitorViewModel
     @ObservedObject var configManager = ConfigManager.shared
     var appearance: AppearanceConfig { configManager.config.appearance }
@@ -79,6 +80,8 @@ struct SystemMonitorPopup: View {
         }
         .frame(width: 200)
         .padding(22)
+        .onAppear { viewModel.setDemand(demand, enabled: true) }
+        .onDisappear { viewModel.setDemand(demand, enabled: false) }
     }
 
     @ViewBuilder

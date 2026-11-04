@@ -7,6 +7,7 @@ import SwiftUI
 struct ScriptWidget: View {
     @StateObject private var viewModel: PolybarScriptViewModel
     private let config: ConfigData
+    @ObservedObject private var configManager = ConfigManager.shared
     @Environment(\.widgetFont) private var widgetFont
     @Environment(\.appearance) private var appearance
 
@@ -41,7 +42,7 @@ struct ScriptWidget: View {
     var body: some View {
         let pieces = PolybarScriptRenderer.render(
             output: viewModel.output,
-            config: config,
+            config: GlanceInlineIcons.resolve(config, palette: configManager.config.pywalColors?.colors ?? []),
             actions: viewModel.defaultActions,
             counter: viewModel.counter,
             pid: viewModel.processID,
@@ -57,6 +58,7 @@ struct ScriptWidget: View {
                         style: style,
                         actions: actions,
                         defaultFont: defaultFont,
+                        textFont: GlanceFontPolicy.usesGlobal(config, appearance: appearance) ? GlanceFontPolicy.nsFont(appearance) : nil,
                         defaultForeground: NSColor(appearance.foregroundColor)
                     ) { button, command in
                         viewModel.performAction(button: button, command: command)
@@ -84,17 +86,18 @@ private struct PolybarActionLabel: NSViewRepresentable {
     let style: PolybarScriptTextStyle
     let actions: [Int: String]
     let defaultFont: NSFont
+    let textFont: NSFont?
     let defaultForeground: NSColor
     let perform: (Int, String) -> Void
 
     func makeNSView(context: Context) -> PolybarActionTextField {
         let field = PolybarActionTextField(labelWithString: text)
-        field.install(text: text, style: style, actions: actions, defaultFont: defaultFont, defaultForeground: defaultForeground, perform: perform)
+        field.install(text: text, style: style, actions: actions, defaultFont: defaultFont, textFont: textFont, defaultForeground: defaultForeground, perform: perform)
         return field
     }
 
     func updateNSView(_ field: PolybarActionTextField, context: Context) {
-        field.install(text: text, style: style, actions: actions, defaultFont: defaultFont, defaultForeground: defaultForeground, perform: perform)
+        field.install(text: text, style: style, actions: actions, defaultFont: defaultFont, textFont: textFont, defaultForeground: defaultForeground, perform: perform)
     }
 }
 
@@ -115,6 +118,7 @@ private final class PolybarActionTextField: NSTextField {
         style: PolybarScriptTextStyle,
         actions: [Int: String],
         defaultFont: NSFont,
+        textFont: NSFont?,
         defaultForeground: NSColor,
         perform: @escaping (Int, String) -> Void
     ) {
@@ -134,7 +138,8 @@ private final class PolybarActionTextField: NSTextField {
             .font: font,
             .foregroundColor: style.foreground ?? defaultForeground
         ]
-        let attributed = NSMutableAttributedString(string: text, attributes: attributes)
+        let attributed = GlanceInlineIcons.attributed(text, attributes: attributes)
+        if let textFont { GlanceFontPolicy.applyTextFont(textFont, to: attributed) }
         let range = NSRange(location: 0, length: attributed.length)
         if let background = style.background {
             attributed.addAttribute(.backgroundColor, value: background, range: range)

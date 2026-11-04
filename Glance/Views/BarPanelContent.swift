@@ -29,18 +29,30 @@ struct BarDrawingInsets {
 }
 
 struct BarPanelContent: View {
-    @ObservedObject private var configManager = ConfigManager.shared
+    @ObservedObject var configManager = ConfigManager.shared
+    @ObservedObject private var activity = BarRuntimeActivity.shared
+    private var collectorsActive: Bool {
+        activity.visible && ProcessInfo.processInfo.environment["GLANCE_PREVIEW_BAR_PATH"] == nil
+            && !["--export-bar", "--preview-panel", "--preview-settings"].contains(where: CommandLine.arguments.contains)
+    }
 
     var body: some View {
         let insets = BarDrawingInsets(
             appearance: configManager.config.appearance,
             foreground: configManager.config.experimental.foreground)
         GeometryReader { geometry in
-            let scale = configManager.config.experimental.foreground.renderingScale(for: geometry.size.width)
-            ScaledBarContent(width: geometry.size.width)
-                .padding(.top, insets.top * scale)
-                .padding(.bottom, insets.bottom * scale)
+            if configManager.config.experimental.foreground.isVertical {
+                MenuBarView(configManager: configManager)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+            } else {
+                let scale = configManager.config.experimental.foreground.renderingScale(for: geometry.size.width)
+                ScaledBarContent(width: geometry.size.width, configManager: configManager)
+                    .padding(.top, insets.top * scale)
+                    .padding(.bottom, insets.bottom * scale)
+            }
         }
+        .environment(\.barCollectorsActive, collectorsActive)
+        .modifier(BarCollectorModifier(demand: BarCollectorDemand(widgets: configManager.config.rootToml.widgets, active: collectorsActive)))
     }
 }
 
@@ -48,16 +60,30 @@ struct BarPanelContent: View {
 /// single surface instead of overlapping fixed-width groups on smaller screens.
 struct ScaledBarContent: View {
     let width: CGFloat
-    @ObservedObject private var configManager = ConfigManager.shared
+    @ObservedObject var configManager = ConfigManager.shared
 
     var body: some View {
         let foreground = configManager.config.experimental.foreground
         let scale = foreground.renderingScale(for: width)
-        let layoutWidth = foreground.referenceWidth > 0 ? foreground.referenceWidth : width
+        let layoutWidth = foreground.scaleContent && foreground.referenceWidth > 0 ? foreground.referenceWidth : width
+        let referenceScale = !foreground.scaleContent && foreground.referenceWidth > 0 ? width / foreground.referenceWidth : 1
         let height = max(foreground.resolveHeight(), 1)
-        MenuBarView()
+        MenuBarView(configManager: configManager)
+            .environment(\.barReferenceScale, referenceScale)
             .frame(width: layoutWidth, height: height)
             .scaleEffect(scale, anchor: .topLeading)
             .frame(width: width, height: height * scale, alignment: .topLeading)
+    }
+}
+
+private struct BarReferenceScaleKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 1
+}
+
+extension EnvironmentValues {
+    /// Scale screenshot-relative positioning without raster-scaling its text.
+    var barReferenceScale: CGFloat {
+        get { self[BarReferenceScaleKey.self] }
+        set { self[BarReferenceScaleKey.self] = newValue }
     }
 }

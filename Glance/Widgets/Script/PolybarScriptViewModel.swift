@@ -58,6 +58,12 @@ final class PolybarScriptViewModel: ObservableObject {
 
     func performAction(button: Int, command: String) {
         guard !command.isEmpty else { return }
+        if command.hasPrefix("glance:") {
+            let keys = [1: "click-left", 2: "click-middle", 3: "click-right", 4: "scroll-up", 5: "scroll-down", 6: "double-click-left", 7: "double-click-middle", 8: "double-click-right"]
+            let destination = GlanceModuleAction.destinationConfig(options.values, prefix: (keys[button] ?? "click-left") + "-")
+            Task { @MainActor in _ = GlanceModuleAction.perform(String(command.dropFirst(7)), config: destination) }
+            return
+        }
         let expanded = command
             .replacingOccurrences(of: "%counter%", with: String(counter))
             .replacingOccurrences(of: "%pid%", with: processID.map(String.init) ?? "")

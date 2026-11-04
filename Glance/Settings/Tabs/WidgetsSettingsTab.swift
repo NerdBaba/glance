@@ -113,11 +113,12 @@ struct WidgetsSettingsTab: View {
   @State private var mediaControlsShowPlayPause = true
   @State private var mediaControlsShowNext = true
 
-  private let allAvailableWidgets: [(id: String, label: String, icon: String)] =
-    SettingsModule.builtins.map { ($0.id, $0.title, $0.icon) } + [
+  private var allAvailableWidgets: [(id: String, label: String, icon: String)] {
+    (SettingsModule.builtins + SettingsModule.all(config: configManager.config).filter { $0.id.hasPrefix("script.") }).map { ($0.id, $0.title, $0.icon) } + [
       ("spacer", "Spacer", "arrow.left.and.right"),
       ("divider", "Divider", "minus"),
     ]
+  }
 
   private let weatherProviders: [(id: String, label: String)] = [
     ("met-no", "MET Norway"),
@@ -125,12 +126,13 @@ struct WidgetsSettingsTab: View {
   ]
 
   var body: some View {
-    SettingsPage {
+    SettingsPage(moduleID: moduleID) {
       if let moduleID {
-        ModuleSettingsHeader(id: moduleID)
         moduleContent
-        ModuleIconSettings(id: moduleID)
-        ModuleAppearanceSettings(id: moduleID)
+        if !GlanceTransitionWidget.isDecoration(configManager.globalWidgetConfig(for: moduleID)) {
+          ModuleIconSettings(id: moduleID)
+          ModuleAppearanceSettings(id: moduleID)
+        }
       } else {
         SettingsPageHeader(
           title: "Widget order",
@@ -184,7 +186,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var networkContentSection: some View {
-    SettingsSection(title: "Content") {
+    SettingsSection(title: "Content", keywords: ["Icon spacing", "Interface status", "Local IP address", "Show", "Show icon", "content-spacing", "default.network", "interfaces", "ip", "networkDisplayMode", "show-icon"]) {
       Picker("Show", selection: $networkDisplayMode) {
         Text("Interface status").tag("interfaces")
         Text("Local IP address").tag("ip")
@@ -207,7 +209,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var activeWidgetSection: some View {
-    SettingsSection(title: "Active widgets") {
+    SettingsSection(title: "Active widgets", keywords: ["Drag or use the arrows to reorder. Spacers separate bar groups; dividers add a separator.", "Move down", "Move up", "Remove widget", "ShowWidgetSettings", "chevron.down", "chevron.up", "divider", "line.3.horizontal", "minus.circle.fill", "slider.horizontal.3", "spacer"]) {
       Text(
         "Drag or use the arrows to reorder. Spacers separate bar groups; dividers add a separator."
       )
@@ -282,7 +284,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var addWidgetSection: some View {
-    SettingsSection(title: "Available widgets") {
+    SettingsSection(title: "Available widgets", keywords: ["All widgets are active", "divider", "plus.circle.fill", "spacer"]) {
       let inactive = allAvailableWidgets.filter { widget in
         if widget.id == "spacer" || widget.id == "divider" { return true }
         return !activeWidgets.contains(where: { $0.item.id == widget.id })
@@ -315,7 +317,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var launcherSection: some View {
-    SettingsSection(title: "Content") {
+    SettingsSection(title: "Content", keywords: ["Display mode", "Icon", "Label", "Label + Icon", "Off", "SF Symbol", "icon", "icon-label-value", "label-value", "launcherDisplayMode", "launcherLabel", "launcherSymbol", "off"]) {
       Picker("Display mode", selection: $launcherDisplayMode) {
         Text("Icon").tag("icon")
         Text("Label + Icon").tag("icon-label-value")
@@ -343,7 +345,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var powerSection: some View {
-    SettingsSection(title: "Content") {
+    SettingsSection(title: "Content", keywords: ["Display mode", "Icon", "Label", "Label + Icon", "Off", "Restart and shut down ask for confirmation before calling System Events.", "SF Symbol", "icon", "icon-label-value", "label-value", "off", "powerDisplayMode", "powerLabel", "powerSymbol"]) {
       Picker("Display mode", selection: $powerDisplayMode) {
         Text("Icon").tag("icon")
         Text("Label + Icon").tag("icon-label-value")
@@ -374,7 +376,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var mediaSection: some View {
-    SettingsSection(title: "Buttons") {
+    SettingsSection(title: "Buttons", keywords: ["Next track", "Play / pause", "Previous track", "false", "mediaControlsShowNext", "mediaControlsShowPlayPause", "mediaControlsShowPrevious", "true"]) {
       Toggle("Previous track", isOn: $mediaControlsShowPrevious)
         .onChange(of: mediaControlsShowPrevious) { _, enabled in
           guard String(describing: enabled) != synchronizedValues["mediaControlsShowPrevious"]
@@ -407,7 +409,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var batteryInteractionSection: some View {
-    SettingsSection(title: "Battery alerts") {
+    SettingsSection(title: "Battery alerts", area: .behavior, keywords: ["Critical level", "Show percentage in bar", "These thresholds control low-battery colors in the bar and popup.", "Warning level", "batteryShowPercentage", "false", "true"]) {
       Toggle("Show percentage in bar", isOn: $batteryShowPercentage)
         .onChange(of: batteryShowPercentage) { _, newValue in
           guard String(describing: newValue) != synchronizedValues["batteryShowPercentage"] else {
@@ -444,7 +446,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var volumeInteractionSection: some View {
-    SettingsSection(title: "Mouse wheel") {
+    SettingsSection(title: "Mouse wheel", area: .behavior, keywords: ["%.0f%%", "Mouse wheel changes system volume by this amount.", "Scroll step", "Show percentage in bar", "false", "true", "volumeShowPercentage"]) {
       Toggle("Show percentage in bar", isOn: $volumeShowPercentage)
         .onChange(of: volumeShowPercentage) { _, newValue in
           guard String(describing: newValue) != synchronizedValues["volumeShowPercentage"] else {
@@ -476,7 +478,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var volumeDisplaySection: some View {
-    SettingsSection(title: "Display") {
+    SettingsSection(title: "Display", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "icon", "icon-label-value", "icon-value", "label-value", "off", "value", "volumeDisplayMode", "volumeLabel"]) {
       Picker("Display mode", selection: $volumeDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -521,7 +523,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var brightnessInteractionSection: some View {
-    SettingsSection(title: "Mouse wheel") {
+    SettingsSection(title: "Mouse wheel", area: .behavior, keywords: ["%.0f%%", "Mouse wheel changes display brightness by this amount when control is available.", "Scroll step", "Show percentage in bar", "brightnessShowPercentage", "false", "true"]) {
       Toggle("Show percentage in bar", isOn: $brightnessShowPercentage)
         .onChange(of: brightnessShowPercentage) { _, newValue in
           guard String(describing: newValue) != synchronizedValues["brightnessShowPercentage"]
@@ -552,7 +554,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var weatherSection: some View {
-    SettingsSection(title: "Provider & location") {
+    SettingsSection(title: "Provider & location", keywords: ["Apply Manual Location", "Latitude", "Location name", "Longitude", "Manual coordinates give the most stable weather if macOS location is inconsistent.", "Optional", "Provider", "Use IP fallback when system location fails", "Use manual coordinates", "false", "true", "weatherProvider", "weatherUseIPFallback", "weatherUsesManualLocation"]) {
       HStack {
         Text("Provider")
           .frame(width: 130, alignment: .leading)
@@ -631,7 +633,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var visualizerSection: some View {
-    SettingsSection(title: "Visualizer") {
+    SettingsSection(title: "Visualizer", keywords: ["Show visualizer bars", "Visualizer position", "false", "nowPlayingShowVisualizer", "nowPlayingVisualizerPosition", "true"]) {
       Toggle("Show visualizer bars", isOn: $nowPlayingShowVisualizer)
         .onChange(of: nowPlayingShowVisualizer) { _, newValue in
           guard String(describing: newValue) != synchronizedValues["nowPlayingShowVisualizer"]
@@ -666,7 +668,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var nowPlayingSection: some View {
-    SettingsSection(title: "Track information") {
+    SettingsSection(title: "Track information", keywords: [" chars", "%.0f characters", "Album max length", "Artist before title", "Artist max length", "Combined label limit (0 = unlimited)", "Separator", "Show album", "Show artist", "Show music icon", "Show title", "Title max length", "artist-first", "false", "label-max-length", "nowPlayingSeparator", "nowPlayingShowAlbum", "nowPlayingShowArtist", "nowPlayingShowIcon", "nowPlayingShowTitle", "true"]) {
       Toggle("Show music icon", isOn: $nowPlayingShowIcon)
         .onChange(of: nowPlayingShowIcon) { _, newValue in
           guard String(describing: newValue) != synchronizedValues["nowPlayingShowIcon"] else {
@@ -772,7 +774,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var cpuSection: some View {
-    SettingsSection(title: "CPU") {
+    SettingsSection(title: "CPU", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "icon", "icon-label-value", "icon-value", "label-value", "off", "systemMonitorCpuDisplayMode", "systemMonitorCpuLabel", "value"]) {
       Picker("Display mode", selection: $systemMonitorCpuDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -818,7 +820,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var memorySection: some View {
-    SettingsSection(title: "Memory") {
+    SettingsSection(title: "Memory", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "icon", "icon-label-value", "icon-value", "label-value", "off", "systemMonitorMemDisplayMode", "systemMonitorMemLabel", "value"]) {
       Picker("Display mode", selection: $systemMonitorMemDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -864,7 +866,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var temperatureSection: some View {
-    SettingsSection(title: "Display") {
+    SettingsSection(title: "Display", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "icon", "icon-label-value", "icon-value", "label-value", "off", "temperatureDisplayMode", "temperatureLabel", "value"]) {
       Picker("Display mode", selection: $temperatureDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -911,7 +913,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var fanSection: some View {
-    SettingsSection(title: "Display") {
+    SettingsSection(title: "Display", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "fanDisplayMode", "fanLabel", "icon", "icon-label-value", "icon-value", "label-value", "off", "value"]) {
       Picker("Display mode", selection: $fanDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -954,7 +956,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var energySection: some View {
-    SettingsSection(title: "Display") {
+    SettingsSection(title: "Display", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "energyDisplayMode", "energyLabel", "icon", "icon-label-value", "icon-value", "label-value", "off", "value"]) {
       Picker("Display mode", selection: $energyDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -999,7 +1001,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var batteryDisplaySection: some View {
-    SettingsSection(title: "Display") {
+    SettingsSection(title: "Display", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "batteryDisplayMode", "batteryLabel", "icon", "icon-label-value", "icon-value", "label-value", "off", "value"]) {
       Picker("Display mode", selection: $batteryDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -1044,7 +1046,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var bluetoothSection: some View {
-    SettingsSection(title: "Display") {
+    SettingsSection(title: "Display", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "bluetoothDisplayMode", "bluetoothLabel", "icon", "icon-label-value", "icon-value", "label-value", "off", "value"]) {
       Picker("Display mode", selection: $bluetoothDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -1089,7 +1091,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var brightnessDisplaySection: some View {
-    SettingsSection(title: "Display") {
+    SettingsSection(title: "Display", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "brightnessDisplayMode", "brightnessLabel", "icon", "icon-label-value", "icon-value", "label-value", "off", "value"]) {
       Picker("Display mode", selection: $brightnessDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -1136,7 +1138,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var wifiSection: some View {
-    SettingsSection(title: "Wi-Fi") {
+    SettingsSection(title: "Wi-Fi", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "icon", "icon-label-value", "icon-value", "label-value", "networkWifiDisplayMode", "networkWifiLabel", "off", "value"]) {
       Picker("Display mode", selection: $networkWifiDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -1183,7 +1185,7 @@ struct WidgetsSettingsTab: View {
   }
 
   private var ethernetSection: some View {
-    SettingsSection(title: "Ethernet") {
+    SettingsSection(title: "Ethernet", keywords: [" chars", "Display mode", "Icon", "Icon + Label + Value", "Icon + Value", "Label", "Label + Value", "Max text length", "Off", "Value", "icon", "icon-label-value", "icon-value", "label-value", "networkEthDisplayMode", "networkEthLabel", "off", "value"]) {
       Picker("Display mode", selection: $networkEthDisplayMode) {
         Text("Icon").tag("icon")
         Text("Value").tag("value")
@@ -1434,7 +1436,7 @@ struct WidgetsSettingsTab: View {
 
   private func labelFor(_ id: String) -> String {
     allAvailableWidgets.first(where: { $0.id == id })?.label
-      ?? SettingsModule.descriptor(for: id).title
+      ?? SettingsModule.descriptor(for: id, config: configManager.config).title
   }
 
   private func iconFor(_ id: String) -> String {

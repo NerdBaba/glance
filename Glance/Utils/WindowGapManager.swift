@@ -15,7 +15,7 @@ final class WindowGapManager {
 
     /// Minimum Y (in AX top-left coordinates) where a window's top edge may sit.
     private var threshold: CGFloat {
-        ConfigManager.shared.config.experimental.foreground.resolveHeight() + 6
+        BarReservedSpace(config: ConfigManager.shared.config, width: NSScreen.main?.frame.width ?? 1600).top + 6
     }
 
     func start() {
@@ -169,15 +169,33 @@ final class WindowGapManager {
         // --- Position (AX coordinate system: origin at top-left of main display) ---
         guard let pos = pointAttribute(kAXPositionAttribute, of: window) else { return }
 
-        let t = threshold
-        guard pos.y < t else { return }
-
-        // --- Size ---
-        guard let size = sizeAttribute(kAXSizeAttribute, of: window) else { return }
-
-        let delta = t - pos.y
-        var newPos  = CGPoint(x: pos.x, y: t)
-        var newSize = CGSize(width: size.width, height: max(size.height - delta, 100))
+        guard let size = sizeAttribute(kAXSizeAttribute, of: window),
+              let screen = NSScreen.main, let primary = NSScreen.screens.first else { return }
+        // AX coordinates start at the primary display's top-left. Do not move
+        // windows on other displays when reserving this display's bar edges.
+        let frame = CGRect(x: screen.frame.minX, y: primary.frame.maxY - screen.frame.maxY,
+                           width: screen.frame.width, height: screen.frame.height)
+        guard frame.contains(CGPoint(x: pos.x + size.width / 2, y: pos.y + size.height / 2)) else { return }
+        let reserved = BarReservedSpace(config: ConfigManager.shared.config, width: frame.width)
+        let left = frame.minX + reserved.left
+        let right = frame.maxX - reserved.right
+        let top = frame.minY + reserved.top + (reserved.top > 0 ? 6 : 0)
+        let bottom = frame.maxY - reserved.bottom
+        var newPos = pos
+        var newSize = size
+        if reserved.left > 0 && newPos.x < left {
+            newSize.width = max(100, newSize.width - (left - newPos.x)); newPos.x = left
+        }
+        if reserved.right > 0 && newPos.x + newSize.width > right {
+            newSize.width = max(100, right - newPos.x)
+        }
+        if reserved.top > 0 && newPos.y < top {
+            newSize.height = max(100, newSize.height - (top - newPos.y)); newPos.y = top
+        }
+        if reserved.bottom > 0 && newPos.y + newSize.height > bottom {
+            newSize.height = max(100, bottom - newPos.y)
+        }
+        guard newPos != pos || newSize != size else { return }
 
         if let pv = AXValueCreate(.cgPoint, &newPos) {
             let status = AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, pv)

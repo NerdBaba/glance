@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import IOBluetooth
 
-struct BluetoothDeviceInfo: Identifiable {
+struct BluetoothDeviceInfo: Identifiable, Equatable {
     let id: String
     let name: String
     let isConnected: Bool
@@ -15,9 +15,17 @@ final class BluetoothViewModel: ObservableObject {
 
     @Published var devices: [BluetoothDeviceInfo] = []
     @Published var connectedCount: Int = 0
+    @Published var isPoweredOn = false
 
     private var timer: Timer?
     private var wakeObserver: NSObjectProtocol?
+    private let samplingQueue = DispatchQueue(label: "BluetoothSampling", qos: .utility)
+
+    private struct Snapshot: Equatable {
+        let devices: [BluetoothDeviceInfo]
+        let connectedCount: Int
+        let isPoweredOn: Bool
+    }
 
     init() {
         update()
@@ -42,63 +50,72 @@ final class BluetoothViewModel: ObservableObject {
     }
 
     private func update() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let paired = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] else {
-                DispatchQueue.main.async { self?.devices = []; self?.connectedCount = 0 }
-                return
-            }
-
+        samplingQueue.async { [weak self] in
+            guard let self else { return }
+            let powered = IOBluetoothHostController.default()?.powerState.rawValue == 1
+            let paired = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? []
             let connected = paired.filter { $0.isConnected() }
+            let batteryLevels = connected.isEmpty ? [:] : Self.batteryLevelsByAddress()
             let infos = connected.map { device -> BluetoothDeviceInfo in
                 let name = device.name ?? "Unknown"
-                let battery = Self.batteryLevel(for: device)
+                let address = device.addressString
+                let battery = address.flatMap { batteryLevels[$0.lowercased()] }
                 let icon = Self.iconName(for: device)
                 return BluetoothDeviceInfo(
-                    id: device.addressString ?? name,
+                    id: address ?? name,
                     name: name,
                     isConnected: true,
                     batteryLevel: battery,
                     icon: icon
                 )
             }
+            let snapshot = Snapshot(devices: infos, connectedCount: infos.count, isPoweredOn: powered)
 
             DispatchQueue.main.async {
-                self?.devices = infos
-                self?.connectedCount = infos.count
+                let current = Snapshot(
+                    devices: self.devices,
+                    connectedCount: self.connectedCount,
+                    isPoweredOn: self.isPoweredOn
+                )
+                guard current != snapshot else { return }
+                if self.devices != snapshot.devices { self.devices = snapshot.devices }
+                if self.connectedCount != snapshot.connectedCount { self.connectedCount = snapshot.connectedCount }
+                if self.isPoweredOn != snapshot.isPoweredOn { self.isPoweredOn = snapshot.isPoweredOn }
             }
         }
     }
 
-    private static func batteryLevel(for device: IOBluetoothDevice) -> Int? {
-        // Try IORegistry for battery info (works for AirPods and some BT devices)
+    private static func batteryLevelsByAddress() -> [String: Int] {
+        // Scan IORegistry once per update, then match all connected devices by
+        // the same case-insensitive DeviceAddress used by the old lookup.
         let matching = IOServiceMatching("AppleHSBluetoothDevice")
         var iterator: io_iterator_t = 0
         guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) == KERN_SUCCESS else {
-            return nil
+            return [:]
         }
         defer { IOObjectRelease(iterator) }
 
         var service = IOIteratorNext(iterator)
+        var levels: [String: Int] = [:]
         while service != 0 {
-            defer { IOObjectRelease(service); service = IOIteratorNext(iterator) }
+            let current = service
+            service = IOIteratorNext(iterator)
+            defer { IOObjectRelease(current) }
 
             var props: Unmanaged<CFMutableDictionary>?
-            guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
+            guard IORegistryEntryCreateCFProperties(current, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
                   let dict = props?.takeRetainedValue() as? [String: Any] else { continue }
 
-            // Match by address
-            if let addr = dict["DeviceAddress"] as? String,
-               let deviceAddr = device.addressString,
-               addr.lowercased() == deviceAddr.lowercased() {
-                if let level = dict["BatteryPercent"] as? Int {
-                    return level
-                }
-                if let level = dict["BatteryPercentSingle"] as? Int {
-                    return level
-                }
+            guard let address = dict["DeviceAddress"] as? String else { continue }
+            let key = address.lowercased()
+            guard levels[key] == nil else { continue }
+            if let level = dict["BatteryPercent"] as? Int {
+                levels[key] = level
+            } else if let level = dict["BatteryPercentSingle"] as? Int {
+                levels[key] = level
             }
         }
-        return nil
+        return levels
     }
 
     private static func iconName(for device: IOBluetoothDevice) -> String {

@@ -58,7 +58,7 @@ struct BarPreviewNowPlaying: View {
             if visualizerPosition == .left && showVisualizer { visualizer }
             if showIcon {
                 Image(systemName: "music.note")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(widgetFont.toFont().weight(.medium))
             }
             if visualizerPosition == .afterIcon && showVisualizer { visualizer }
             if !textParts.isEmpty {
@@ -150,12 +150,12 @@ struct BarPreviewMediaControls: View {
 
     var body: some View {
         HStack(spacing: spacing) {
-            if showsPrevious { PolybarIcon(config: config, glyph: config.config["icon-prev"]?.stringValue, systemName: "backward.end.fill") }
+            if showsPrevious { PolybarIcon(config: config, glyph: config.config["icon-prev"]?.stringValue, systemName: "backward.end.fill", symbolKey: "symbol-icon-prev") }
             if showsPlayPause {
                 let playing = ProcessInfo.processInfo.environment["GLANCE_PREVIEW_PLAYING"] != "false"
-                PolybarIcon(config: config, glyph: config.config[playing ? "icon-pause" : "icon-play"]?.stringValue, systemName: playing ? "pause.fill" : "play.fill")
+                PolybarIcon(config: config, glyph: config.config[playing ? "icon-pause" : "icon-play"]?.stringValue, systemName: playing ? "pause.fill" : "play.fill", symbolKey: playing ? "symbol-icon-pause" : "symbol-icon-play")
             }
-            if showsNext { PolybarIcon(config: config, glyph: config.config["icon-next"]?.stringValue, systemName: "forward.end.fill") }
+            if showsNext { PolybarIcon(config: config, glyph: config.config["icon-next"]?.stringValue, systemName: "forward.end.fill", symbolKey: "symbol-icon-next") }
         }
         .font(widgetFont.toFont())
         .experimentalConfiguration(horizontalPadding: 3)
@@ -202,7 +202,7 @@ struct MediaControlsWidget: View {
         Button {
             MediaRemoteProvider.shared.sendCommand(command)
         } label: {
-            PolybarIcon(config: config, glyph: config.config[glyphKey]?.stringValue, systemName: symbol)
+            PolybarIcon(config: config, glyph: config.config[glyphKey]?.stringValue, systemName: symbol, symbolKey: "symbol-" + glyphKey)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -215,11 +215,14 @@ struct PolybarIcon: View {
     let config: ConfigProvider
     let glyph: String?
     let systemName: String
+    var symbolKey: String = "symbol"
     @Environment(\.widgetFont) private var widgetFont
 
     var body: some View {
         Group {
-            if let glyph, !glyph.isEmpty {
+            if let symbol = config.config[symbolKey]?.stringValue, !symbol.isEmpty {
+                Image(systemName: symbol).font(widgetFont.toFont())
+            } else if let glyph, !glyph.isEmpty {
                 Text(glyph)
                     .font(FontConfig(
                         fontName: config.config["icon-font-name"]?.stringValue ?? widgetFont.fontName,

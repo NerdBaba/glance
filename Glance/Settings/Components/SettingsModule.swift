@@ -5,6 +5,9 @@ struct SettingsModule: Identifiable {
   let title: String
   let icon: String
   let summary: String
+  var category: String = "Utilities"
+
+  static let categories = ["Desktop", "Media", "System", "Shortcuts", "Utilities", "Layout", "Custom Scripts"]
 
   static let builtins: [SettingsModule] = [
     .init(
@@ -81,14 +84,71 @@ struct SettingsModule: Identifiable {
         scriptIDs.insert(section)
       }
     }
-    return builtins + scriptIDs.sorted().map { descriptor(for: $0) }
+    let active = Set((config.rootToml.widgets?.displayed ?? []).map(\.id))
+    let nativeSources = Set(scriptIDs.filter { active.contains($0) }.compactMap {
+      config.rootToml.widgets?.config(for: $0)?["native-source"]?.stringValue
+    })
+    let nativeActions = Set(scriptIDs.filter { active.contains($0) }.compactMap {
+      config.rootToml.widgets?.config(for: $0)?["native-action"]?.stringValue
+    })
+    let equivalentActions = ["default.launcher": "launcher", "default.power": "power"]
+    let equivalent = ["default.spaces": "workspaces", "default.activeapp": "window", "default.nowplaying": "music", "default.volume": "volume", "default.network": "network", "default.brightness": "brightness", "default.time": "date", "default.disk": "disk", "default.weather": "weather", "default.temperature": "temperature", "default.inputlanguage": "keyboard"]
+    return builtins.filter { module in
+      let hasProvider = equivalent[module.id].map { nativeSources.contains($0) } ?? false
+      let hasAction = equivalentActions[module.id].map { nativeActions.contains($0) } ?? false
+      return active.contains(module.id) || (!hasProvider && !hasAction)
+    }.map { descriptor(for: $0.id, config: config) }
+      + scriptIDs.sorted().map { descriptor(for: $0, config: config) }
   }
 
-  static func descriptor(for id: String) -> SettingsModule {
-    builtins.first { $0.id == id }
-      ?? .init(
-        id: id, title: "Script · \(id.replacingOccurrences(of: "script.", with: ""))",
-        icon: "terminal", summary: "Command output, formatting, and click actions."
-      )
+  static func descriptor(for id: String, config: Config? = nil) -> SettingsModule {
+    if let values = config?.rootToml.widgets?.config(for: id),
+       let source = values["native-source"]?.stringValue {
+      let providers: [String: (String, String, String)] = [
+        "cpu": ("CPU", "cpu", "System"), "memory": ("Memory", "memorychip", "System"),
+        "user": ("User Badge", "person.crop.circle", "Desktop"),
+        "microphone": ("Microphone Gain", "mic", "Media"), "updates": ("Glance Updates", "arrow.triangle.2.circlepath", "System"),
+        "disk": ("Storage", "internaldrive", "System"), "volume": ("Volume", "speaker.wave.2", "Media"),
+        "bluetooth": ("Bluetooth", "wave.3.right", "System"), "brightness": ("Brightness", "sun.max", "System"), "network": ("Network", "wifi", "System"),
+        "weather": ("Weather", "cloud.sun", "System"), "visualizer": ("Music Visualizer", "waveform", "Media"),
+        "music": ("Now Playing", "music.note", "Media"), "workspaces": ("Spaces", "rectangle.3.group", "Desktop"),
+        "window": ("Window Title", "macwindow", "Desktop"), "date": ("Clock", "clock", "Desktop"),
+        "temperature": ("Temperature", "thermometer", "System"), "keyboard": ("Input Language", "keyboard", "Desktop")
+      ]
+      if let info = providers[source] {
+        return .init(id: id, title: values["module-name"]?.stringValue ?? info.0, icon: info.1,
+                     summary: "Live macOS data with customizable text, icons, colors, and actions.", category: info.2)
+      }
+      if GlanceTransitionWidget.isDecoration(values) {
+        let name = id.split(separator: ".").last.map(String.init) ?? ""
+        let number = name.filter(\.isNumber)
+        return .init(id: id, title: name.contains("sep") ? "Separator" : (name.contains("left") ? "Left Transition" : name.contains("right") ? "Right Transition" : "Color Transition") + (number.isEmpty ? "" : " " + number),
+                     icon: "square.leadinghalf.filled", summary: "Connect neighboring module backgrounds or add a separator.", category: "Layout")
+      }
+      let action = values["native-action"]?.stringValue ?? ""
+      let actions: [String: (String, String)] = [
+        "shuffle-colors": ("Palette Shuffle", "paintpalette"), "style": ("Palette", "paintpalette"),
+        "launcher": ("App Launcher", "square.grid.2x2"), "power": ("Power Menu", "power"),
+        "settings": ("Settings", "gearshape"), "terminal": ("Terminal", "terminal"),
+        "open-app": ("App Shortcut", "app"), "files": ("Files", "folder"), "browser": ("Browser", "globe"), "updates": ("Software Updates", "arrow.down.circle")
+      ]
+      let name = id.replacingOccurrences(of: "script.adi_", with: "").replacingOccurrences(of: "script.", with: "").replacingOccurrences(of: "_", with: " ").capitalized
+      let info = actions[action] ?? (name, action.hasPrefix("https://") ? "link" : "textformat")
+      return .init(id: id, title: values["module-name"]?.stringValue ?? info.0, icon: info.1,
+                   summary: action == "shuffle-colors" ? "Shuffle widget colors for this session. Saved themes stay unchanged." : "A customizable shortcut with its own icon, label, and colors.",
+                   category: action == "updates" ? "System" : "Shortcuts")
+    }
+    if var module = builtins.first(where: { $0.id == id }) {
+      switch id {
+      case "default.spaces", "default.activeapp", "default.time", "default.inputlanguage": module.category = "Desktop"
+      case "default.nowplaying", "default.mediacontrols", "default.volume": module.category = "Media"
+      case "default.systemmonitor", "default.temperature", "default.fan", "default.energy", "default.disk", "default.brightness", "default.network", "default.battery", "default.weather": module.category = "System"
+      case "default.launcher", "default.power": module.category = "Shortcuts"
+      default: module.category = "Utilities"
+      }
+      return module
+    }
+    return .init(id: id, title: id.replacingOccurrences(of: "script.", with: "").replacingOccurrences(of: "_", with: " ").capitalized,
+                 icon: "terminal", summary: "Command output, formatting, and click actions.", category: "Custom Scripts")
   }
 }

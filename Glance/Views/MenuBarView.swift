@@ -2,11 +2,13 @@ import SwiftUI
 
 struct MenuBarView: View {
     @ObservedObject var configManager = ConfigManager.shared
+    @Environment(\.barReferenceScale) private var referenceScale
 
     private var shouldShowSystemBanner: Bool {
         ProcessInfo.processInfo.environment["GLANCE_PREVIEW_BAR_PATH"] == nil
             && !CommandLine.arguments.contains("--export-bar")
             && !CommandLine.arguments.contains("--preview-panel")
+            && !CommandLine.arguments.contains("--benchmark-panel")
     }
 
     private var isPreviewRender: Bool {
@@ -33,7 +35,9 @@ struct MenuBarView: View {
         )
 
         Group {
-            switch formation {
+            if fg.isVertical {
+                verticalBar(items: items, appearance: appearance, fg: fg)
+            } else { switch formation {
             case .full:
                 fullBar(items: items, appearance: appearance, fg: fg)
             case .floating:
@@ -42,12 +46,12 @@ struct MenuBarView: View {
                 islandsBar(items: items, appearance: appearance, fg: fg)
             case .pills:
                 pillsBar(items: items, appearance: appearance, fg: fg)
-            }
+            } }
         }
         .foregroundStyle(appearance.foregroundColor)
-        .frame(height: max(fg.resolveHeight(), 1.0))
+        .frame(height: fg.isVertical ? nil : max(fg.resolveHeight(), 1.0))
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, fg.margin)
+        .padding(.horizontal, fg.isVertical ? 0 : fg.margin * referenceScale)
         .background(.black.opacity(0.001))
         .contextMenu {
             Button("Settings...") {
@@ -65,6 +69,45 @@ struct MenuBarView: View {
         .environment(\.resolvedForegroundConfig, resolvedFG)
         .environment(\.isBarPreviewRendering, isPreviewRender)
         .preferredColorScheme(.dark)
+    }
+
+    @ViewBuilder
+    private func verticalBar(items: [TomlWidgetItem], appearance: AppearanceConfig, fg: ForegroundConfig) -> some View {
+        VStack(spacing: fg.spacing) {
+            ForEach(Array(capsuleClusters(items).enumerated()), id: \.offset) { _, cluster in
+                if let first = cluster.first, clusterName(first) != nil {
+                    let values = configManager.resolvedWidgetConfig(for: first)
+                    let color = PolybarModuleStyle.color(values["capsule-background"]?.stringValue, palette: configManager.config.pywalColors?.colors ?? [])
+                    VStack(spacing: bounded(values, "capsule-spacing", fallback: fg.spacing, maximum: 40)) {
+                        ForEach(Array(cluster.enumerated()), id: \.offset) { _, item in
+                            verticalItem(item, appearance: appearance)
+                        }
+                    }
+                    .padding(.vertical, bounded(values, "capsule-vertical-padding", fallback: 8, maximum: 40))
+                    .frame(width: bounded(values, "capsule-width", fallback: fg.resolveHeight(), maximum: 160))
+                    .background((color ?? .clear).opacity(min(max(values["capsule-background-opacity"]?.doubleValue ?? 1, 0), 1)))
+                    .environment(\.glanceCapsuleBackground, color?.opacity(min(max(values["capsule-background-opacity"]?.doubleValue ?? 1, 0), 1)))
+                    .clipShape(RoundedRectangle(cornerRadius: bounded(values, "capsule-radius", fallback: 14, maximum: 50)))
+                } else if let item = cluster.first {
+                    verticalItem(item, appearance: appearance)
+                }
+            }
+        }
+        .padding(.vertical, fg.horizontalPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(appearance.widgetBackgroundColor.opacity(appearance.fillOpacity))
+        .clipShape(RoundedRectangle(cornerRadius: appearance.roundness / 100 * min(fg.resolveHeight(), 40) / 2))
+    }
+
+    @ViewBuilder
+    private func verticalItem(_ item: TomlWidgetItem, appearance: AppearanceConfig) -> some View {
+        if item.id == "spacer" { Spacer(minLength: 0) }
+        else if item.id == "divider" { Rectangle().fill(appearance.accentColor.opacity(0.4)).frame(height: 1) }
+        else {
+            let values = configManager.resolvedWidgetConfig(for: item)
+            moduleView(for: item, height: values["native-orientation"]?.stringValue == "vertical" ? nil : (values["native-line-limit"]?.intValue ?? 1) > 1 ? 40 : 28)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     // MARK: - Full Monobar
@@ -89,10 +132,15 @@ struct MenuBarView: View {
             widgetContent(items: items, fg: fg)
         }
         .padding(.horizontal, fg.horizontalPadding)
-        .frame(width: fg.floatingWidth > 0 ? fg.floatingWidth : nil)
+        .frame(width: fg.floatingWidth > 0 ? fg.floatingWidth * referenceScale : nil)
         .frame(maxWidth: fg.floatingWidth > 0 ? nil : .infinity)
         .frame(height: capsuleHeight(fg))
         .widgetStyle(appearance, heightOverride: capsuleHeight(fg), showBackground: showBg)
+        .background(alignment: .top) {
+            if fg.floatingFlatTop && showBg {
+                Rectangle().fill(appearance.widgetBackgroundColor).frame(height: capsuleHeight(fg) / 2)
+            }
+        }
 
         if fg.floatingWidth > 0 {
             HStack(spacing: 0) {
@@ -195,6 +243,15 @@ struct MenuBarView: View {
                             minWidth: fg.rightGroupWidth, alignment: .trailing)
                     }
                 }
+            } else if spacerCount == 2 && nonSpacerGroups.count == 3 && !fg.scaleContent {
+                PolybarAlignedGroups(gap: fg.gap, centerOffset: fg.centerGroupOffset * referenceScale) {
+                    pillCapsule(nonSpacerGroups[0], height: height, appearance: appearance, fg: fg,
+                                minWidth: fg.leftGroupWidth * referenceScale, alignment: .leading)
+                    pillCapsule(nonSpacerGroups[1], height: height, appearance: appearance, fg: fg,
+                                minWidth: fg.centerGroupWidth * referenceScale, alignment: .center)
+                    pillCapsule(nonSpacerGroups[2], height: height, appearance: appearance, fg: fg,
+                                minWidth: fg.rightGroupWidth * referenceScale, alignment: .trailing)
+                }
             } else if spacerCount == 2 && nonSpacerGroups.count == 3 {
                 ZStack {
                     HStack(spacing: fg.gap) {
@@ -261,7 +318,7 @@ struct MenuBarView: View {
             }
         }
         .padding(.horizontal, hasSegmentBackground ? 0 : 8)
-        .frame(minWidth: minWidth, maxWidth: fixedWidth && minWidth > 0 ? minWidth : nil, alignment: hasSegmentBackground ? .leading : alignment)
+        .frame(minWidth: minWidth, maxWidth: fixedWidth && fg.scaleContent && minWidth > 0 ? minWidth : nil, alignment: hasSegmentBackground ? .leading : alignment)
         .frame(height: height)
         .widgetStyle(appearance, heightOverride: height, showBackground: showBg)
         .overlay {
@@ -280,7 +337,7 @@ struct MenuBarView: View {
     // MARK: - Shared Helpers
 
     private func capsuleHeight(_ fg: ForegroundConfig) -> CGFloat {
-        max(fg.resolveHeight() - 4, 1)
+        max(fg.resolveHeight() - fg.floatingInset, 1)
     }
 
     private func splitBySpacer(_ items: [TomlWidgetItem]) -> [[TomlWidgetItem]] {
@@ -297,10 +354,49 @@ struct MenuBarView: View {
 
     @ViewBuilder
     private func widgetRow(_ items: [TomlWidgetItem]) -> some View {
-        ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-            moduleView(for: item)
-                .transition(.opacity.combined(with: .scale(scale: 0.8)))
+        ForEach(Array(capsuleClusters(items).enumerated()), id: \.offset) { _, cluster in
+            if let first = cluster.first, clusterName(first) != nil {
+                let values = configManager.resolvedWidgetConfig(for: first)
+                let palette = configManager.config.pywalColors?.colors ?? []
+                HStack(spacing: bounded(values, "capsule-spacing", fallback: 0, maximum: 40)) {
+                    ForEach(Array(cluster.enumerated()), id: \.offset) { _, item in moduleView(for: item) }
+                }
+                .padding(.horizontal, bounded(values, "capsule-padding", fallback: 4, maximum: 40))
+                .frame(minWidth: bounded(values, "capsule-min-width", fallback: 0, maximum: 2048),
+                       alignment: values["capsule-alignment"]?.stringValue == "right" ? .trailing : .center)
+                .frame(height: bounded(values, "capsule-height", fallback: 28, maximum: 100))
+                .background(PolybarModuleStyle.color(values["capsule-background"]?.stringValue, palette: palette) ?? .clear)
+                .environment(\.glanceCapsuleBackground, PolybarModuleStyle.color(values["capsule-background"]?.stringValue, palette: palette))
+                .clipShape(RoundedRectangle(cornerRadius: bounded(values, "capsule-radius", fallback: 14, maximum: 50)))
+            } else if let item = cluster.first {
+                moduleView(for: item)
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+            }
         }
+    }
+
+    // A capsule groups consecutive modules without changing their individual
+    // providers, click actions or settings. Unconfigured presets keep one item
+    // per cluster and retain their original layout.
+    private func clusterName(_ item: TomlWidgetItem) -> String? {
+        guard let name = configManager.resolvedWidgetConfig(for: item)["capsule-group"]?.stringValue,
+              !name.isEmpty else { return nil }
+        return name
+    }
+
+    private func capsuleClusters(_ items: [TomlWidgetItem]) -> [[TomlWidgetItem]] {
+        var result: [[TomlWidgetItem]] = []
+        for item in items {
+            if let name = clusterName(item), let previous = result.last?.last,
+               clusterName(previous) == name {
+                result[result.count - 1].append(item)
+            } else { result.append([item]) }
+        }
+        return result
+    }
+
+    private func bounded(_ values: ConfigData, _ key: String, fallback: Double, maximum: Double) -> CGFloat {
+        CGFloat(min(max(values[key]?.doubleValue ?? fallback, 0), maximum))
     }
 
     @ViewBuilder
@@ -308,7 +404,18 @@ struct MenuBarView: View {
         let sections = splitBySpacer(items)
         let hasBanner = items.contains(where: { $0.id == "system-banner" })
 
-        if sections.count == 3 {
+        if sections.count == 3 && !fg.scaleContent {
+            PolybarAlignedGroups(gap: 8, centerOffset: fg.centerGroupOffset) {
+                HStack(spacing: groupSpacing(sections[0], fallback: fg.spacing)) { widgetRow(sections[0]) }
+                HStack(spacing: groupSpacing(sections[1], fallback: fg.spacing)) { widgetRow(sections[1]) }
+                HStack(spacing: groupSpacing(sections[2], fallback: fg.spacing)) {
+                    widgetRow(sections[2])
+                    if shouldShowSystemBanner && !hasBanner {
+                        SystemBannerWidget(withLeftPadding: true)
+                    }
+                }
+            }
+        } else if sections.count == 3 {
             ZStack {
                 HStack(spacing: fg.spacing) {
                     widgetRow(sections[0])
@@ -339,6 +446,11 @@ struct MenuBarView: View {
                 SystemBannerWidget(withLeftPadding: true)
             }
         }
+    }
+
+    private func groupSpacing(_ items: [TomlWidgetItem], fallback: CGFloat) -> CGFloat {
+        guard let first = items.first, let spacing = configManager.resolvedWidgetConfig(for: first)["group-spacing"]?.doubleValue else { return fallback }
+        return CGFloat(min(max(spacing, -24), 80))
     }
 
     // MARK: - Group Splitting
@@ -389,7 +501,7 @@ struct MenuBarView: View {
     }
 
     @ViewBuilder
-    private func moduleView(for item: TomlWidgetItem, height: CGFloat? = nil) -> some View {
+    func moduleView(for item: TomlWidgetItem, height: CGFloat? = nil) -> some View {
         let style = PolybarModuleStyle.resolve(item: item, configManager: configManager)
         let appearance = configManager.config.appearance
         let widget = buildView(for: item)
@@ -398,7 +510,7 @@ struct MenuBarView: View {
             .environment(\.usesPolybarModuleLayout, style.usesModuleLayout)
             .environment(\.widgetFont, style.font ?? (appearance.useSingleFont ? appearance.barFont : appearance.widgetFont))
         if style.hasSegmentStyle {
-            if let height {
+            if let height = style.height ?? height {
                 widget
                     .frame(height: height)
                     .polybarModuleStyle(style)
@@ -493,11 +605,60 @@ struct MenuBarView: View {
                 EmptyView()
             }
         default:
-            if item.id.hasPrefix("script.") {
+            if item.id.hasPrefix("script."), config.config["native-source"] != nil {
+                PolybarNativeWidget(config: config.config, configManager: configManager)
+            } else if item.id.hasPrefix("script.") {
                 ScriptWidget(config: config.config)
+                    .id(PolybarScriptOptions(values: config.config).runtimeIdentity)
             } else {
                 Text("?\(item.id)?").foregroundColor(.red)
             }
         }
+    }
+}
+
+/// Preserve true centering when it fits; move the center group only far enough
+/// to avoid the edge groups. Measuring during layout also works in image exports
+/// without an asynchronous geometry preference pass.
+private struct PolybarAlignedGroups: Layout {
+    let gap: CGFloat
+    let centerOffset: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let sizes = subviews.map { $0.sizeThatFits(ProposedViewSize(width: nil, height: proposal.height)) }
+        return CGSize(width: proposal.width ?? sizes.reduce(0) { $0 + $1.width },
+                      height: proposal.height ?? sizes.map(\.height).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 3 else { return }
+        // Flexible module backgrounds and button labels need the actual bar height.
+        // An unspecified height measures them at their compressed intrinsic size.
+        let sizes = subviews.map { $0.sizeThatFits(ProposedViewSize(width: nil, height: bounds.height)) }
+        let leftEdge = bounds.minX + sizes[0].width + (sizes[0].width > 0 ? gap : 0)
+        let rightEdge = bounds.maxX - sizes[2].width - (sizes[2].width > 0 ? gap : 0)
+        let centerProposal = ProposedViewSize(width: max(0, min(sizes[1].width, rightEdge - leftEdge)), height: bounds.height)
+        let centerSize = subviews[1].sizeThatFits(centerProposal)
+        let minimumCenter = leftEdge + centerSize.width / 2
+        let maximumCenter = rightEdge - centerSize.width / 2
+        let center = minimumCenter <= maximumCenter
+            ? min(max(bounds.midX + centerOffset, minimumCenter), maximumCenter)
+            : (minimumCenter + maximumCenter) / 2
+        subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading,
+                          proposal: ProposedViewSize(width: sizes[0].width, height: bounds.height))
+        subviews[1].place(at: CGPoint(x: center, y: bounds.midY), anchor: .center,
+                          proposal: centerProposal)
+        subviews[2].place(at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing,
+                          proposal: ProposedViewSize(width: sizes[2].width, height: bounds.height))
+    }
+}
+
+private struct GlanceCapsuleBackgroundKey: EnvironmentKey {
+    static let defaultValue: Color? = nil
+}
+extension EnvironmentValues {
+    var glanceCapsuleBackground: Color? {
+        get { self[GlanceCapsuleBackgroundKey.self] }
+        set { self[GlanceCapsuleBackgroundKey.self] = newValue }
     }
 }

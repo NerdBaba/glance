@@ -9,11 +9,15 @@ final class ConfigManager: ObservableObject {
     @Published private(set) var initError: String?
     @Published private(set) var pywalColors: PywalColors? {
         didSet {
-            if let path = configFilePath {
-                parseConfigFile(at: path)
+            // A newly generated wallpaper palette starts in its original order.
+            paletteOrder = nil
+            // Refresh the rendered palette without decoding unchanged TOML.
+            if !updatingSnapshot {
+                config = Config(rootToml: config.rootToml, pywalColors: renderedPywalColors)
             }
         }
     }
+    private var updatingSnapshot = false
     
     private var fileWatchSource: DispatchSourceFileSystemObject?
     private var fileDescriptor: CInt = -1
@@ -21,6 +25,24 @@ final class ConfigManager: ObservableObject {
     private var pywalWatchSource: DispatchSourceFileSystemObject?
     private var pywalFileDescriptor: CInt = -1
     private let logger = AppLogger.shared
+
+    // Session-only color placement. The source palette and TOML remain untouched.
+    private var paletteOrder: [Int]?
+    private var lastParsedContent: String?
+    private var renderedPywalColors: PywalColors? {
+        guard let colors = pywalColors?.colors, let order = paletteOrder,
+              colors.count == order.count else { return pywalColors }
+        return PywalColors(colors: order.map { colors[$0] })
+    }
+
+    func shuffleWidgetPalette() {
+        guard config.rootToml.usePywal == true, pywalColors?.colors.count == 16 else { return }
+        // Preserve the dark bar and light text anchors; shuffle the module colors.
+        var indices = Array(1...14)
+        repeat { indices.shuffle() } while [0] + indices + [15] == paletteOrder
+        paletteOrder = [0] + indices + [15]
+        config = Config(rootToml: config.rootToml, pywalColors: renderedPywalColors)
+    }
 
     private init() {
         self.config = Config()
@@ -33,6 +55,22 @@ final class ConfigManager: ObservableObject {
         self.pywalFileDescriptor = -1
         loadOrCreateConfigIfNeeded()
         loadPywalColors()
+    }
+
+    /// Independent bar snapshots share the main palette without adding file watchers.
+    init(snapshot: RootToml, pywalColors: PywalColors?) {
+        self.config = Config(rootToml: snapshot, pywalColors: pywalColors)
+        self.pywalColors = pywalColors
+        self.initError = nil
+    }
+
+    func updateSnapshot(_ snapshot: RootToml, pywalColors: PywalColors?) {
+        // Publish the new snapshot once, rather than first publishing the old
+        // snapshot through the palette observer and then publishing the new one.
+        updatingSnapshot = true
+        if self.pywalColors?.colors != pywalColors?.colors { self.pywalColors = pywalColors }
+        updatingSnapshot = false
+        self.config = Config(rootToml: snapshot, pywalColors: pywalColors)
     }
 
     private func loadOrCreateConfigIfNeeded() {
@@ -84,9 +122,12 @@ final class ConfigManager: ObservableObject {
     private func parseConfigFile(at path: String) {
         do {
             let content = try String(contentsOfFile: path, encoding: .utf8)
+            guard content != lastParsedContent else { return }
+            paletteOrder = nil
+            lastParsedContent = content
             let decoder = TOMLDecoder()
             let rootToml = try decoder.decode(RootToml.self, from: content)
-            let newConfig = Config(rootToml: rootToml, pywalColors: self.pywalColors)
+            let newConfig = Config(rootToml: rootToml, pywalColors: self.renderedPywalColors)
             if Thread.isMainThread {
                 self.config = newConfig
                 self.initError = nil
@@ -172,7 +213,7 @@ final class ConfigManager: ObservableObject {
             parseSection(currentSection, lines: sectionLines, into: &partialToml)
         }
         
-        let newConfig = Config(rootToml: partialToml, pywalColors: self.pywalColors)
+        let newConfig = Config(rootToml: partialToml, pywalColors: self.renderedPywalColors)
         if Thread.isMainThread {
             self.config = newConfig
             self.initError = nil
@@ -448,18 +489,17 @@ final class ConfigManager: ObservableObject {
             }
             self.parseConfigFile(at: path)
         }
-        fileWatchSource?.setCancelHandler { [weak self] in
-            if let fd = self?.fileDescriptor, fd != -1 {
-                close(fd)
-                self?.fileDescriptor = -1
-            }
-        }
+        // Cancellation is asynchronous: a replacement watcher may already
+        // have a different descriptor by the time this handler runs.
+        let watchedDescriptor = fileDescriptor
+        fileWatchSource?.setCancelHandler { close(watchedDescriptor) }
         fileWatchSource?.resume()
     }
 
     private func stopWatchingFile() {
         fileWatchSource?.cancel()
         fileWatchSource = nil
+        fileDescriptor = -1
     }
 
     private func loadPywalColors() {
@@ -489,24 +529,21 @@ final class ConfigManager: ObservableObject {
             if data.contains(.delete) || data.contains(.rename) || data.contains(.revoke) {
                 self.stopWatchingPywal()
                 DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) {
-                    self.loadPywalColors()
+                    DispatchQueue.main.async { self.loadPywalColors() }
                 }
                 return
             }
-            self.pywalColors = PywalColors()
+            DispatchQueue.main.async { self.pywalColors = PywalColors() }
         }
-        pywalWatchSource?.setCancelHandler { [weak self] in
-            if let fd = self?.pywalFileDescriptor, fd != -1 {
-                close(fd)
-                self?.pywalFileDescriptor = -1
-            }
-        }
+        let watchedDescriptor = pywalFileDescriptor
+        pywalWatchSource?.setCancelHandler { close(watchedDescriptor) }
         pywalWatchSource?.resume()
     }
 
     private func stopWatchingPywal() {
         pywalWatchSource?.cancel()
         pywalWatchSource = nil
+        pywalFileDescriptor = -1
     }
 
     /// Temporarily stop watching the config file.

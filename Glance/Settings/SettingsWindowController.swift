@@ -65,11 +65,19 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
   @objc private func showRandomazzoMenu(_ sender: NSButton) {
     let menu = NSMenu()
+    menu.autoenablesItems = false
 
     let addItem = NSMenuItem(
       title: "Add Current Config...", action: #selector(addCurrentConfig), keyEquivalent: "")
     addItem.target = self
     menu.addItem(addItem)
+
+    let replaceItem = NSMenuItem(
+      title: "Replace Current Preset with Current Settings", action: #selector(replaceCurrentConfig), keyEquivalent: "")
+    replaceItem.target = self
+    replaceItem.isEnabled = RandomazzoStore.shared.currentPresetName != nil
+    replaceItem.toolTip = RandomazzoStore.shared.currentPresetName.map { "Replace “\($0)” with the current bar settings" }
+    menu.addItem(replaceItem)
 
     menu.addItem(NSMenuItem.separator())
 
@@ -82,6 +90,24 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     // Show menu below the button
     let location = NSPoint(x: 0, y: sender.frame.maxY + 4)
     menu.popUp(positioning: nil, at: location, in: sender)
+  }
+
+  @discardableResult func replaceCurrentConfiguration() -> Bool {
+    let store = RandomazzoStore.shared
+    guard let name = store.currentPresetName else { return false }
+    guard store.replaceCurrentPreset() else {
+      let alert = NSAlert()
+      alert.messageText = "Couldn’t replace preset"
+      alert.informativeText = "The current settings could not be saved to “\(name)”. Check that the configuration and preset folder are accessible."
+      alert.addButton(withTitle: "OK")
+      alert.runModal()
+      return false
+    }
+    return true
+  }
+
+  @objc private func replaceCurrentConfig() {
+    replaceCurrentConfiguration()
   }
 
   @objc private func addCurrentConfig() {

@@ -8,11 +8,11 @@ struct TimeWidget: View {
     var config: ConfigData { configProvider.config }
     var calendarConfig: ConfigData? { config["calendar"]?.dictionaryValue }
 
-    var format: String { config["format"]?.stringValue ?? "E d, J:mm" }
+    var format: String { config["format"]?.stringValue ?? "E d, H:mm" }
     var timeZone: String? { config["time-zone"]?.stringValue }
 
     var calendarFormat: String {
-        calendarConfig?["format"]?.stringValue ?? "J:mm"
+        calendarConfig?["format"]?.stringValue ?? "H:mm"
     }
     var calendarShowEvents: Bool {
         calendarConfig?["show-events"]?.boolValue ?? true
@@ -95,33 +95,61 @@ struct TimeWidget: View {
     }
 }
 
-/// Publishes only changes to the configured clock label. A one-second timer
-/// still supports patterns containing seconds, but minute-only clocks avoid
-/// 59 redundant SwiftUI invalidations each minute.
+/// Publishes only changes to the configured label. The shared scheduler uses
+/// second boundaries for second-bearing formats and minute boundaries otherwise.
 final class TimeProvider: ObservableObject {
     @Published private(set) var formattedTime = ""
     private let formattingCache = DateFormattingCache()
-    private var pattern = "E d, J:mm"
+    private var pattern = "E d, H:mm"
     private var timeZone: String?
-    private var timer: Timer?
+    private let scheduleID = UUID()
+    private var observers: [NSObjectProtocol] = []
 
     init() {
         update(at: Date())
-        // TimeProvider is owned by the main-thread SwiftUI view. Timer and
-        // publication stay on that run loop; no dedicated running thread is needed.
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.update(at: Date())
+        schedule()
+        observers = [Notification.Name.NSSystemClockDidChange, .NSSystemTimeZoneDidChange, NSLocale.currentLocaleDidChangeNotification].map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.update(at: Date())
+                self?.schedule()
+            }
         }
-        timer?.tolerance = 0.1
     }
 
-    deinit { timer?.invalidate() }
+    deinit {
+        observers.forEach { NotificationCenter.default.removeObserver($0) }
+        let id = scheduleID
+        if Thread.isMainThread { WidgetUpdateScheduler.shared.cancel(id) }
+        else { DispatchQueue.main.async { WidgetUpdateScheduler.shared.cancel(id) } }
+    }
+
+    /// ICU second/fraction/millisecond fields outside quoted literals require
+    /// second updates. All other date/time formats can wait for the next minute.
+    static func refreshInterval(for pattern: String) -> TimeInterval {
+        var quoted = false
+        for character in pattern {
+            if character == "'" { quoted.toggle() }
+            else if !quoted && "sSA".contains(character) { return 1 }
+        }
+        return 60
+    }
+
+    private func schedule() {
+        let interval = Self.refreshInterval(for: pattern)
+        let now = Date().timeIntervalSince1970
+        let delay = interval - now.truncatingRemainder(dividingBy: interval)
+        WidgetUpdateScheduler.shared.schedule(scheduleID, every: interval, after: delay) { [weak self] in
+            self?.update(at: Date())
+            self?.schedule() // Re-align after tolerance, sleep or wall-clock changes.
+        }
+    }
 
     func configure(pattern: String, timeZone: String?) {
         guard self.pattern != pattern || self.timeZone != timeZone else { return }
         self.pattern = pattern
         self.timeZone = timeZone
         update(at: Date())
+        schedule()
     }
 
     func update(at date: Date) {

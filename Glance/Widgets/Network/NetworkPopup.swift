@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NetworkPopup: View {
     @ObservedObject private var viewModel = NetworkStatusViewModel.shared
+    @State private var throughputID = UUID()
     @ObservedObject var configManager = ConfigManager.shared
     var appearance: AppearanceConfig { configManager.config.appearance }
 
@@ -32,7 +33,14 @@ struct NetworkPopup: View {
                     }
                 }
 
-                if viewModel.ssid != "Not connected" && viewModel.ssid != "No interface" {
+                if viewModel.isWiFiAssociated {
+                    if viewModel.ssidUnavailable {
+                        Text("Connected to Wi-Fi. Allow Glance in Privacy & Security → Location Services to display the network name.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button("Location Settings") {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") { NSWorkspace.shared.open(url) }
+                        }
+                    }
                     // Signal strength visual
                     HStack(spacing: 8) {
                         SignalBarsView(
@@ -40,7 +48,7 @@ struct NetworkPopup: View {
                             accentColor: appearance.accentColor,
                             foregroundColor: appearance.foregroundColor
                         )
-                        Text("\(viewModel.rssi) dBm")
+                        Text(viewModel.rssi < 0 ? "\(viewModel.rssi) dBm" : "Signal unavailable")
                             .font(.system(size: 12, design: .monospaced))
                             .opacity(0.5)
                         Spacer()
@@ -108,6 +116,8 @@ struct NetworkPopup: View {
         }
         .frame(width: 240)
         .padding(22)
+        .onAppear { viewModel.setThroughputDemand(throughputID, enabled: true) }
+        .onDisappear { viewModel.setThroughputDemand(throughputID, enabled: false) }
     }
 
     @ViewBuilder

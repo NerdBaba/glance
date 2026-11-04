@@ -171,7 +171,7 @@ struct SpacesWidget: View {
         Group {
             if viewModel.isUnavailable {
                 Text("Spaces unavailable")
-                    .font(.system(size: 11))
+                    .font(widgetFont.toFont())
                     .foregroundStyle(.secondary)
             } else if configProvider.config["space.display-mode"]?.stringValue == "dots-number" {
                 dotsAndNumber
@@ -369,7 +369,7 @@ private struct SpaceView: View {
         HStack(spacing: 4) {
             if showKey {
                 Text(space.id.convertToNumeralSystem(numeralSystem))
-                    .font(.system(size: 12, weight: isFocused ? .bold : .regular))
+                    .font(widgetFont.toFont().weight(isFocused ? .bold : .regular))
                     .monospacedDigit()
                     .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
                     .frame(width: 16, alignment: .center)
@@ -412,7 +412,7 @@ private struct SpaceView: View {
                 .animation(.smooth(duration: 0.2), value: isFocused)
             if showKey && isFocused {
                 Text(space.id.convertToNumeralSystem(numeralSystem))
-                    .font(.system(size: 9, weight: .medium))
+                    .font(widgetFont.toFont().weight(.medium))
                     .monospacedDigit()
                     .foregroundStyle(appearance.foregroundColor.opacity(0.8))
             }
@@ -450,7 +450,7 @@ private struct SpaceView: View {
         HStack(spacing: 4) {
             if showKey {
                 Text(space.id.convertToNumeralSystem(numeralSystem))
-                    .font(.system(size: 12, weight: isFocused ? .bold : .regular))
+                    .font(widgetFont.toFont().weight(isFocused ? .bold : .regular))
                     .monospacedDigit()
                     .foregroundStyle(isFocused ? appearance.foregroundColor : appearance.foregroundColor.opacity(0.5))
                     .frame(width: 16, alignment: .center)

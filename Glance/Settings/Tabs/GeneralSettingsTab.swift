@@ -47,6 +47,8 @@ struct GeneralSettingsTab: View {
   @State private var formationMargin: Double = 8
   @State private var formationGap: Double = 10
   @State private var floatingWidth: Double = 0
+  @State private var floatingInset: Double = 4
+  @State private var floatingFlatTop = false
   @State private var floatingAlignment: String = "center"
   @State private var leftGroupWidth: Double = 0
   @State private var leftGroupOffset: Double = 0
@@ -104,7 +106,7 @@ struct GeneralSettingsTab: View {
   }
 
   private var presetSection: some View {
-    SettingsSection(title: "Preset") {
+    SettingsSection(title: "Preset", keywords: ["Create Preset...", "Delete", "Edit...", "Preset", "custom:", "liquid-glass", "selectedPreset"]) {
       Picker("Preset", selection: $selectedPreset) {
         ForEach(Preset.allCases, id: \.rawValue) { preset in
           Text(presetDisplayName(preset)).tag(preset.rawValue)
@@ -168,7 +170,7 @@ struct GeneralSettingsTab: View {
   @ViewBuilder private var neonSection: some View {
     // MARK: - Neon Colors (only when Neon preset)
     if selectedPreset == "neon" {
-      SettingsSection(title: "Neon Colors") {
+      SettingsSection(title: "Neon Colors", keywords: ["Accent Color", "Gradient Border", "Second Color", "appearance.neon-color", "appearance.neon-color2", "neonColor", "neonColor2", "useGradient"]) {
         HStack {
           Text("Accent Color")
             .frame(width: 130, alignment: .leading)
@@ -219,7 +221,7 @@ struct GeneralSettingsTab: View {
   }
 
   private var paletteSection: some View {
-    SettingsSection(title: "Colors") {
+    SettingsSection(title: "Colors", area: .appearance, keywords: ["Accent", "Border 1", "Border 2", "Disabled", "Foreground", "Per-Widget Foreground Colors", "Pywal Color Indices", "Pywal Index", "Randomize", "Use Pywal Colors", "Widget Background", "dice", "divider", "false", "spacer", "system-banner", "true", "use-pywal", "usePywal", "widgetColorMode"]) {
       Toggle("Use Pywal Colors", isOn: $usePywal)
         .onChange(of: usePywal) { _, newValue in
           guard String(describing: newValue) != synchronizedValues["usePywal"] else { return }
@@ -356,8 +358,8 @@ struct GeneralSettingsTab: View {
   }
 
   private var surfaceSection: some View {
-    SettingsSection(title: "Shape & fill") {
-      SliderRow(label: "Roundness", value: $roundness, range: 0...50, step: 1, format: "%.0f") {
+    SettingsSection(title: "Shape & fill", keywords: ["%.0f", "%.1f", "%.2f", "Border Opacity", "Border Width", "Fill Opacity", "Roundness", "appearance.border-opacity", "appearance.border-width", "appearance.fill-opacity", "appearance.roundness"]) {
+      SliderRow(label: "Roundness", value: $roundness, range: 0...100, step: 1, format: "%.0f") {
         configManager.updateConfigValue(
           key: "appearance.roundness", newValue: String(Int(roundness)))
       }
@@ -382,7 +384,7 @@ struct GeneralSettingsTab: View {
   }
 
   private var shadowSection: some View {
-    SettingsSection(title: "Glow & shadow") {
+    SettingsSection(title: "Glow & shadow", keywords: ["%.0f", "%.2f", "Glow Opacity", "Shadow Opacity", "Shadow Radius", "Shadow Vertical Offset", "appearance.glow-opacity", "appearance.shadow-opacity", "appearance.shadow-radius", "appearance.shadow-y"]) {
       SliderRow(
         label: "Glow Opacity", value: $glowOpacity, range: 0...0.5, step: 0.01, format: "%.2f"
       ) {
@@ -412,7 +414,7 @@ struct GeneralSettingsTab: View {
   }
 
   private var customColorsSection: some View {
-    SettingsSection(title: "Custom colors") {
+    SettingsSection(title: "Custom colors", keywords: ["Accent Color", "Border Color", "Border Color 2", "Foreground Color", "Glow Color", "Widget Background", "accentColor", "appearance.accent-color", "appearance.border-color", "appearance.border-color2", "appearance.foreground-color", "appearance.glow-color", "appearance.widget-background-color", "borderColor", "borderColor2", "foregroundColor", "glowColor", "widgetBackgroundColor"]) {
       HStack {
         Text("Foreground Color")
           .frame(width: 130, alignment: .leading)
@@ -494,7 +496,7 @@ struct GeneralSettingsTab: View {
 
   private var formationSection: some View {
     // MARK: - Formation
-    SettingsSection(title: "Formation") {
+    SettingsSection(title: "Formation", keywords: ["Bottom", "Floating", "Formation", "Full", "Islands", "Left", "Pills", "Position", "Right", "Top", "bottom", "experimental.foreground.formation", "experimental.foreground.position", "floating", "full", "islands", "left", "pills", "right", "selectedFormation", "selectedPosition", "top"]) {
       Picker("Formation", selection: $selectedFormation) {
         Text("Full").tag("full")
         Text("Floating").tag("floating")
@@ -515,6 +517,8 @@ struct GeneralSettingsTab: View {
       Picker("Position", selection: $selectedPosition) {
         Text("Top").tag("top")
         Text("Bottom").tag("bottom")
+        Text("Left").tag("left")
+        Text("Right").tag("right")
       }
       .pickerStyle(.segmented)
       .onChange(of: selectedPosition) { _, newValue in
@@ -524,8 +528,7 @@ struct GeneralSettingsTab: View {
           key: "experimental.foreground.position",
           newValue: newValue)
 
-        // Update yabai external_bar config
-        updateYabaiExternalBar(position: newValue)
+        // AppDelegate updates both yabai edges from the complete configuration.
       }
     }
 
@@ -533,7 +536,7 @@ struct GeneralSettingsTab: View {
 
   private var barLayoutSection: some View {
     // MARK: - Bar Layout
-    SettingsSection(title: "Bar Layout") {
+    SettingsSection(title: "Bar Layout", keywords: ["%.0f px", "Bar Height", "Bar Width", "Bar alignment", "Blur Wallpaper", "Center", "Floating Width", "Horizontal Margin", "Horizontal Padding", "Left", "Right", "Screen Edge Gap", "Set width to 0 to fill the available bar area.", "Show Widget Backgrounds", "Straight top edge", "Vertical inset", "Widget Spacing", "blurWallpaper", "center", "experimental.background.displayed", "experimental.foreground.floating-flat-top", "experimental.foreground.floating-inset", "experimental.foreground.floating-width", "experimental.foreground.height", "experimental.foreground.horizontal-alignment", "experimental.foreground.horizontal-padding", "experimental.foreground.margin", "experimental.foreground.spacing", "experimental.foreground.top-margin", "experimental.foreground.widgets-background.displayed", "false", "floating", "floatingAlignment", "left", "right", "showWidgetBackgrounds", "true"]) {
       Toggle("Blur Wallpaper", isOn: $blurWallpaper)
         .onChange(of: blurWallpaper) { _, newValue in
           guard String(describing: newValue) != synchronizedValues["blurWallpaper"] else { return }
@@ -541,12 +544,12 @@ struct GeneralSettingsTab: View {
           configManager.updateConfigValue(
             key: "experimental.background.displayed", newValue: newValue ? "true" : "false")
         }
-      SliderRow(label: "Bar Height", value: $barHeight, range: 25...80, step: 1, format: "%.0f px")
+      SliderRow(label: selectedPosition == "left" || selectedPosition == "right" ? "Bar Width" : "Bar Height", value: $barHeight, range: 25...80, step: 1, format: "%.0f px")
       {
         configManager.updateConfigValue(
           key: "experimental.foreground.height", newValue: String(Int(barHeight)))
       }
-      SliderRow(label: "Top Margin", value: $topMargin, range: 0...100, step: 1, format: "%.0f px")
+      SliderRow(label: "Screen Edge Gap", value: $topMargin, range: 0...100, step: 1, format: "%.0f px")
       {
         configManager.updateConfigValue(
           key: "experimental.foreground.top-margin", newValue: String(Int(topMargin)))
@@ -597,6 +600,13 @@ struct GeneralSettingsTab: View {
         Text("Set width to 0 to fill the available bar area.")
           .font(.caption)
           .foregroundStyle(.secondary)
+        Toggle("Straight top edge", isOn: $floatingFlatTop)
+          .onChange(of: floatingFlatTop) { _, value in
+            configManager.updateConfigValue(key: "experimental.foreground.floating-flat-top", newValue: value ? "true" : "false")
+          }
+        SliderRow(label: "Vertical inset", value: $floatingInset, range: 0...40, step: 1, format: "%.0f px") {
+          configManager.updateConfigValue(key: "experimental.foreground.floating-inset", newValue: String(Int(floatingInset)))
+        }
       }
       Toggle("Show Widget Backgrounds", isOn: $showWidgetBackgrounds)
         .onChange(of: showWidgetBackgrounds) { _, newValue in
@@ -613,7 +623,7 @@ struct GeneralSettingsTab: View {
 
   @ViewBuilder private var groupLayoutSection: some View {
     if selectedFormation == "pills" {
-      SettingsSection(title: "Pill groups") {
+      SettingsSection(title: "Pill groups", keywords: ["%.0f px", "Center Capsule", "Center Capsule Offset", "Group Gap", "Left Capsule", "Left Capsule Offset", "Right Capsule", "Set a capsule width to 0 to fit its widgets exactly.", "experimental.foreground.center-group-offset", "experimental.foreground.center-group-width", "experimental.foreground.gap", "experimental.foreground.left-group-offset", "experimental.foreground.left-group-width", "experimental.foreground.right-group-width"]) {
         SliderRow(
           label: "Group Gap", value: $formationGap, range: 0...30, step: 1, format: "%.0f px"
         ) {
@@ -668,7 +678,7 @@ struct GeneralSettingsTab: View {
   }
 
   private var scalingSection: some View {
-    SettingsSection(title: "Screenshot scaling") {
+    SettingsSection(title: "Screenshot scaling", keywords: ["%.0f px", "Reference Image Width", "Scale to a reference image", "experimental.foreground.reference-width"]) {
       DisclosureGroup("Scale to a reference image") {
         VStack(alignment: .leading, spacing: 16) {
           SliderRow(
@@ -691,7 +701,7 @@ struct GeneralSettingsTab: View {
 
   private var hotkeySection: some View {
     // MARK: - Hotkey
-    SettingsSection(title: "Global Hotkey") {
+    SettingsSection(title: "Global Hotkey", keywords: [" to disable.", "Toggle bar", "ctrl+option+b", "exclamationmark.triangle.fill", "false", "hotkey", "hotkeyString"]) {
       HStack {
         Text("Toggle bar")
           .frame(width: 130, alignment: .leading)
@@ -724,7 +734,7 @@ struct GeneralSettingsTab: View {
   }
 
   private var configurationSection: some View {
-    SettingsSection(title: "Configuration files") {
+    SettingsSection(title: "Configuration files", keywords: ["Export Config…", "Export saves your current config to a file. Import replaces it.", "Import Config…"]) {
       HStack(spacing: 12) {
         Button("Export Config…") { exportConfig() }
         Button("Import Config…") { importConfig() }
@@ -800,6 +810,8 @@ struct GeneralSettingsTab: View {
     formationMargin = exp.foreground.margin
     formationGap = exp.foreground.gap
     floatingWidth = exp.foreground.floatingWidth
+    floatingInset = exp.foreground.floatingInset
+    floatingFlatTop = exp.foreground.floatingFlatTop
     floatingAlignment = exp.foreground.horizontalAlignment
     leftGroupWidth = exp.foreground.leftGroupWidth
     leftGroupOffset = exp.foreground.leftGroupOffset
@@ -845,6 +857,8 @@ struct GeneralSettingsTab: View {
       "formationMargin": String(describing: formationMargin),
       "formationGap": String(describing: formationGap),
       "floatingWidth": String(describing: floatingWidth),
+      "floatingInset": String(describing: floatingInset),
+      "floatingFlatTop": String(describing: floatingFlatTop),
       "floatingAlignment": String(describing: floatingAlignment),
       "leftGroupWidth": String(describing: leftGroupWidth),
       "leftGroupOffset": String(describing: leftGroupOffset),
@@ -1007,19 +1021,7 @@ struct GeneralSettingsTab: View {
     }
   }
 
-  // MARK: - Yabai Integration
 
-  private func updateYabaiExternalBar(position: String) {
-    let fg = configManager.config.experimental.foreground
-    let barHeight = fg.resolveHeight()
-    let topMargin = fg.topMargin
-
-    YabaiConfigManager.shared.updateExternalBarConfig(
-      position: position,
-      barHeight: barHeight,
-      topMargin: topMargin
-    )
-  }
 }
 
 // MARK: - Color Hex Extension

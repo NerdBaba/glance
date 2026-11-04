@@ -3,8 +3,8 @@ import SwiftUI
 struct TimeSettingsTab: View {
   @ObservedObject var configManager = ConfigManager.shared
 
-  @State private var dateFormat: String = "E d, J:mm"
-  @State private var calendarFormat: String = "J:mm"
+  @State private var dateFormat: String = "E d, H:mm"
+  @State private var calendarFormat: String = "H:mm"
   @State private var showEvents: Bool = true
   @State private var currentTime = Date()
   @State private var showIcon = false
@@ -14,20 +14,19 @@ struct TimeSettingsTab: View {
   private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
   private let formatPresets: [(label: String, pattern: String)] = [
-    ("E d, H:mm", "E d, H:mm"),
-    ("E d MMM, H:mm", "E d MMM, H:mm"),
-    ("H:mm", "H:mm"),
-    ("h:mm a", "h:mm a"),
-    ("d.MM.yyyy H:mm", "d.MM.yyyy H:mm"),
-    ("EEEE, d MMMM", "EEEE, d MMMM"),
+    ("Weekday + time (24-hour)", "E d, H:mm"),
+    ("Date + time", "E d MMM, H:mm"),
+    ("Time (24-hour)", "H:mm"),
+    ("Time (12-hour)", "h:mm a"),
+    ("Numeric date + time", "d.MM.yyyy H:mm"),
+    ("Full weekday + date", "EEEE, d MMMM"),
   ]
 
   @State private var synchronizedValues: [String: String] = [:]
 
   var body: some View {
-    SettingsPage {
-      ModuleSettingsHeader(id: "default.time")
-      SettingsSection(title: "Date Format") {
+    SettingsPage(moduleID: "default.time") {
+      SettingsSection(title: "Date Format", keywords: ["%.0f", "Date format", "Format", "Icon spacing", "Presets", "Preview", "Show clock icon", "checkmark", "false", "showIcon", "true"]) {
         Toggle("Show clock icon", isOn: $showIcon)
           .onChange(of: showIcon) { _, value in
             guard String(describing: value) != synchronizedValues["showIcon"] else { return }
@@ -42,59 +41,28 @@ struct TimeSettingsTab: View {
               key: "widgets.default.time.content-spacing", newValue: String(contentSpacing))
           }
         }
-        HStack {
-          Text("Format")
-            .frame(width: 130, alignment: .leading)
-          TextField("Date format", text: $dateFormat)
-            .textFieldStyle(.roundedBorder)
-            .onSubmit {
-              configManager.updateConfigValue(
-                key: "widgets.default.time.format",
-                newValue: dateFormat)
-            }
-        }
-
-        HStack {
-          Text("Preview")
-            .frame(width: 130, alignment: .leading)
-            .foregroundStyle(.secondary)
-          Text(formattedTime(pattern: dateFormat))
-            .font(.system(.body, design: .monospaced))
-        }
-
-        Divider()
-
-        Text("Presets")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-
-        ForEach(formatPresets, id: \.pattern) { preset in
-          HStack {
-            Button(action: {
-              dateFormat = preset.pattern
-              configManager.updateConfigValue(
-                key: "widgets.default.time.format",
-                newValue: preset.pattern)
-            }) {
-              HStack {
-                Text(preset.label)
-                  .font(.system(.body, design: .monospaced))
-                  .frame(width: 180, alignment: .leading)
-                Text(formattedTime(pattern: preset.pattern))
-                  .foregroundStyle(.secondary)
-              }
-            }
-            .buttonStyle(.plain)
-            Spacer()
-            if dateFormat == preset.pattern {
-              Image(systemName: "checkmark")
-                .foregroundStyle(.blue)
-            }
+        Picker("Clock style", selection: Binding(get: {
+          formatPresets.contains(where: { $0.pattern == dateFormat }) ? dateFormat : "__custom__"
+        }, set: { pattern in
+          guard pattern != "__custom__" else { return }
+          dateFormat = pattern
+          configManager.updateConfigValue(key: "widgets.default.time.format", newValue: pattern)
+        })) {
+          Text("Current custom format").tag("__custom__")
+          ForEach(formatPresets, id: \.pattern) { preset in
+            Text(preset.label + " · " + formattedTime(pattern: preset.pattern)).tag(preset.pattern)
           }
-        }
+        }.pickerStyle(.menu)
+      }
+      SettingsSection(title: "Custom date formats", area: .advanced, keywords: ["date", "time", "pattern", "format", "calendar"]) {
+        SettingsTextField(label: "Clock pattern", value: ModuleSettingsEditor(id: "default.time").string("format", default: "E d, H:mm"))
+        LabeledContent("Example", value: formattedTime(pattern: dateFormat))
+        SettingsTextField(label: "Calendar event pattern", value: Binding(get: {
+          configManager.globalWidgetConfig(for: "default.time")["calendar"]?.dictionaryValue?["format"]?.stringValue ?? "H:mm"
+        }, set: { configManager.updateConfigValue(key: "widgets.default.time.calendar.format", newValue: $0) }))
       }
 
-      SettingsSection(title: "Calendar") {
+      SettingsSection(title: "Calendar", area: .behavior, keywords: ["Calendar format", "Event time format", "Show next event", "false", "showEvents", "true"]) {
         Toggle("Show next event", isOn: $showEvents)
           .onChange(of: showEvents) { _, newValue in
             guard String(describing: newValue) != synchronizedValues["showEvents"] else { return }
@@ -103,17 +71,6 @@ struct TimeSettingsTab: View {
               newValue: newValue ? "true" : "false")
           }
 
-        HStack {
-          Text("Event time format")
-            .frame(width: 130, alignment: .leading)
-          TextField("Calendar format", text: $calendarFormat)
-            .textFieldStyle(.roundedBorder)
-            .onSubmit {
-              configManager.updateConfigValue(
-                key: "widgets.default.time.calendar.format",
-                newValue: calendarFormat)
-            }
-        }
       }
 
       ModuleIconSettings(id: "default.time")
@@ -126,12 +83,12 @@ struct TimeSettingsTab: View {
 
   private func syncFromConfig() {
     let timeConfig = configManager.globalWidgetConfig(for: "default.time")
-    dateFormat = timeConfig["format"]?.stringValue ?? "E d, J:mm"
+    dateFormat = timeConfig["format"]?.stringValue ?? "E d, H:mm"
     showIcon = timeConfig["show-icon"]?.boolValue ?? false
     iconGlyph = timeConfig["glyph"]?.stringValue ?? ""
     contentSpacing = timeConfig["content-spacing"]?.doubleValue ?? 8
     let calConfig = timeConfig["calendar"]?.dictionaryValue ?? [:]
-    calendarFormat = calConfig["format"]?.stringValue ?? "J:mm"
+    calendarFormat = calConfig["format"]?.stringValue ?? "H:mm"
     showEvents = calConfig["show-events"]?.boolValue ?? true
     synchronizedValues = [
       "dateFormat": String(describing: dateFormat),

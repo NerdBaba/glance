@@ -2,8 +2,16 @@ import SwiftUI
 
 struct BrightnessWidget: View {
     @EnvironmentObject var configProvider: ConfigProvider
-    @StateObject private var viewModel = BrightnessViewModel()
+    @StateObject private var viewModel: BrightnessViewModel
+
+    init() {
+        let preview = ProcessInfo.processInfo.environment["GLANCE_PREVIEW_BAR_PATH"] != nil
+            || CommandLine.arguments.contains("--export-bar")
+            || CommandLine.arguments.contains("--preview-panel")
+        _viewModel = StateObject(wrappedValue: BrightnessViewModel(previewMode: preview))
+    }
     @Environment(\.widgetFont) var widgetFont
+    @Environment(\.isBarPreviewRendering) private var preview
     @State private var rect: CGRect = .zero
 
     private var displayMode: String { configProvider.config["display-mode"]?.stringValue ?? "icon-value" }
@@ -38,7 +46,7 @@ struct BrightnessWidget: View {
                 .barStatusSymbol(opticalYOffset: -0.15)
         case "value":
             Text(valueText)
-                .font(.system(size: 13, weight: .medium))
+                .font(widgetFont.toFont())
                 .monospacedDigit()
                 .fixedSize(horizontal: true, vertical: false)
         case "label-value":
@@ -46,7 +54,7 @@ struct BrightnessWidget: View {
                 ? String(label.prefix(maxLength - 3)) + "..."
                 : label
             Text("\(truncatedLabel) \(viewModel.brightnessPercent)%")
-                .font(.system(size: 13, weight: .medium))
+                .font(widgetFont.toFont())
                 .monospacedDigit()
                 .fixedSize(horizontal: true, vertical: false)
         case "icon-label-value":
@@ -54,7 +62,7 @@ struct BrightnessWidget: View {
                 Image(systemName: viewModel.iconName)
                     .barStatusSymbol(opticalYOffset: -0.15)
                 Text(displayText)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(widgetFont.toFont())
                     .monospacedDigit()
                     .fixedSize(horizontal: true, vertical: false)
             }
@@ -65,7 +73,7 @@ struct BrightnessWidget: View {
                 Image(systemName: viewModel.iconName)
                     .barStatusSymbol(opticalYOffset: -0.15)
                 Text(valueText)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(widgetFont.toFont())
                     .monospacedDigit()
                     .fixedSize(horizontal: true, vertical: false)
             }
@@ -92,13 +100,13 @@ struct BrightnessWidget: View {
             }
         )
         .background(.black.opacity(0.001))
-        .overlay(
-            viewModel.isAvailable
-                ? AnyView(BrightnessScrollOverlay { delta in
+        .overlay {
+            if viewModel.isAvailable && !preview {
+                BrightnessScrollOverlay { delta in
                     viewModel.adjustBrightness(by: delta > 0 ? -scrollStep : scrollStep)
-                })
-                : AnyView(EmptyView())
-        )
+                }
+            }
+        }
         .onTapGesture {
             MenuBarPopup.show(rect: rect, id: "brightness") {
                 BrightnessPopup(viewModel: viewModel)

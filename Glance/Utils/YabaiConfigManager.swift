@@ -9,6 +9,16 @@ final class YabaiConfigManager {
     private let logger = AppLogger.shared
     private var isYabaiAvailable: Bool?
     private var yabaiPath: String?
+    // Read and written only on commandQueue; failed commands are never cached.
+    private var lastSuccessfulExternalBarRequest: ExternalBarRequest?
+
+    private struct ExternalBarRequest: Equatable {
+        let top: Int
+        let bottom: Int
+        let left: Int
+        let right: Int
+        let enabled: Bool
+    }
     
     /// Checks if yabai is installed and accessible, caching the full path.
     /// Tries multiple methods to find yabai since Spotlight-launched apps
@@ -40,6 +50,7 @@ final class YabaiConfigManager {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         process.arguments = ["yabai"]
+        process.standardOutput = Pipe()
         
         do {
             try process.run()
@@ -66,70 +77,71 @@ final class YabaiConfigManager {
         return false
     }
     
-    /// Updates yabai's external_bar configuration based on bar position.
-    /// - Parameters:
-    ///   - position: "top" or "bottom"
-    ///   - barHeight: Current height of the Glance bar
-    ///   - topMargin: Top margin from config (used as padding value)
-    func updateExternalBarConfig(position: String, barHeight: CGFloat, topMargin: CGFloat) {
-        logger.info("updateExternalBarConfig called: position=\(position), height=\(barHeight), margin=\(topMargin)", category: .app)
-        
-        guard checkYabaiAvailability() else {
-            logger.warning("Yabai not available, skipping external_bar config update", category: .app)
-            return
-        }
-        
-        // Calculate padding values based on position
-        let topPadding: Int
-        let bottomPadding: Int
-        
-        if position == "bottom" {
-            // Bar at bottom: set bottom padding to bar height + margin
-            topPadding = 0
-            bottomPadding = Int(barHeight + topMargin)
-        } else {
-            // Bar at top (default): set top padding to bar height + margin
-            topPadding = Int(barHeight + topMargin)
-            bottomPadding = 0
-        }
-        
-        // Build yabai command using cached full path
-        guard let yabaiPath = yabaiPath else {
-            logger.error("Yabai path is nil after availability check", category: .app)
-            return
-        }
-        
-        let command = "\(yabaiPath) -m config external_bar all:\(topPadding):\(bottomPadding)"
-        logger.info("Executing yabai command: \(command)", category: .app)
-        
-        executeYabaiCommand(command)
+    /// Reserve both edges in one update; additional bottom bars must not be
+    /// overwritten by a second command for the primary top bar.
+    func updateExternalBarConfig(topPadding: CGFloat, bottomPadding: CGFloat, leftPadding: CGFloat = 0, rightPadding: CGFloat = 0) {
+        guard checkYabaiAvailability() else { return }
+        let request = ExternalBarRequest(
+            top: Int(ceil(max(0, topPadding))),
+            bottom: Int(ceil(max(0, bottomPadding))),
+            left: Int(ceil(max(0, leftPadding))),
+            right: Int(ceil(max(0, rightPadding))),
+            enabled: true
+        )
+        enqueueExternalBarRequest(request)
     }
-    
+
     /// Resets yabai external_bar config to default (no padding).
     func resetExternalBarConfig() {
         guard checkYabaiAvailability() else { return }
-        
-        guard let yabaiPath = yabaiPath else { return }
-        
-        let command = "\(yabaiPath) -m config external_bar off"
-        executeYabaiCommand(command)
+        enqueueExternalBarRequest(ExternalBarRequest(top: 0, bottom: 0, left: 0, right: 0, enabled: false))
     }
-    
-    /// Executes a shell command asynchronously with full environment.
-    private func executeYabaiCommand(_ command: String) {
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.runCommand(command)
+
+    private func enqueueExternalBarRequest(_ request: ExternalBarRequest) {
+        guard let path = yabaiPath else { return }
+        commandQueue.async { [weak self] in
+            guard let self, request != self.lastSuccessfulExternalBarRequest else { return }
+            self.updateSidePadding(path: path, left: request.left, right: request.right)
+            let value = request.enabled ? "all:\(request.top):\(request.bottom)" : "off:0:0"
+            if self.runCommand(path: path, arguments: ["-m", "config", "external_bar", value]) {
+                self.lastSuccessfulExternalBarRequest = request
+            }
         }
     }
-    
-    /// Runs a shell command and logs the result with detailed output.
-    private func runCommand(_ command: String) {
+
+    private func updateSidePadding(path: String, left: Int, right: Int) {
+        for (edge, amount) in [("left", left), ("right", right)] {
+            let key = "glance.yabai.reserved." + edge
+            let previous = UserDefaults.standard.integer(forKey: key)
+            guard previous != amount else { continue }
+            let query = Process()
+            query.executableURL = URL(fileURLWithPath: path)
+            query.arguments = ["-m", "config", "\(edge)_padding"]
+            let output = Pipe(); query.standardOutput = output; query.standardError = FileHandle.nullDevice
+            do { try query.run(); query.waitUntilExit() } catch { continue }
+            guard query.terminationStatus == 0,
+                  let text = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8),
+                  let current = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) else { continue }
+            let target = max(0, current - previous) + max(0, amount)
+            let setter = Process(); setter.executableURL = URL(fileURLWithPath: path)
+            setter.arguments = ["-m", "config", "\(edge)_padding", String(target)]
+            setter.standardOutput = FileHandle.nullDevice; setter.standardError = FileHandle.nullDevice
+            do { try setter.run(); setter.waitUntilExit() } catch { continue }
+            if setter.terminationStatus == 0 { UserDefaults.standard.set(amount, forKey: key) }
+        }
+    }
+
+    // Serial execution preserves configuration order during fast preset changes.
+    private let commandQueue = DispatchQueue(label: "glance.yabai.config", qos: .userInitiated)
+
+    @discardableResult
+    private func runCommand(path: String, arguments: [String]) -> Bool {
+        let command = ([path] + arguments).joined(separator: " ")
         logger.info("Running command: \(command)", category: .app)
-        
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = ["-c", command]
-        
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = arguments
+
         // Set up environment to include user's PATH
         // This is critical for Spotlight-launched apps
         let currentEnv = ProcessInfo.processInfo.environment
@@ -159,11 +171,14 @@ final class YabaiConfigManager {
                 if !output.isEmpty {
                     logger.info("  Output: \(output)", category: .app)
                 }
+                return true
             } else {
                 logger.error("✗ Command failed (exit code \(process.terminationStatus)): \(output)", category: .app)
+                return false
             }
         } catch {
             logger.error("✗ Command execution error: \(error.localizedDescription)", category: .app)
+            return false
         }
     }
 }

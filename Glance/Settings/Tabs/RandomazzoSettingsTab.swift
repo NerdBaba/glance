@@ -6,12 +6,14 @@ struct RandomazzoSettingsTab: View {
 
   @State private var selectedName: String?
   @State private var searchText = ""
-  @State private var sortOrder: PresetSort = .newest
+  @State private var sortOrder: PresetSort = .lastUsed
   @State private var unavailableNames: Set<String> = []
+  @State private var availabilityRevision = 0
   @State private var hotkeyString = "ctrl+option+r"
   @State private var hotkeyValid = true
   @State private var excludeCurrent = false
   @State private var isSyncing = false
+  @State private var replacedPresetName: String?
 
   private enum PresetSort: String, CaseIterable, Identifiable {
     case newest = "Newest first"
@@ -23,6 +25,11 @@ struct RandomazzoSettingsTab: View {
   private struct AvailabilityKey: Equatable {
     let name: String
     let savedAt: Date
+  }
+
+  private struct AvailabilityRequest: Equatable {
+    let entries: [AvailabilityKey]
+    let revision: Int
   }
 
   private var availabilityKeys: [AvailabilityKey] {
@@ -58,8 +65,9 @@ struct RandomazzoSettingsTab: View {
   var body: some View {
     SettingsPage {
       SettingsPageHeader(title: "Randomazzo", summary: "Your collection of looks for the bar.")
+      currentPreset
       savedPresets
-      SettingsSection(title: "Randomizer Hotkey") {
+      SettingsSection(title: "Randomizer Hotkey", keywords: [" to disable.", "Roll random", "ctrl+option+r", "exclamationmark.triangle.fill", "false"]) {
         HStack {
           Text("Roll random").frame(width: 130, alignment: .leading)
           TextField("ctrl+option+r", text: $hotkeyString)
@@ -82,7 +90,7 @@ struct RandomazzoSettingsTab: View {
         Text("Format: modifier+modifier+key (e.g. ctrl+option+r). Set to \"false\" to disable.")
           .font(.caption).foregroundStyle(.secondary)
       }
-      SettingsSection(title: "Options") {
+      SettingsSection(title: "Options", keywords: ["Exclude current config when rolling"]) {
         Toggle("Exclude current config when rolling", isOn: $excludeCurrent)
           .onChange(of: excludeCurrent) { _, newValue in
             guard !isSyncing else { return }
@@ -92,17 +100,50 @@ struct RandomazzoSettingsTab: View {
     }
     .onAppear {
       syncFromUserDefaults()
-      refreshAvailability()
     }
-    .onChange(of: availabilityKeys) { _, _ in
-      refreshAvailability()
+    .task(id: AvailabilityRequest(entries: availabilityKeys, revision: availabilityRevision)) {
+      let unavailable = await store.unavailableNames(in: store.entries.map(\.name))
+      guard !Task.isCancelled else { return }
+      unavailableNames = unavailable
       clearHiddenSelection()
     }
     .onChange(of: searchText) { _, _ in clearHiddenSelection() }
+    .onChange(of: store.currentPresetName) { _, _ in replacedPresetName = nil }
+    .onChange(of: configManager.config) { _, _ in replacedPresetName = nil }
+  }
+
+  private var currentPreset: some View {
+    SettingsSection(title: "Current Preset", keywords: ["Apply or save a preset to replace it with your current bar settings.", "Replace with Current Settings", "Save your edits to this preset using the same name.", "Saved", "Updates this preset’s saved bar settings, keeping its name and icon.", "arrow.triangle.2.circlepath", "checkmark.circle.fill"]) {
+      if let name = store.currentPresetName {
+        Text(name).font(.headline).textSelection(.enabled)
+        Text("Save your edits to this preset using the same name.")
+          .font(.callout).foregroundStyle(.secondary)
+        HStack {
+          Button {
+            if SettingsWindowController.shared.replaceCurrentConfiguration() {
+              replacedPresetName = name
+            }
+          } label: {
+            Label("Replace with Current Settings", systemImage: "arrow.triangle.2.circlepath")
+          }
+          if replacedPresetName == name {
+            Label("Saved", systemImage: "checkmark.circle.fill")
+              .font(.callout).foregroundStyle(.green)
+          }
+        }
+        Text("Updates this preset’s saved bar settings, keeping its name and icon.")
+          .font(.caption).foregroundStyle(.secondary)
+      } else {
+        Text("Apply or save a preset to replace it with your current bar settings.")
+          .foregroundStyle(.secondary)
+        Button("Replace with Current Settings", systemImage: "arrow.triangle.2.circlepath") {}
+          .disabled(true)
+      }
+    }
   }
 
   private var savedPresets: some View {
-    SettingsSection(title: "Saved Presets") {
+    SettingsSection(title: "Saved Presets", keywords: ["Add your current bar, then try a new look whenever you like.", "No matching presets", "Select a preset to apply it. Icons stay with their presets until you shuffle them.", "Try a different name or clear your search.", "Your collection starts here", "magnifyingglass"]) {
       collectionActions
       if store.entries.isEmpty {
         VStack(spacing: 8) {
@@ -232,10 +273,6 @@ struct RandomazzoSettingsTab: View {
     }
   }
 
-  private func refreshAvailability() {
-    unavailableNames = Set(store.entries.filter { store.isCorrupted($0.name) }.map(\.name))
-  }
-
   private func clearHiddenSelection() {
     if let name = selectedName, !visibleEntries.contains(where: { $0.name == name }) {
       selectedName = nil
@@ -255,6 +292,12 @@ struct RandomazzoSettingsTab: View {
       AppLogger.shared.info("Applied config: \(result)", category: .app)
     } else {
       AppLogger.shared.error("Failed to apply config: '\(name)'", category: .app)
+      availabilityRevision += 1
+      let alert = NSAlert()
+      alert.messageText = "Couldn’t apply preset"
+      alert.informativeText = "The preset file could not be read or the current configuration could not be written."
+      alert.addButton(withTitle: "OK")
+      alert.runModal()
     }
   }
 
@@ -283,7 +326,7 @@ struct RandomazzoSettingsTab: View {
   }
 
   private func roll() {
-    let currentName = configManager.config.rootToml.preset
+    let currentName = store.currentPresetName
     let exclude = UserDefaults.standard.randomazzoExcludeCurrent ? currentName : nil
     if let result = store.roll(excludeCurrent: exclude) {
       AppLogger.shared.info("Randomazzo rolled: \(result)", category: .app)

@@ -23,9 +23,21 @@ struct FontSettingsTab: View {
       SettingsPageHeader(
         title: "Fonts",
         summary:
-          "The global font for your bar. Individual modules can override it on their own pages.")
-      SettingsSection(title: "Global font") {
+          "Change the text font across your preset. Icon fonts and transition shapes are preserved.")
+      SettingsSection(title: "Global font", keywords: ["%.1f", "Choose Font…", "Font", "Preview", "Reset to System Font", "Size", "Use global font for preset text", "Use this font in all text modules", "Weight", "appearance.override-module-fonts", "bar-font-size", "bar-font-weight", "false", "true", "widget-font-size", "widget-font-weight"]) {
         VStack(alignment: .leading, spacing: 12) {
+          Toggle("Use global font for preset text", isOn: Binding(get: {
+            configManager.config.appearance.overrideModuleFonts
+          }, set: { value in
+            configManager.updateConfigValue(key: "appearance.override-module-fonts", newValue: value ? "true" : "false")
+          }))
+          Text("Choosing a font, size, or weight enables this automatically. Turn it off to restore the preset’s original typography.")
+            .font(.caption).foregroundStyle(.secondary)
+          Button("Use this font in all text modules") {
+            let keys = SettingsModule.all(config: configManager.config).map { "widgets.\($0.id).font-use-global" }
+            configManager.removeConfigValues(keys: keys)
+            configManager.updateConfigValue(key: "appearance.override-module-fonts", newValue: "true")
+          }
           HStack {
             Text("Font")
               .fontWeight(.medium)
@@ -49,10 +61,7 @@ struct FontSettingsTab: View {
               .frame(width: 150)
               .onChange(of: fontSize) { _, newValue in
                 guard !isSyncing else { return }
-                configManager.updateConfigValue(
-                  key: "appearance.bar-font-size", newValue: String(newValue))
-                configManager.updateConfigValue(
-                  key: "appearance.widget-font-size", newValue: String(newValue))
+                applyGlobalFont([("bar-font-size", String(newValue)), ("widget-font-size", String(newValue))])
               }
             Text("\(fontSize, specifier: "%.1f") pt")
               .monospacedDigit()
@@ -69,10 +78,7 @@ struct FontSettingsTab: View {
             .pickerStyle(.menu)
             .onChange(of: fontWeight) { _, newValue in
               guard !isSyncing else { return }
-              configManager.updateConfigValue(
-                key: "appearance.bar-font-weight", newValue: String(newValue))
-              configManager.updateConfigValue(
-                key: "appearance.widget-font-weight", newValue: String(newValue))
+              applyGlobalFont([("bar-font-weight", String(newValue)), ("widget-font-weight", String(newValue))])
             }
           }
 
@@ -86,7 +92,7 @@ struct FontSettingsTab: View {
         .padding(.vertical, 8)
       }
 
-      SettingsSection(title: "Reset") {
+      SettingsSection(title: "Reset", keywords: ["Reset Font to Default"]) {
         Button("Reset Font to Default") {
           resetFont()
         }
@@ -154,19 +160,10 @@ struct FontSettingsTab: View {
         self.fontSize = Double(fontSize)
         self.fontWeight = Int(weight)
 
-        // Update both bar and widget font settings
-        self.configManager.updateConfigValue(
-          key: "appearance.bar-font-name", newValue: validFontName)
-        self.configManager.updateConfigValue(
-          key: "appearance.bar-font-size", newValue: String(Int(fontSize)))
-        self.configManager.updateConfigValue(
-          key: "appearance.bar-font-weight", newValue: String(Int(weight)))
-        self.configManager.updateConfigValue(
-          key: "appearance.widget-font-name", newValue: validFontName)
-        self.configManager.updateConfigValue(
-          key: "appearance.widget-font-size", newValue: String(Int(fontSize)))
-        self.configManager.updateConfigValue(
-          key: "appearance.widget-font-weight", newValue: String(Int(weight)))
+        self.applyGlobalFont([
+          ("bar-font-name", validFontName), ("bar-font-size", String(Double(fontSize))), ("bar-font-weight", String(Int(weight))),
+          ("widget-font-name", validFontName), ("widget-font-size", String(Double(fontSize))), ("widget-font-weight", String(Int(weight)))
+        ])
       }
     }
   }
@@ -181,12 +178,15 @@ struct FontSettingsTab: View {
     fontSize = 13
     fontWeight = 4  // medium
 
-    configManager.updateConfigValue(key: "appearance.bar-font-name", newValue: "")
-    configManager.updateConfigValue(key: "appearance.bar-font-size", newValue: String(13))
-    configManager.updateConfigValue(key: "appearance.bar-font-weight", newValue: String(4))
-    configManager.updateConfigValue(key: "appearance.widget-font-name", newValue: "")
-    configManager.updateConfigValue(key: "appearance.widget-font-size", newValue: String(13))
-    configManager.updateConfigValue(key: "appearance.widget-font-weight", newValue: String(4))
+    applyGlobalFont([
+      ("bar-font-name", ""), ("bar-font-size", "13"), ("bar-font-weight", "4"),
+      ("widget-font-name", ""), ("widget-font-size", "13"), ("widget-font-weight", "4")
+    ])
+  }
+
+  private func applyGlobalFont(_ values: [(String, String)]) {
+    configManager.updateConfigValues(pairs: values.map { (key: "appearance." + $0.0, value: $0.1) }
+      + [(key: "appearance.override-module-fonts", value: "true")])
   }
 
   // MARK: - Helpers

@@ -126,34 +126,41 @@ private func detectBackend(displayID: UInt32) -> BrightnessBackend {
 // MARK: - ViewModel
 
 final class BrightnessViewModel: ObservableObject {
-    @Published var brightness: Float = 1.0
+    @Published var brightness: Float = 0
     @Published var isAvailable: Bool = false
     @Published var displayName: String = "Main Display"
     @Published var backendDescription: String = "Unavailable"
 
     private var timer: Timer?
     private var wakeObserver: NSObjectProtocol?
-    private let displayID: UInt32
-    private let backend: BrightnessBackend
+    private var displayID: UInt32
+    private var backend: BrightnessBackend
+    private var usesBetterDisplay = false
+    private var betterDisplayReadPending = false
+    private var betterDisplayWritePending = false
+    private var requestedBrightness: Float?
+    private var generation = 0
+    private let previewMode: Bool
 
-    init() {
+    init(previewMode: Bool = false) {
+        self.previewMode = previewMode
+        if previewMode {
+            displayID = 0
+            backend = .none
+            brightness = 0.7
+            isAvailable = true
+            return
+        }
         displayID = CGMainDisplayID()
         backend = detectBackend(displayID: displayID)
         displayName = Self.displayName(for: displayID)
-        if case .none = backend {
-            isAvailable = false
-        } else {
-            isAvailable = true
-        }
         backendDescription = Self.backendDescription(for: backend)
-
-        if isAvailable {
-            readBrightness()
-            timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-                self?.readBrightness()
-            }
-            timer?.tolerance = 0.5
+        readBrightness()
+        // Also retry while unavailable: BetterDisplay may launch after Glance.
+        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            self?.readBrightness()
         }
+        timer?.tolerance = 0.5
 
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
@@ -175,55 +182,109 @@ final class BrightnessViewModel: ObservableObject {
     }
 
     private func readBrightness() {
-        var value: Float = 0
-        var success = false
+        guard !previewMode else { return }
+        let currentDisplay = CGMainDisplayID()
+        if currentDisplay != displayID {
+            generation += 1
+            if case .iokit(let service) = backend { IOObjectRelease(service) }
+            displayID = currentDisplay
+            backend = detectBackend(displayID: displayID)
+            displayName = Self.displayName(for: displayID)
+            usesBetterDisplay = false
+            isAvailable = false
+            requestedBrightness = nil
+        }
+        let client = BetterDisplayBrightnessClient.shared
+        if client.isRunning {
+            guard !betterDisplayReadPending, !betterDisplayWritePending else { return }
+            betterDisplayReadPending = true
+            let version = generation
+            client.brightness(displayID: displayID) { [weak self] value in
+                guard let self else { return }
+                self.betterDisplayReadPending = false
+                guard version == self.generation else { return }
+                if let value {
+                    let changedBackend = !self.usesBetterDisplay
+                    self.usesBetterDisplay = true
+                    self.isAvailable = true
+                    self.backendDescription = "BetterDisplay"
+                    self.publishBrightness(value)
+                    if changedBackend {
+                        AppLogger.shared.info("Brightness uses BetterDisplay: displayID=\(self.displayID), value=\(self.brightnessPercent)%")
+                    }
+                } else {
+                    self.usesBetterDisplay = false
+                    self.readNativeBrightness()
+                }
+            }
+        } else {
+            usesBetterDisplay = false
+            readNativeBrightness()
+        }
+    }
 
+    private func publishBrightness(_ value: Float) {
+        guard value.isFinite else { return }
+        let clamped = max(0, min(1, value))
+        if abs(brightness - clamped) > 0.001 { brightness = clamped }
+    }
+
+    private func readNativeBrightness() {
+        var value: Float = 0
+        let success: Bool
         switch backend {
-        case .displayServices:
-            if let fn = _dsGetBrightness {
-                success = fn(displayID, &value) == 0
-            }
-        case .coreDisplay:
-            if let fn = _cdGetBrightness {
-                success = fn(displayID, &value) == 0
-            }
+        case .displayServices: success = _dsGetBrightness?(displayID, &value) == 0
+        case .coreDisplay: success = _cdGetBrightness?(displayID, &value) == 0
         case .iokit(let service):
             success = IODisplayGetFloatParameter(service, 0, kIODisplayBrightnessKey as CFString, &value) == kIOReturnSuccess
-        case .none:
-            return
+        case .none: success = false
         }
-
-        if success {
-            let clamped = max(0, min(1, value))
-            if abs(brightness - clamped) > 0.005 {
-                brightness = clamped
-            }
-        }
+        isAvailable = success && value.isFinite
+        backendDescription = isAvailable ? Self.backendDescription(for: backend) : "Unavailable"
+        if isAvailable { publishBrightness(value) }
     }
 
     func setBrightness(_ value: Float) {
+        guard !previewMode, isAvailable, value.isFinite else { return }
         let clamped = max(0, min(1, value))
-
-        switch backend {
-        case .displayServices:
-            if let fn = _dsSetBrightness {
-                _ = fn(displayID, clamped)
-            }
-        case .coreDisplay:
-            if let fn = _cdSetBrightness {
-                _ = fn(displayID, clamped)
-            }
-        case .iokit(let service):
-            IODisplaySetFloatParameter(service, 0, kIODisplayBrightnessKey as CFString, clamped)
-        case .none:
+        if usesBetterDisplay {
+            requestedBrightness = clamped
+            sendBetterDisplayAdjustment()
             return
         }
+        let success: Bool
+        switch backend {
+        case .displayServices: success = _dsSetBrightness?(displayID, clamped) == 0
+        case .coreDisplay: success = _cdSetBrightness?(displayID, clamped) == 0
+        case .iokit(let service):
+            success = IODisplaySetFloatParameter(service, 0, kIODisplayBrightnessKey as CFString, clamped) == kIOReturnSuccess
+        case .none: success = false
+        }
+        if success { readNativeBrightness() }
+    }
 
-        brightness = clamped
+    /// Coalesce slider/scroll events while awaiting the acknowledged value.
+    /// Never display a requested value as if the hardware accepted it.
+    private func sendBetterDisplayAdjustment() {
+        guard !betterDisplayWritePending, let target = requestedBrightness else { return }
+        betterDisplayWritePending = true
+        generation += 1
+        let version = generation
+        BetterDisplayBrightnessClient.shared.brightness(displayID: displayID, setting: target) { [weak self] value in
+            guard let self else { return }
+            self.betterDisplayWritePending = false
+            guard version == self.generation else { self.readBrightness(); return }
+            if let value { self.publishBrightness(value) }
+            else { AppLogger.shared.warning("BetterDisplay brightness adjustment was not acknowledged") }
+            if self.requestedBrightness == target {
+                self.requestedBrightness = nil
+                self.readBrightness()
+            } else { self.sendBetterDisplayAdjustment() }
+        }
     }
 
     func adjustBrightness(by delta: Float) {
-        setBrightness(brightness + delta)
+        setBrightness((requestedBrightness ?? brightness) + delta)
     }
 
     var brightnessPercent: Int {

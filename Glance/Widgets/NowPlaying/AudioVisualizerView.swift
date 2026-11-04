@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 
 // MARK: - Visualizer Position
 
@@ -25,10 +24,7 @@ struct AudioVisualizerView: View {
     let color: Color
     let maxHeight: CGFloat
 
-    @State private var currentTime: TimeInterval = Date().timeIntervalSinceReferenceDate
-
-    // Timer fires at ~30fps; only active while view is on screen
-    private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
+    @Environment(\.barCollectorsActive) private var collectorsActive
 
     init(isPlaying: Bool, barCount: Int = 5, color: Color, maxHeight: CGFloat = 14) {
         self.isPlaying = isPlaying
@@ -38,23 +34,21 @@ struct AudioVisualizerView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 2) {
-            ForEach(0..<barCount, id: \.self) { i in
-                let h = max(2, maxHeight * barHeight(at: i, time: currentTime))
-                RoundedRectangle(cornerRadius: 1, style: .continuous)
-                    .fill(color.opacity(0.8))
-                    .frame(width: 3, height: h)
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !isPlaying || !collectorsActive)) { timeline in
+            HStack(alignment: .center, spacing: 2) {
+                ForEach(0..<barCount, id: \.self) { i in
+                    let h = max(2, maxHeight * barHeight(at: i, time: timeline.date.timeIntervalSinceReferenceDate))
+                    RoundedRectangle(cornerRadius: 1, style: .continuous)
+                        .fill(color.opacity(0.8))
+                        .frame(width: 3, height: h)
+                }
             }
-        }
-        .frame(height: maxHeight, alignment: .center)
-        .onReceive(timer) { _ in
-            guard isPlaying else { return }
-            currentTime = Date().timeIntervalSinceReferenceDate
+            .frame(height: maxHeight, alignment: .center)
         }
     }
 
     private func barHeight(at index: Int, time: TimeInterval) -> CGFloat {
-        guard isPlaying else { return 0.15 }
+        guard isPlaying && collectorsActive else { return 0.15 }
 
         let phase = Double(index) * 0.7
         // Layered sine waves at different frequencies for organic motion

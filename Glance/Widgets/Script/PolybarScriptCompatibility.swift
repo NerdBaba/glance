@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import Foundation
 import SwiftUI
 
@@ -7,6 +8,15 @@ import SwiftUI
 /// them without inventing an intermediate vocabulary.
 struct PolybarScriptOptions {
     let values: ConfigData
+
+    /// Restart the command only when runtime settings change. Appearance edits
+    /// keep the process and its current output alive.
+    var runtimeIdentity: String {
+        let runtimeKeys = ["exec", "command", "exec-if", "tail", "interval", "interval-fail", "interval-if", "timeout"]
+        return values.keys.filter { key in
+            runtimeKeys.contains(key) || key.hasPrefix("env-") || key.hasPrefix("click-") || key.hasPrefix("scroll-") || key.hasPrefix("double-click-") || key.hasPrefix("animation-")
+        }.sorted().map { $0 + "=" + (string($0) ?? "") }.joined(separator: "\n")
+    }
 
     var command: String { string("exec") ?? string("command") ?? "" }
     var execIf: String? { string("exec-if") }
@@ -24,10 +34,25 @@ struct PolybarScriptOptions {
         return result
     }
 
-    func string(_ key: String) -> String? { values[key]?.stringValue }
+    var tokens: [String: String] {
+        Dictionary(uniqueKeysWithValues: values.compactMap { key, value in
+            guard key.hasPrefix("token-"), let text = value.stringValue else { return nil }
+            return (String(key.dropFirst(6)), text)
+        })
+    }
+    func string(_ key: String) -> String? {
+        guard let value = values[key] else { return nil }
+        switch value {
+        case .string(let text): return text
+        case .int(let number): return String(number)
+        case .double(let number): return String(number)
+        case .bool(let flag): return String(flag)
+        default: return nil
+        }
+    }
     func bool(_ key: String) -> Bool? { values[key]?.boolValue }
-    func double(_ key: String) -> Double? { values[key]?.doubleValue }
-    func integer(_ key: String) -> Int? { values[key]?.intValue }
+    func double(_ key: String) -> Double? { values[key]?.doubleValue ?? values[key]?.stringValue.flatMap(Double.init) }
+    func integer(_ key: String) -> Int? { values[key]?.intValue ?? values[key]?.stringValue.flatMap(Int.init) }
 
     var animationFrameDurations: [TimeInterval] {
         let names = Set(values.keys.compactMap { key -> String? in
@@ -62,6 +87,23 @@ enum PolybarScriptPiece {
 /// The component names follow Polybar's `<label>`, `<ramp-NAME>`, and
 /// `<bar-NAME>` formatting syntax.
 enum PolybarScriptRenderer {
+    // Font specifications are stable across output updates. Keep the caches
+    // bounded because user configs can introduce arbitrary font names/sizes.
+    fileprivate static let parsedFonts: NSCache<NSString, NSFont> = {
+        let cache = NSCache<NSString, NSFont>()
+        cache.countLimit = 128
+        return cache
+    }()
+    fileprivate static let coreTextFonts: NSCache<NSString, CTFont> = {
+        let cache = NSCache<NSString, CTFont>()
+        cache.countLimit = 128
+        return cache
+    }()
+    private static let fontLists: NSCache<NSString, NSArray> = {
+        let cache = NSCache<NSString, NSArray>()
+        cache.countLimit = 32
+        return cache
+    }()
     private static let componentRegex = try? NSRegularExpression(pattern: "<([A-Za-z][A-Za-z0-9_-]*)>")
     private static let tokenRegex = try? NSRegularExpression(
         pattern: "%([A-Za-z][A-Za-z0-9_-]*)(?::(-?[0-9]*))?(?::(-?[0-9]*))?(?::([^%]*))?%"
@@ -91,7 +133,7 @@ enum PolybarScriptRenderer {
         failed: Bool,
         animationTime: TimeInterval = 0
     ) -> [PolybarScriptPiece] {
-        let options = PolybarScriptOptions(values: config)
+        let options = PolybarScriptOptions(values: GlanceInlineIcons.resolve(config))
         let rawValue = extractValue(from: output, options: options)
         let minValue = options.double("value-min") ?? 0
         let maxValue = options.double("value-max") ?? 100
@@ -125,9 +167,9 @@ enum PolybarScriptRenderer {
             rawValue: rawValue,
             percentage: percentage,
             counter: counter,
-            pid: pid
+            pid: pid,
+            tokens: options.tokens
         )
-        expanded = expandFormatStyle(expanded, options: options, stateName: stateName)
 
         let paddingKey = stateName.map { "format-\($0)-padding" } ?? "format-padding"
         if let padding = options.integer(paddingKey), padding > 0 {
@@ -137,6 +179,7 @@ enum PolybarScriptRenderer {
                   padding.hasSuffix("px") || padding.hasSuffix("pt") {
             expanded = "%{O\(padding)}" + expanded + "%{O\(padding)}"
         }
+        expanded = expandFormatStyle(expanded, options: options, stateName: stateName)
         let offsetKey = stateName.map { "format-\($0)-offset" } ?? "format-offset"
         if let offset = options.string(offsetKey) ?? options.integer(offsetKey).map(String.init) {
             expanded = "%{O\(offset)}" + expanded
@@ -180,6 +223,10 @@ enum PolybarScriptRenderer {
                     counter: counter,
                     pid: pid
                 )
+            } else if component == "ramp" {
+                replacement = renderRamp(name: "", options: options, value: percentage)
+            } else if component == "bar" {
+                replacement = renderProgressBar(name: "", options: options, value: percentage)
             } else if component.hasPrefix("ramp-") {
                 let name = String(component.dropFirst("ramp-".count))
                 replacement = renderRamp(name: name, options: options, value: percentage)
@@ -217,39 +264,44 @@ enum PolybarScriptRenderer {
             rawValue: rawValue,
             percentage: percentage,
             counter: counter,
-            pid: pid
+            pid: pid,
+            tokens: options.tokens
         )
         let prefix = name == "label" ? "label" : name
         let maxLength = options.integer("\(prefix)-maxlen")
             ?? (name == "label" ? options.integer("label-maxlen") : nil)
-        if let maxLength, maxLength > 0, text.count > maxLength {
-            let useEllipsis = options.bool("\(prefix)-ellipsis") ?? options.bool("label-ellipsis") ?? true
-            let suffix = useEllipsis ? "…" : ""
-            text = String(text.prefix(max(0, maxLength - suffix.count))) + suffix
-        }
         let minimumLength = options.integer("\(prefix)-minlen")
             ?? (name == "label" ? options.integer("label-minlen") : nil)
-        if let minimumLength, minimumLength > text.count {
-            let padding = String(repeating: " ", count: minimumLength - text.count)
-            switch options.string("\(prefix)-alignment") ?? options.string("label-alignment") ?? "left" {
-            case "right": text = padding + text
-            case "center":
-                let leading = padding.count / 2
-                text = String(repeating: " ", count: leading) + text
-                    + String(repeating: " ", count: padding.count - leading)
-            default: text += padding
+        var measuredLength: Int?
+        if let maxLength, maxLength > 0 {
+            let units = GlanceInlineIcons.units(text)
+            measuredLength = units.count
+            if units.count > maxLength {
+                let useEllipsis = options.bool("\(prefix)-ellipsis") ?? options.bool("label-ellipsis") ?? true
+                let suffix = useEllipsis ? "…" : ""
+                text = units.prefix(max(0, maxLength - suffix.count)).joined() + suffix
+                measuredLength = GlanceInlineIcons.units(text).count
+            }
+        }
+        if let minimumLength {
+            let currentLength = measuredLength ?? GlanceInlineIcons.units(text).count
+            if minimumLength > currentLength {
+                let padding = String(repeating: " ", count: min(4096, minimumLength - currentLength))
+                switch options.string("\(prefix)-alignment") ?? options.string("label-alignment") ?? "left" {
+                case "right": text = padding + text
+                case "center":
+                    let leading = padding.count / 2
+                    text = String(repeating: " ", count: leading) + text
+                        + String(repeating: " ", count: padding.count - leading)
+                default: text += padding
+                }
             }
         }
         if let margin = options.integer("\(prefix)-margin"), margin > 0 {
             let spaces = String(repeating: " ", count: min(margin, 128))
             text = spaces + text + spaces
         }
-        let styledText = styled(text, stylePrefix: prefix, basePrefix: "label", options: options)
-        if let padding = options.integer("\(prefix)-padding"), padding > 0 {
-            let spaces = String(repeating: " ", count: min(padding, 128))
-            return spaces + styledText + spaces
-        }
-        return styledText
+        return styled(text, stylePrefix: prefix, basePrefix: "label", options: options)
     }
 
     private static func expandTokens(
@@ -258,7 +310,8 @@ enum PolybarScriptRenderer {
         rawValue: Double,
         percentage: Double,
         counter: Int,
-        pid: Int32?
+        pid: Int32?,
+        tokens: [String: String] = [:]
     ) -> String {
         let values = [
             "output": output.trimmingCharacters(in: .newlines),
@@ -266,7 +319,7 @@ enum PolybarScriptRenderer {
             "percentage": String(Int(percentage.rounded())),
             "counter": String(counter),
             "pid": pid.map(String.init) ?? ""
-        ]
+        ].merging(tokens) { _, native in native }
         guard let regex = tokenRegex else { return text }
         let source = text as NSString
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: source.length))
@@ -321,7 +374,7 @@ enum PolybarScriptRenderer {
     }
 
     private static func renderRamp(name: String, options: PolybarScriptOptions, value: Double) -> String {
-        let prefix = "ramp-\(name)-"
+        let prefix = name.isEmpty ? "ramp-" : "ramp-\(name)-"
         var levels: [(index: Int, text: String, weight: Double, style: String)] = []
         for (key, item) in options.values {
             guard key.hasPrefix(prefix), let text = item.stringValue else { continue }
@@ -333,21 +386,21 @@ enum PolybarScriptRenderer {
         levels.sort { $0.index < $1.index }
         guard !levels.isEmpty else { return "" }
         guard levels.count > 1 else {
-            return styled(levels[0].text, stylePrefix: levels[0].style, basePrefix: "ramp-\(name)", options: options)
+            return styled(levels[0].text, stylePrefix: levels[0].style, basePrefix: (name.isEmpty ? "ramp" : "ramp-\(name)"), options: options)
         }
         if value <= 0 {
             let edge = levels[0]
-            return styled(edge.text, stylePrefix: edge.style, basePrefix: "ramp-\(name)", options: options)
+            return styled(edge.text, stylePrefix: edge.style, basePrefix: (name.isEmpty ? "ramp" : "ramp-\(name)"), options: options)
         }
         if value >= 100 {
             let edge = levels[levels.count - 1]
-            return styled(edge.text, stylePrefix: edge.style, basePrefix: "ramp-\(name)", options: options)
+            return styled(edge.text, stylePrefix: edge.style, basePrefix: (name.isEmpty ? "ramp" : "ramp-\(name)"), options: options)
         }
 
         let interior = Array(levels.dropFirst().dropLast())
         guard !interior.isEmpty else {
             let edge = levels[0]
-            return styled(edge.text, stylePrefix: edge.style, basePrefix: "ramp-\(name)", options: options)
+            return styled(edge.text, stylePrefix: edge.style, basePrefix: (name.isEmpty ? "ramp" : "ramp-\(name)"), options: options)
         }
         let totalWeight = interior.reduce(0) { $0 + $1.weight }
         var cursor = 0.0
@@ -355,7 +408,7 @@ enum PolybarScriptRenderer {
             cursor += totalWeight > 0 ? level.weight / totalWeight * 100 : 0
             return value <= cursor
         } ?? interior.last!
-        return styled(selected.text, stylePrefix: selected.style, basePrefix: "ramp-\(name)", options: options)
+        return styled(selected.text, stylePrefix: selected.style, basePrefix: (name.isEmpty ? "ramp" : "ramp-\(name)"), options: options)
     }
 
     private static func renderAnimation(name: String, options: PolybarScriptOptions, elapsed: TimeInterval) -> String {
@@ -378,7 +431,7 @@ enum PolybarScriptRenderer {
     }
 
     private static func renderProgressBar(name: String, options: PolybarScriptOptions, value: Double) -> String {
-        let prefix = "bar-\(name)"
+        let prefix = name.isEmpty ? "bar" : "bar-\(name)"
         let width = min(256, max(1, options.integer("\(prefix)-width") ?? 10))
         let fill = options.string("\(prefix)-fill") ?? "━"
         let empty = options.string("\(prefix)-empty") ?? "━"
@@ -439,10 +492,18 @@ enum PolybarScriptRenderer {
                     tags += "%{T\(index)}"
                 } else {
                     tags += "%{\(tag)\(value)}"
+                    if field == "underline" || field == "overline" { tags += "%{+\(tag)}" }
                 }
             }
         }
-        return tags + text + "%{F-}%{B-}%{u-}%{o-}%{T-}"
+        let padding = max(0, min(128, options.integer("\(stylePrefix)-padding") ?? options.integer("\(basePrefix)-padding") ?? 0))
+        let spaces = String(repeating: " ", count: padding)
+        // Reset to the containing format after each component. In Polybar,
+        // a label's background override does not erase its parent's style.
+        let reset = fields.map { field, tag in
+            "%{\(tag)\(options.string("format-\(field)") ?? "-")}" + ((field == "underline" || field == "overline") ? "%{\(options.string("format-\(field)") == nil ? "-" : "+")\(tag)}" : "")
+        }.joined()
+        return tags + spaces + text + spaces + reset
     }
 
     private static func expandFormatStyle(_ format: String, options: PolybarScriptOptions, stateName: String?) -> String {
@@ -454,7 +515,8 @@ enum PolybarScriptRenderer {
             let stateKey = stateName.map { "format-\($0)-\(field)" }
             if let value = stateKey.flatMap(options.string) ?? options.string("format-\(field)") {
                 opening += "%{\(tag)\(value)}"
-                closing = "%{\(tag)-}" + closing
+                if field == "underline" || field == "overline" { opening += "%{+\(tag)}" }
+                closing = "%{\(tag)-}" + ((field == "underline" || field == "overline") ? "%{-\(tag)}" : "") + closing
             }
         }
         let fontKey = stateName.map { "format-\($0)-font" }
@@ -476,12 +538,13 @@ enum PolybarScriptRenderer {
         func flush() {
             guard !literal.isEmpty else { return }
             let mergedActions = state.mergedActions(with: actions)
-            appendText(literal, style: state.style(options: options), actions: mergedActions, to: &pieces)
+            appendWithFontFallback(literal, style: state.style(options: options), actions: mergedActions, options: options, to: &pieces)
             literal = ""
         }
 
         while index < chars.count {
-            if chars[index] == "%", index + 1 < chars.count, chars[index + 1] == "%" {
+            if chars[index] == "%", index + 1 < chars.count, chars[index + 1] == "%",
+               !(index + 2 < chars.count && chars[index + 2] == "{") {
                 literal.append("%")
                 index += 2
                 continue
@@ -504,10 +567,14 @@ enum PolybarScriptRenderer {
                 state.foreground = parseMarkupColor(String(body.dropFirst()))
             } else if body.hasPrefix("B") {
                 state.background = parseMarkupColor(String(body.dropFirst()))
+            } else if body == "+u" || body == "-u" || body == "!u" {
+                state.underlineEnabled = body == "!u" ? !state.underlineEnabled : body == "+u"
+            } else if body == "+o" || body == "-o" || body == "!o" {
+                state.overlineEnabled = body == "!o" ? !state.overlineEnabled : body == "+o"
             } else if body.hasPrefix("u") {
-                state.underline = parseLineTag(String(body.dropFirst()), enabled: &state.underlineEnabled, currentColor: state.foreground)
+                state.underline = parseMarkupColor(String(body.dropFirst()))
             } else if body.hasPrefix("o") {
-                state.overline = parseLineTag(String(body.dropFirst()), enabled: &state.overlineEnabled, currentColor: state.foreground)
+                state.overline = parseMarkupColor(String(body.dropFirst()))
             } else if body.hasPrefix("T") {
                 let number = String(body.dropFirst())
                 state.fontIndex = number == "-" ? nil : Int(number)
@@ -518,6 +585,61 @@ enum PolybarScriptRenderer {
         }
         flush()
         return pieces
+    }
+
+    /// Polybar searches the bar's font list for a glyph when the selected
+    /// text font lacks it. CoreText's system fallback does not know those
+    /// private-use icon fonts, so resolve them from the configured list.
+    private static func appendWithFontFallback(
+        _ text: String, style: PolybarScriptTextStyle, actions: [Int: String],
+        options: PolybarScriptOptions, to pieces: inout [PolybarScriptPiece]
+    ) {
+        let specs = options.values.keys.filter {
+            $0.hasPrefix("font-") && Int($0.dropFirst(5)) != nil
+        }.sorted { Int($0.dropFirst(5))! < Int($1.dropFirst(5))! }
+            .compactMap { options.string($0) }
+        let listKey = specs.map { "\($0.utf8.count):\($0)" }.joined() as NSString
+        let fallbackFonts: [NSFont]
+        if let cached = fontLists.object(forKey: listKey) as? [NSFont] {
+            fallbackFonts = cached
+        } else {
+            fallbackFonts = specs.compactMap(polybarFont)
+            fontLists.setObject(fallbackFonts as NSArray, forKey: listKey)
+        }
+        guard !fallbackFonts.isEmpty else {
+            appendText(text, style: style, actions: actions, to: &pieces)
+            return
+        }
+        let selected = style.font ?? fallbackFonts[0]
+        let fonts = [selected] + fallbackFonts.filter { $0.fontName != selected.fontName || $0.pointSize != selected.pointSize }
+        let coreFonts = fonts.map(coreTextFont)
+        var runText = ""
+        var runFont: NSFont?
+        func flushRun() {
+            guard !runText.isEmpty, let runFont else { return }
+            var resolved = style
+            resolved.font = runFont
+            appendText(runText, style: resolved, actions: actions, to: &pieces)
+            runText.removeAll(keepingCapacity: true)
+        }
+        for character in text {
+            let utf16 = Array(String(character).utf16)
+            var glyphs = [CGGlyph](repeating: 0, count: utf16.count)
+            let index = coreFonts.firstIndex { font in
+                utf16.withUnsafeBufferPointer { chars in
+                    glyphs.withUnsafeMutableBufferPointer { glyphs in
+                        CTFontGetGlyphsForCharacters(font, chars.baseAddress!, glyphs.baseAddress!, utf16.count)
+                    }
+                }
+            } ?? 0
+            let font = fonts[index]
+            if let runFont, runFont.fontName != font.fontName || runFont.pointSize != font.pointSize {
+                flushRun()
+            }
+            runFont = font
+            runText.append(character)
+        }
+        flushRun()
     }
 
     private static func parseAction(_ value: String) -> (button: Int, command: String)? {
@@ -544,14 +666,6 @@ enum PolybarScriptRenderer {
         return (button, command)
     }
 
-    private static func parseLineTag(_ value: String, enabled: inout Bool, currentColor: NSColor?) -> NSColor? {
-        if value == "-" { enabled = false; return nil }
-        if value == "+" { enabled = true; return currentColor }
-        if value.isEmpty { enabled.toggle(); return enabled ? currentColor : nil }
-        enabled = true
-        return parseMarkupColor(value)
-    }
-
     private static func parseMarkupColor(_ value: String) -> NSColor? {
         if value == "-" { return nil }
         return polybarColor(value)
@@ -576,7 +690,7 @@ enum PolybarScriptRenderer {
         let hex = value.hasPrefix("#") ? String(value.dropFirst()) : value
         if hex.count == 3, let number = UInt64(hex, radix: 16) {
             return NSColor(
-                calibratedRed: CGFloat((number >> 8) & 0xf) / 15,
+                srgbRed: CGFloat((number >> 8) & 0xf) / 15,
                 green: CGFloat((number >> 4) & 0xf) / 15,
                 blue: CGFloat(number & 0xf) / 15,
                 alpha: 1
@@ -585,14 +699,14 @@ enum PolybarScriptRenderer {
         guard hex.count == 6 || hex.count == 8, let number = UInt64(hex, radix: 16) else { return nil }
         if hex.count == 8 {
             return NSColor(
-                calibratedRed: CGFloat((number >> 24) & 0xff) / 255,
-                green: CGFloat((number >> 16) & 0xff) / 255,
-                blue: CGFloat((number >> 8) & 0xff) / 255,
-                alpha: CGFloat(number & 0xff) / 255
+                srgbRed: CGFloat((number >> 16) & 0xff) / 255,
+                green: CGFloat((number >> 8) & 0xff) / 255,
+                blue: CGFloat(number & 0xff) / 255,
+                alpha: CGFloat((number >> 24) & 0xff) / 255
             )
         }
         return NSColor(
-            calibratedRed: CGFloat((number >> 16) & 0xff) / 255,
+            srgbRed: CGFloat((number >> 16) & 0xff) / 255,
             green: CGFloat((number >> 8) & 0xff) / 255,
             blue: CGFloat(number & 0xff) / 255,
             alpha: 1
@@ -660,14 +774,26 @@ enum PolybarScriptRenderer {
 }
 
 private func polybarFont(_ specification: String) -> NSFont? {
+    let key = specification as NSString
+    if let cached = PolybarScriptRenderer.parsedFonts.object(forKey: key) { return cached }
     let pieces = specification.split(separator: ":", omittingEmptySubsequences: false).map(String.init)
     let name = pieces.first?.trimmingCharacters(in: .whitespaces) ?? ""
     let size = pieces.compactMap { piece -> CGFloat? in
         guard piece.lowercased().hasPrefix("pixelsize=") || piece.lowercased().hasPrefix("size=") else { return nil }
         return CGFloat(Double(piece.split(separator: "=", maxSplits: 1).last ?? "") ?? 13)
     }.first ?? 13
-    if !name.isEmpty, let font = NSFont(name: name, size: size) { return font }
-    return NSFont.systemFont(ofSize: size, weight: .medium)
+    let font = (!name.isEmpty ? NSFont(name: name, size: size) : nil)
+        ?? NSFont.systemFont(ofSize: size, weight: .medium)
+    PolybarScriptRenderer.parsedFonts.setObject(font, forKey: key)
+    return font
+}
+
+private func coreTextFont(_ font: NSFont) -> CTFont {
+    let key = "\(font.fontName)|\(font.pointSize)" as NSString
+    if let cached = PolybarScriptRenderer.coreTextFonts.object(forKey: key) { return cached }
+    let result = CTFontCreateWithName(font.fontName as CFString, font.pointSize, nil)
+    PolybarScriptRenderer.coreTextFonts.setObject(result, forKey: key)
+    return result
 }
 
 private extension NSColor {

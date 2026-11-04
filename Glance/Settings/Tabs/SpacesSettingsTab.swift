@@ -30,10 +30,9 @@ struct SpacesSettingsTab: View {
   @State private var synchronizedValues: [String: String] = [:]
 
   var body: some View {
-    SettingsPage {
-      ModuleSettingsHeader(id: "default.spaces")
+    SettingsPage(moduleID: "default.spaces") {
       // MARK: - Display Mode
-      SettingsSection(title: "Display Mode") {
+      SettingsSection(title: "Display Mode", keywords: ["Blocks", "Custom Icons", "Display Mode", "Dots", "Dots + #", "Focus #", "Focused Only", "Icons", "Icons Only", "Numbers", "Words", "blocks", "custom-icons", "dots", "dots-number", "focused-number", "focused-only", "icons", "icons-only", "numbers", "selectedDisplayMode", "words"]) {
         Picker("Display Mode", selection: $selectedDisplayMode) {
           Text("Icons").tag("icons")
           Text("Numbers").tag("numbers")
@@ -58,7 +57,7 @@ struct SpacesSettingsTab: View {
       }
 
       if selectedDisplayMode == "dots-number" {
-        SettingsSection(title: "Dots and Current Number") {
+        SettingsSection(title: "Dots and Current Number", area: .appearance, keywords: ["%.0f", "%.1f", "Dot cell width", "Dot diameter", "Gap before number", "Outline thickness", "dot-cell-width", "dot-size", "dot-stroke-width", "number-gap"]) {
           SliderRow(label: "Dot diameter", value: $dotSize, range: 1...32, step: 1, format: "%.0f")
           { saveSpaceMetric("dot-size", dotSize) }
           SliderRow(
@@ -74,7 +73,7 @@ struct SpacesSettingsTab: View {
         }
       }
       if selectedDisplayMode == "blocks" {
-        SettingsSection(title: "Workspace Blocks") {
+        SettingsSection(title: "Workspace Blocks", area: .appearance, keywords: ["%.0f", "Cell width", "Choose a hex color or a palette role such as pywal:4.", "Current background", "Current text", "Other background", "Other text", "cell-width", "focused-background", "focused-foreground", "focusedBackground", "focusedForeground", "unfocused-background", "unfocused-foreground", "unfocusedBackground", "unfocusedForeground"]) {
           SliderRow(label: "Cell width", value: $cellWidth, range: 8...100, step: 1, format: "%.0f")
           { saveSpaceMetric("cell-width", cellWidth) }
           Text("Choose a hex color or a palette role such as pywal:4.").font(.caption)
@@ -115,7 +114,7 @@ struct SpacesSettingsTab: View {
       }
 
       // MARK: - Highlight Style
-      SettingsSection(title: "Highlight Style") {
+      SettingsSection(title: "Highlight Style", area: .appearance, keywords: ["Glow", "Highlight", "Inverted", "Opacity", "Pill", "Underline", "glow", "inverted", "opacity", "pill", "selectedHighlight", "underline"]) {
         Picker("Highlight", selection: $selectedHighlight) {
           Text("Opacity").tag("opacity")
           Text("Pill").tag("pill")
@@ -136,7 +135,7 @@ struct SpacesSettingsTab: View {
 
       // MARK: - Inverted Style Options
       if selectedHighlight == "inverted" {
-        SettingsSection(title: "Inverted Style") {
+        SettingsSection(title: "Inverted Style", area: .appearance, keywords: ["Pill", "Pywal color per space", "Shape", "Square", "false", "invertedShape", "pill", "pywalPerSpace", "square", "true"]) {
           Picker("Shape", selection: $invertedShape) {
             Text("Pill").tag("pill")
             Text("Square").tag("square")
@@ -164,7 +163,7 @@ struct SpacesSettingsTab: View {
       }
 
       // MARK: - Numeral System
-      SettingsSection(title: "Numeral System") {
+      SettingsSection(title: "Numeral System", keywords: ["Arabic (1, 2, 3)", "Arabic-Indic (١, ٢, ٣)", "Japanese (一, 二, 三)", "Number Format", "Roman (I, II, III)", "arabic", "arabic-indic", "japanese", "roman", "selectedNumeralSystem"]) {
         Picker("Number Format", selection: $selectedNumeralSystem) {
           Text("Arabic (1, 2, 3)").tag("arabic")
           Text("Arabic-Indic (١, ٢, ٣)").tag("arabic-indic")
@@ -184,7 +183,7 @@ struct SpacesSettingsTab: View {
 
       // MARK: - Custom Words
       if selectedDisplayMode == "words" {
-        SettingsSection(title: "Custom Words") {
+        SettingsSection(title: "Custom Words", keywords: ["Enter a custom word for each space. Spaces without a word will show their number.", "Label"]) {
           Text("Enter a custom word for each space. Spaces without a word will show their number.")
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -211,7 +210,7 @@ struct SpacesSettingsTab: View {
       }
 
       // MARK: - Icon Styling
-      SettingsSection(title: "Icon Styling") {
+      SettingsSection(title: "Icon Styling", area: .appearance, keywords: ["App Icons", "Icon Style", "SF Symbols", "Tint icons with foreground color", "app-icon", "false", "selectedIconStyle", "sf-symbol", "tintIcons", "true"]) {
         Picker("Icon Style", selection: $selectedIconStyle) {
           Text("App Icons").tag("app-icon")
           Text("SF Symbols").tag("sf-symbol")
@@ -239,7 +238,7 @@ struct SpacesSettingsTab: View {
       }
 
       // MARK: - Space Indicators
-      SettingsSection(title: "Space Indicators") {
+      SettingsSection(title: "Space Indicators", area: .appearance, keywords: ["Show space number / key", "false", "showKey", "true"]) {
         Toggle("Show space number / key", isOn: $showKey)
           .onChange(of: showKey) { _, newValue in
             guard String(describing: newValue) != synchronizedValues["showKey"] else { return }
@@ -250,7 +249,7 @@ struct SpacesSettingsTab: View {
       }
 
       // MARK: - Custom Icons
-      SettingsSection(title: "Custom Icons") {
+      SettingsSection(title: "Custom Icons", area: .appearance, keywords: ["Global icon for all spaces", "Pick", "Used when icon style is 'SF Symbols'"]) {
         HStack {
           Image(systemName: customIcon)
             .font(.system(size: 24))
@@ -286,7 +285,7 @@ struct SpacesSettingsTab: View {
       }
 
       // MARK: - Window Titles
-      SettingsSection(title: "Window Titles") {
+      SettingsSection(title: "Window Titles", keywords: ["%.0f", "Max title length", "Show focused window title", "false", "showTitle", "true"]) {
         Toggle("Show focused window title", isOn: $showTitle)
           .onChange(of: showTitle) { _, newValue in
             guard String(describing: newValue) != synchronizedValues["showTitle"] else { return }

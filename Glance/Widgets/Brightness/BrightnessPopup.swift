@@ -68,7 +68,7 @@ struct BrightnessPopup: View {
                     Spacer()
                 }
 
-                Text("Brightness control is not available for this display. Software brightness control requires an Apple display or a built-in screen.")
+                Text("Brightness control is unavailable. For external displays, run BetterDisplay and enable CLI access and notification based integration in its Integration settings.")
                     .font(.system(size: 11))
                     .opacity(0.6)
                     .fixedSize(horizontal: false, vertical: true)

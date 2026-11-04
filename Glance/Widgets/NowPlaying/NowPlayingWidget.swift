@@ -35,6 +35,7 @@ struct NowPlayingWidget: View {
                         }
                     }
                 }
+                .environment(\.barCollectorsActive, false)
                 .hidden()
 
                 HStack(spacing: contentSpacing) {
@@ -148,13 +149,14 @@ private extension NowPlayingWidget {
 // MARK: - Music Icon View
 
 struct MusicIconView: View {
+    @Environment(\.widgetFont) private var widgetFont
     @StateObject private var manager = NowPlayingManager.shared
 
     private var isPlaying: Bool { manager.nowPlaying?.state == .playing }
 
     var body: some View {
         Image(systemName: "music.note")
-            .font(.system(size: 12, weight: .medium))
+            .font(widgetFont.toFont().weight(.medium))
             .foregroundStyle(isPlaying ? Color.white.opacity(0.9) : Color.white.opacity(0.3))
     }
 }

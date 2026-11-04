@@ -59,6 +59,7 @@ struct AppearanceConfig {
     let barFont: FontConfig
     let widgetFont: FontConfig
     let useSingleFont: Bool         // If true, widgetFont = barFont
+    var overrideModuleFonts = false
 
     /// Maps roundness (0-50) to a concrete cornerRadius for widget capsules.
     func resolvedWidgetCornerRadius(height: CGFloat = 38) -> CGFloat {
@@ -127,7 +128,8 @@ struct AppearanceConfig {
                 fontSize: o.widgetFontSize.map { CGFloat($0) } ?? widgetFont.fontSize,
                 weight: o.widgetFontWeight.map { Font.Weight.fromInt($0) ?? .medium } ?? widgetFont.weight
             ),
-            useSingleFont: o.useSingleFont ?? useSingleFont
+            useSingleFont: o.useSingleFont ?? useSingleFont,
+            overrideModuleFonts: o.overrideModuleFonts ?? overrideModuleFonts
         )
     }
 
@@ -157,7 +159,8 @@ struct AppearanceConfig {
             glowColor: pywal.colors[pywalConfig.foregroundIndex],
             barFont: barFont,
             widgetFont: widgetFont,
-            useSingleFont: useSingleFont
+            useSingleFont: useSingleFont,
+            overrideModuleFonts: overrideModuleFonts
         )
     }
 
@@ -205,6 +208,7 @@ struct AppearanceOverrides: Decodable {
     let widgetFontSize: Double?
     let widgetFontWeight: Int?
     let useSingleFont: Bool?
+    let overrideModuleFonts: Bool?
 
     enum CodingKeys: String, CodingKey {
         case roundness
@@ -232,6 +236,7 @@ struct AppearanceOverrides: Decodable {
         case widgetFontSize = "widget-font-size"
         case widgetFontWeight = "widget-font-weight"
         case useSingleFont = "use-single-font"
+        case overrideModuleFonts = "override-module-fonts"
     }
 
     init(from decoder: Decoder) throws {
@@ -299,6 +304,7 @@ struct AppearanceOverrides: Decodable {
         widgetFontSize = try container.decodeIfPresent(Double.self, forKey: .widgetFontSize)
         widgetFontWeight = try decodeFontWeight(for: .widgetFontWeight)
         useSingleFont = try container.decodeIfPresent(Bool.self, forKey: .useSingleFont)
+        overrideModuleFonts = try container.decodeIfPresent(Bool.self, forKey: .overrideModuleFonts)
     }
 }
 

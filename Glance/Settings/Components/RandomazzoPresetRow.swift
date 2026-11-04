@@ -39,7 +39,7 @@ struct RandomazzoPresetRow: View {
         if unavailable {
           Label("Unavailable", systemImage: "exclamationmark.triangle")
             .font(.caption).foregroundStyle(.orange)
-            .help("This preset’s file is missing or cannot be parsed.")
+            .help("This preset’s file is missing or cannot be read.")
         } else {
           Text(entry.lastRolled == nil ? "Not tried yet" : "Last used")
             .font(.caption).foregroundStyle(.secondary)

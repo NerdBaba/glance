@@ -11,7 +11,8 @@ struct ModuleAppearanceSettings: View {
     colors
     spacing
     typography
-    SettingsSection(title: "Advanced appearance") {
+    fineSpacing
+    SettingsSection(title: "Advanced appearance", area: .advanced, keywords: ["%.1f pt", "Group outline", "Group outline & width", "Group spacing", "Keep group at configured width", "Outline", "Outline width", "Segment border", "These options affect a pill group when this module is its first widget.", "format-border-color", "format-border-width", "group-border-color", "group-border-width", "group-fixed-width", "group-spacing"]) {
       DisclosureGroup("Segment border", isExpanded: $showBorder) {
         VStack(alignment: .leading, spacing: 16) {
           ModuleColorControl(
@@ -30,20 +31,31 @@ struct ModuleAppearanceSettings: View {
           ModuleSlider(
             label: "Outline width", value: editor.number("group-border-width", default: 0),
             range: 0...8, step: 0.5, format: "%.1f pt")
+          ModuleSlider(label: "Group spacing", value: editor.number("group-spacing", default: Double(configManager.config.experimental.foreground.spacing)), range: -24...80)
           Toggle("Keep group at configured width", isOn: editor.bool("group-fixed-width"))
         }.padding(.top, 12)
       }
     }
   }
 
+  // Imported formats can put the visible color on a label or a normal-state
+  // format. Bind the simple controls to that effective override.
+  private func colorKey(_ field: String) -> String {
+    let source = editor.values["native-source"]?.stringValue ?? ""
+    let state = ["volume": "volume", "music": "online", "network": "connected", "disk": "mounted"][source]
+    let label = ["volume": "label-volume", "music": "label-song", "network": "label-connected", "disk": "label-mounted"][source] ?? "label"
+    let keys = [label + "-" + field] + (state.map { ["format-" + $0 + "-" + field] } ?? []) + ["format-" + field, "content-" + field]
+    return keys.first(where: { editor.values[$0] != nil }) ?? "format-" + field
+  }
+
   private var colors: some View {
     SettingsSection(
       title: "Colors", subtitle: "Inherit the bar palette or give this module its own colors."
-    ) {
+    , area: .appearance, keywords: ["%.2f", "Background", "Background opacity", "Foreground", "format-background", "format-background-opacity", "format-foreground"]) {
       ModuleColorControl(
-        label: "Background", value: editor.string("format-background", removeEmpty: true))
+        label: "Background", value: editor.string(colorKey("background"), removeEmpty: true))
       ModuleColorControl(
-        label: "Foreground", value: editor.string("format-foreground", removeEmpty: true))
+        label: "Foreground", value: editor.string(colorKey("foreground"), removeEmpty: true))
       if let background = editor.values["format-background"]?.stringValue,
         !["", "none", "transparent"].contains(background)
       {
@@ -55,22 +67,53 @@ struct ModuleAppearanceSettings: View {
     }
   }
 
+  private func paddingBinding(_ fallback: Double) -> Binding<Double> {
+    guard id.hasPrefix("script.") else { return editor.number("format-padding", default: fallback) }
+    return Binding(get: {
+      if let text = editor.values["format-padding"]?.stringValue, text.hasSuffix("px") || text.hasSuffix("pt") {
+        return Double(text.dropLast(2)) ?? 0
+      }
+      let font = editor.manager.config.appearance.widgetFont.fontSize
+      return (editor.values["format-padding"]?.doubleValue ?? 0) * Double(font) * 0.6
+    }, set: { pixels in
+      editor.manager.updateConfigValue(key: "widgets.\(id).format-padding", newValue: ModuleSettingsEditor.quoted("\(pixels)px"))
+    })
+  }
+
   private var spacing: some View {
     let padding =
       editor.values["format-padding"]?.doubleValue
       ?? (editor.values["format-background"] == nil ? 0 : 4)
-    return SettingsSection(title: "Size & spacing") {
+    return SettingsSection(title: "Size & spacing", area: .appearance, keywords: [", newValue: ", "Arrow", "Background shape", "Chevron", "Corner radius", "Custom module height", "Height", "Horizontal padding", "Rounded rectangle", "arrow", "chevron", "format-height", "format-radius", "format-shape", "rounded"]) {
       ModuleSlider(
         label: "Corner radius", value: editor.number("format-radius", default: 0), range: 0...40)
+      Picker("Background shape", selection: editor.string("format-shape", default: "rounded")) {
+        Text("Rounded rectangle").tag("rounded")
+        Text("Chevron").tag("chevron")
+        Text("Arrow").tag("arrow")
+      }
+      Toggle("Custom module height", isOn: Binding(get: { editor.values["format-height"] != nil }, set: {
+        if $0 { editor.manager.updateConfigValue(key: "widgets.\(id).format-height", newValue: "26") }
+        else { editor.manager.removeConfigValue(key: "widgets.\(id).format-height") }
+      }))
+      if editor.values["format-height"] != nil {
+        ModuleSlider(label: "Height", value: editor.number("format-height", default: 26), range: 20...80)
+      }
       ModuleSlider(
-        label: "Horizontal padding", value: editor.number("format-padding", default: padding),
+        label: "Horizontal padding", value: paddingBinding(padding),
         range: 0...48)
+    }
+  }
+
+  private var fineSpacing: some View {
+    let padding = editor.values["format-padding"]?.doubleValue ?? 0
+    return SettingsSection(title: "Fine alignment", area: .advanced, keywords: ["Center", "Content alignment", "Left", "Left padding", "Minimum width", "Right", "Right padding", "Vertical offset", "center", "format-alignment", "format-min-width", "format-offset-y", "format-padding-left", "format-padding-right", "left", "right", "script."]) {
       HStack(alignment: .top, spacing: 24) {
         ModuleSlider(
-          label: "Left padding", value: editor.number("format-padding-left", default: padding),
+          label: "Left padding", value: editor.number("format-padding-left", default: id.hasPrefix("script.") ? 0 : padding),
           range: 0...80)
         ModuleSlider(
-          label: "Right padding", value: editor.number("format-padding-right", default: padding),
+          label: "Right padding", value: editor.number("format-padding-right", default: id.hasPrefix("script.") ? 0 : padding),
           range: 0...80)
       }
       ModuleSlider(
@@ -90,15 +133,32 @@ struct ModuleAppearanceSettings: View {
   private var typography: some View {
     let appearance = configManager.config.appearance
     let font = appearance.useSingleFont ? appearance.barFont : appearance.widgetFont
+    let minimumSize = min(max(editor.values["font-min-size"]?.doubleValue ?? 14, 6), 14)
     return SettingsSection(
-      title: "Typography", subtitle: "Leave the font name empty to use the global font."
-    ) {
-      SettingsTextField(
-        label: "Font name", value: editor.string("format-font-name", removeEmpty: true),
-        prompt: "Use global font")
+      title: "Typography", subtitle: "Choose the Glance font or customize this module’s text."
+    , area: .appearance, keywords: ["%.1f pt", "Black", "Bold", "Choose font…", "Heavy", "Letter spacing", "Light", "Medium", "Module font", "Regular", "Semibold", "Text size", "Thin", "Ultra light", "Use Glance font", "Use global weight", "Weight", "font-use-global", "format-font-name", "format-font-size", "format-font-weight", "format-tracking"]) {
+      Toggle("Use Glance font", isOn: Binding(get: { GlanceFontPolicy.usesGlobal(editor.values, appearance: appearance) }, set: {
+        editor.bool("font-use-global").wrappedValue = $0
+      }))
+      if !GlanceFontPolicy.usesGlobal(editor.values, appearance: appearance) {
+      HStack {
+        Text("Module font")
+        Spacer()
+        Button("Choose font…") {
+          FontManager.shared.openFontPanel(
+            initialFontName: editor.values["format-font-name"]?.stringValue ?? font.fontName,
+            initialSize: editor.values["format-font-size"]?.doubleValue.map { CGFloat($0) } ?? font.fontSize,
+            parentWindow: NSApp.keyWindow
+          ) { name, size, weight in
+            editor.string("format-font-name", removeEmpty: true).wrappedValue = name
+            editor.number("format-font-size", default: Double(font.fontSize)).wrappedValue = Double(max(CGFloat(minimumSize), size))
+            editor.integer("format-font-weight", default: -1).wrappedValue = Int(weight)
+          }
+        }
+      }
       ModuleSlider(
         label: "Text size", value: editor.number("format-font-size", default: font.fontSize),
-        range: 5...72, step: 0.5, format: "%.1f pt")
+        range: minimumSize...72, step: 0.5, format: "%.1f pt")
       Picker(
         "Weight",
         selection: Binding<Int>(
@@ -123,6 +183,7 @@ struct ModuleAppearanceSettings: View {
           Text(title).tag(index)
         }
       }.pickerStyle(.menu)
+      }
       ModuleSlider(
         label: "Letter spacing", value: editor.number("format-tracking", default: 0), range: -3...6,
         step: 0.1, format: "%.1f pt")
@@ -224,7 +285,7 @@ struct ModuleIconSettings: View {
     ].contains(id) {
       SettingsSection(
         title: "Icons", subtitle: "Custom glyphs use the icon font. Empty glyphs use system icons."
-      ) {
+      , area: .appearance, keywords: ["%.1f pt", "Control spacing", "Custom glyph", "Custom glyph font & alignment", "High volume", "Icon font", "Icon size", "Icon spacing", "Low volume", "Medium volume", "Next", "Pause", "Play", "Previous", "Use module font", "Vertical offset", "content-spacing", "control-spacing", "default.mediacontrols", "default.volume", "glyph", "icon-font-name", "icon-font-size", "icon-next", "icon-offset-y", "icon-pause", "icon-play", "icon-prev", "ramp-volume-0", "ramp-volume-1", "ramp-volume-2"]) {
         if id == "default.mediacontrols" {
           HStack(alignment: .top, spacing: 24) {
             glyph("Previous", key: "icon-prev")
@@ -247,21 +308,27 @@ struct ModuleIconSettings: View {
         } else {
           glyph("Custom glyph", key: "glyph")
         }
+        DisclosureGroup("Custom glyph font & alignment") {
         SettingsTextField(
           label: "Icon font", value: editor.string("icon-font-name", removeEmpty: true),
           prompt: "Use module font")
         ModuleSlider(
-          label: "Icon size", value: editor.number("icon-font-size", default: 12), range: 5...32,
+          label: "Icon size", value: editor.number("icon-font-size", default: 12), range: 14...32,
           step: 0.5, format: "%.1f pt")
         ModuleSlider(
           label: "Vertical offset", value: editor.number("icon-offset-y", default: 0),
           range: -10...10)
+        }
       }
     }
   }
 
   private func glyph(_ label: String, key: String) -> some View {
-    SettingsTextField(
-      label: label, value: editor.string(key, removeEmpty: true), fontName: iconFontName)
+    VStack(alignment: .leading, spacing: 8) {
+      GlanceSymbolPickerButton(selection: editor.string(id == "default.mediacontrols" || id == "default.volume" ? "symbol-" + key : "symbol", removeEmpty: true), title: label)
+      DisclosureGroup("Use a custom glyph") {
+        SettingsTextField(label: "Custom glyph", value: editor.string(key, removeEmpty: true), fontName: iconFontName)
+      }
+    }
   }
 }

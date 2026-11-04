@@ -49,6 +49,9 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
 
     // Wi‑Fi details obtained via CoreWLAN.
     @Published var ssid: String = "Not connected"
+    @Published var ssidUnavailable = false
+    var isWiFiAssociated: Bool { wifiState == .connected || wifiState == .connectedWithoutInternet }
+    var signalPercentage: Double? { isWiFiAssociated && rssi < 0 ? min(100, max(0, Double(rssi + 100) * 2)) : nil }
     @Published var rssi: Int = 0
     @Published var noise: Int = 0
     @Published var channel: String = "N/A"
@@ -60,7 +63,11 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
     @Published var uploadSpeed: Double = 0    // bytes/s
     private var previousBytesIn: UInt64 = 0
     private var previousBytesOut: UInt64 = 0
+    private var previousSpeedUptime: TimeInterval = 0
     private var speedTimer: Timer?
+    private var throughputConsumers: Set<UUID> = []
+    private var throughputGeneration = 0
+    private let samplingQueue = DispatchQueue(label: "NetworkSampling", qos: .utility)
 
     // Local IP
     @Published var localIP: String = "N/A"
@@ -68,7 +75,7 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
     /// Computed property for signal strength.
     var wifiSignalStrength: WifiSignalStrength {
         // If Wi‑Fi is not connected or the interface is missing – return unknown.
-        if ssid == "Not connected" || ssid == "No interface" {
+        if !isWiFiAssociated || rssi >= 0 {
             return .unknown
         }
         if rssi >= -50 {
@@ -81,6 +88,10 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
     }
 
     private let monitor = NWPathMonitor()
+    private let wifiMonitor = NWPathMonitor(requiredInterfaceType: .wifi)
+    private var wifiPathStatus: NWPath.Status = .unsatisfied
+    private var wifiInterfaceName: String?
+    private var lastDiagnostic: String?
     private let monitorQueue = DispatchQueue(label: "NetworkMonitor")
 
     private var timer: Timer?
@@ -88,11 +99,11 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
 
     override init() {
         super.init()
+        if CommandLine.arguments.contains("--export-bar") || CommandLine.arguments.contains("--preview-settings") { return }
         locationManager.delegate = self
         locationManager.requestWhenInUseAuthorization()
         startNetworkMonitoring()
         startWiFiMonitoring()
-        startSpeedMonitoring()
         updateLocalIP()
     }
 
@@ -108,26 +119,6 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self = self else { return }
             DispatchQueue.main.async {
-                // Wi‑Fi
-                if path.availableInterfaces.contains(where: { $0.type == .wifi }
-                ) {
-                    if path.usesInterfaceType(.wifi) {
-                        switch path.status {
-                        case .satisfied:
-                            self.wifiState = .connected
-                        case .requiresConnection:
-                            self.wifiState = .connecting
-                        default:
-                            self.wifiState = .connectedWithoutInternet
-                        }
-                    } else {
-                        // If the Wi‑Fi interface is available but not in use – consider it enabled but not connected.
-                        self.wifiState = .disconnected
-                    }
-                } else {
-                    self.wifiState = .notSupported
-                }
-
                 // Ethernet
                 if path.availableInterfaces.contains(where: {
                     $0.type == .wiredEthernet
@@ -150,10 +141,23 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
             }
         }
         monitor.start(queue: monitorQueue)
+        // A Wi-Fi-only path survives VPN/Ethernet routing changes. The default
+        // path describes routing, not whether the radio is associated.
+        wifiMonitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.wifiPathStatus = path.status
+                self.wifiInterfaceName = path.availableInterfaces.first(where: { $0.type == .wifi })?.name
+                self.updateWiFiInfo()
+                self.updateLocalIP()
+            }
+        }
+        wifiMonitor.start(queue: monitorQueue)
     }
 
     private func stopNetworkMonitoring() {
         monitor.cancel()
+        wifiMonitor.cancel()
     }
 
     // MARK: — Updating Wi‑Fi information via CoreWLAN.
@@ -174,8 +178,17 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
 
     private func updateWiFiInfo() {
         let client = CWWiFiClient.shared()
-        if let interface = client.interface() {
-            self.ssid = interface.ssid() ?? "Not connected"
+        let interfaces = client.interfaces() ?? []
+        let preferred = interfaces.first(where: { $0.interfaceName == wifiInterfaceName })
+            ?? interfaces.first(where: { $0.interfaceMode() == .station }) ?? client.interface()
+        if let interface = preferred {
+            let associated = interface.powerOn() && (interface.interfaceMode() == .station || wifiPathStatus == .satisfied)
+            wifiState = !interface.powerOn() ? .disabled : associated
+                ? (wifiPathStatus == .satisfied ? .connected : .connectedWithoutInternet)
+                : (wifiPathStatus == .requiresConnection ? .connecting : .disconnected)
+            let name = interface.ssid().flatMap { $0.isEmpty ? nil : $0 }
+            ssidUnavailable = associated && name == nil
+            self.ssid = associated ? (name ?? "Wi-Fi") : "Not connected"
             self.rssi = interface.rssiValue()
             self.noise = interface.noiseMeasurement()
             self.txRate = interface.transmitRate()
@@ -200,23 +213,48 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
                 self.channel = "N/A"
             }
         } else {
-            // Interface not available – Wi‑Fi is off.
-            self.ssid = "No interface"
+            wifiState = wifiPathStatus == .satisfied ? .connected : .notSupported
+            ssidUnavailable = wifiPathStatus == .satisfied
+            // No SSID is available; retain a truthful association fallback.
+            self.ssid = wifiPathStatus == .satisfied ? "Wi-Fi" : "No interface"
             self.rssi = 0
             self.noise = 0
             self.channel = "N/A"
             self.bandLabel = ""
             self.txRate = 0
         }
+        let diagnostic = "Wi-Fi state=\(wifiState.rawValue), nameAvailable=\(!ssidUnavailable), signalAvailable=\(rssi < 0), locationAuthorization=\(locationManager.authorizationStatus.rawValue)"
+        if diagnostic != lastDiagnostic { AppLogger.shared.info(diagnostic); lastDiagnostic = diagnostic }
+        updateLocalIP()
     }
 
     // MARK: — Network Speed Monitoring
 
+    /// Reference-count demand across bars and popups. A status-only label
+    /// needs Wi-Fi events, not a recurring interface-byte scan.
+    func setThroughputDemand(_ id: UUID, enabled: Bool) {
+        if enabled { throughputConsumers.insert(id) }
+        else { throughputConsumers.remove(id) }
+        if !throughputConsumers.isEmpty, speedTimer == nil {
+            throughputGeneration += 1
+            if downloadSpeed != 0 { downloadSpeed = 0 }
+            if uploadSpeed != 0 { uploadSpeed = 0 }
+            startSpeedMonitoring()
+        } else if throughputConsumers.isEmpty, speedTimer != nil {
+            throughputGeneration += 1
+            speedTimer?.invalidate()
+            speedTimer = nil
+        }
+    }
+
     private func startSpeedMonitoring() {
-        // Initialize previous bytes
-        let (bytesIn, bytesOut) = getNetworkBytes()
-        previousBytesIn = bytesIn
-        previousBytesOut = bytesOut
+        // Serialize interface counters off the main thread. The timer cadence
+        // and baseline/delta behavior remain unchanged.
+        samplingQueue.async { [weak self] in
+            guard let self else { return }
+            (self.previousBytesIn, self.previousBytesOut) = self.getNetworkBytes()
+            self.previousSpeedUptime = ProcessInfo.processInfo.systemUptime
+        }
 
         speedTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) {
             [weak self] _ in
@@ -225,15 +263,28 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
     }
 
     private func updateNetworkSpeed() {
+        let generation = throughputGeneration
+        samplingQueue.async { [weak self] in
+            guard let self else { return }
+            self.sampleNetworkSpeed(generation: generation)
+        }
+    }
+
+    private func sampleNetworkSpeed(generation: Int) {
         let (bytesIn, bytesOut) = getNetworkBytes()
-        let interval: Double = 3.0
+        let now = ProcessInfo.processInfo.systemUptime
+        let interval = max(0.001, now - previousSpeedUptime)
+        previousSpeedUptime = now
 
         let deltaIn = bytesIn >= previousBytesIn ? bytesIn - previousBytesIn : 0
         let deltaOut = bytesOut >= previousBytesOut ? bytesOut - previousBytesOut : 0
 
         DispatchQueue.main.async {
-            self.downloadSpeed = Double(deltaIn) / interval
-            self.uploadSpeed = Double(deltaOut) / interval
+            guard generation == self.throughputGeneration, !self.throughputConsumers.isEmpty else { return }
+            let download = Double(deltaIn) / interval
+            let upload = Double(deltaOut) / interval
+            if self.downloadSpeed != download { self.downloadSpeed = download }
+            if self.uploadSpeed != upload { self.uploadSpeed = upload }
         }
 
         previousBytesIn = bytesIn
@@ -257,7 +308,8 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
             let isLoopback = (flags & IFF_LOOPBACK) != 0
 
             if isUp && !isLoopback {
-                let addr = ptr.pointee.ifa_addr.pointee
+                guard let pointer = ptr.pointee.ifa_addr else { if let next = ptr.pointee.ifa_next { ptr = next; continue }; break }
+                let addr = pointer.pointee
                 if addr.sa_family == UInt8(AF_LINK) {
                     if let data = ptr.pointee.ifa_data {
                         let networkData = data.assumingMemoryBound(to: if_data.self).pointee
@@ -277,10 +329,20 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
     // MARK: — Local IP
 
     private func updateLocalIP() {
+        let preferredInterface = wifiInterfaceName
+        samplingQueue.async { [weak self] in
+            guard let self else { return }
+            let ip = self.readLocalIP(preferredInterface: preferredInterface)
+            DispatchQueue.main.async {
+                if self.localIP != ip { self.localIP = ip }
+            }
+        }
+    }
+
+    private func readLocalIP(preferredInterface: String?) -> String {
         var ifaddrs: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddrs) == 0, let firstAddr = ifaddrs else {
-            localIP = "N/A"
-            return
+            return "N/A"
         }
         defer { freeifaddrs(ifaddrs) }
 
@@ -288,10 +350,11 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
         var ptr = firstAddr
         while true {
             let interface = ptr.pointee
-            let addrFamily = interface.ifa_addr.pointee.sa_family
+            guard let address = interface.ifa_addr else { if let next = ptr.pointee.ifa_next { ptr = next; continue }; break }
+            let addrFamily = address.pointee.sa_family
             if addrFamily == UInt8(AF_INET) {
                 let name = String(cString: interface.ifa_name)
-                if name == "en0" || name == "en1" {
+                if name == preferredInterface || (preferredInterface == nil && name.hasPrefix("en")) {
                     var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
                     if getnameinfo(
                         interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
@@ -307,9 +370,7 @@ final class NetworkStatusViewModel: NSObject, ObservableObject,
             ptr = next
         }
 
-        DispatchQueue.main.async {
-            self.localIP = ip
-        }
+        return ip
     }
 
     // MARK: — Speed Formatting

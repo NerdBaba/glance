@@ -3,21 +3,35 @@ import SwiftUI
 struct SettingsSection<Content: View>: View {
   let title: String
   var subtitle: String? = nil
+  var area: WidgetSettingsArea = .content
+  var keywords: [String] = []
   @ViewBuilder let content: Content
+  @Environment(\.widgetSettingsArea) private var selectedArea
+  @Environment(\.settingsSearchQuery) private var query
+
+  private var matches: Bool {
+    if !query.isEmpty {
+      return ([title, subtitle ?? ""] + keywords).joined(separator: " ").localizedCaseInsensitiveContains(query)
+    }
+    return selectedArea == nil || selectedArea == area
+  }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      VStack(alignment: .leading, spacing: 5) {
-        Text(title).font(.headline)
-        if let subtitle {
-          Text(subtitle).foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+    if matches {
+      VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 4) {
+          Text(title).font(.headline)
+          if let subtitle {
+            Text(subtitle).font(.callout).foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
         }
+        VStack(alignment: .leading, spacing: 16) { content }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(18)
+          .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+          .preference(key: SettingsSearchMatches.self, value: Set([title]))
       }
-      VStack(alignment: .leading, spacing: 16) { content }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
     }
   }
 }
@@ -50,14 +64,37 @@ struct SliderRow: View {
 }
 
 struct SettingsPage<Content: View>: View {
+  var moduleID: String? = nil
   @ViewBuilder let content: Content
+  @State private var area: WidgetSettingsArea = WidgetSettingsArea(rawValue: ProcessInfo.processInfo.environment["GLANCE_SETTINGS_AREA"] ?? "") ?? .content
+  @State private var matchingSections: Set<String> = []
+  @State private var query = ProcessInfo.processInfo.environment["GLANCE_SETTINGS_QUERY"] ?? ""
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 28) { content }
-        .frame(maxWidth: 780, alignment: .leading)
-        .padding(28)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+    VStack(spacing: 0) {
+      if let moduleID {
+        WidgetSettingsNavigation(id: moduleID, area: $area, query: $query)
+      } else {
+        SettingsSearchField(text: $query).padding(.horizontal, 28).padding(.top, 18)
+      }
+      ScrollView {
+        VStack(alignment: .leading, spacing: 24) {
+          if moduleID != nil, !query.isEmpty, matchingSections.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+              Label("No matching settings", systemImage: "magnifyingglass").font(.headline)
+              Text("Try a word such as icon, color, font, click, or spacing.").foregroundStyle(.secondary)
+              Button("Clear search") { query = "" }
+            }.padding(.vertical, 20)
+          }
+          content
+        }
+          .frame(maxWidth: 780, alignment: .leading)
+          .padding(28)
+          .frame(maxWidth: .infinity, alignment: .topLeading)
+      }
+      .onPreferenceChange(SettingsSearchMatches.self) { matchingSections = $0 }
+      .environment(\.widgetSettingsArea, moduleID == nil ? nil : area)
+      .environment(\.settingsSearchQuery, query.trimmingCharacters(in: .whitespacesAndNewlines))
     }
     .background(Color(nsColor: .windowBackgroundColor))
   }
@@ -82,7 +119,7 @@ struct ModuleSettingsHeader: View {
   @ObservedObject private var configManager = ConfigManager.shared
 
   var body: some View {
-    let module = SettingsModule.descriptor(for: id)
+    let module = SettingsModule.descriptor(for: id, config: configManager.config)
     let active = configManager.config.rootToml.widgets?.displayed.contains { $0.id == id } == true
     VStack(alignment: .leading, spacing: 14) {
       SettingsPageHeader(title: module.title, summary: module.summary)
@@ -120,6 +157,20 @@ struct ModuleSettingsEditor {
         } else {
           manager.updateConfigValue(key: "widgets.\(id).\(key)", newValue: Self.quoted(value))
         }
+      })
+  }
+
+  /// Polybar component options contain both strings and numeric scalars.
+  func scalarString(_ key: String) -> Binding<String> {
+    Binding(
+      get: { PolybarScriptOptions(values: values).string(key) ?? "" },
+      set: { text in
+        let formatted: String
+        if values[key]?.intValue != nil, Int(text) != nil { formatted = text }
+        else if values[key]?.doubleValue != nil, Double(text) != nil { formatted = text }
+        else if values[key]?.boolValue != nil, ["true", "false"].contains(text) { formatted = text }
+        else { formatted = Self.quoted(text) }
+        manager.updateConfigValue(key: "widgets.\(id).\(key)", newValue: formatted)
       })
   }
 
@@ -179,6 +230,12 @@ struct SettingsTextField: View {
         .focused($focused)
         .onSubmit { commit() }
         .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
+      if let fontName {
+        HStack(spacing: 12) {
+          Text(draft.isEmpty ? "No custom glyph" : draft).font(.custom(fontName, size: 20))
+          Text("Glyph preview").font(.caption).foregroundStyle(.secondary)
+        }.padding(8).background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+      }
     }
     .onAppear { draft = value }
     .onChange(of: value) { _, value in if !focused { draft = value } }
@@ -197,14 +254,25 @@ struct ModuleSlider: View {
   var step: Double = 1
   var format: String = "%.0f pt"
 
+  @State private var draft: Double = 0
+  @State private var editing = false
+
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       HStack {
         Text(label)
         Spacer()
-        Text(String(format: format, value)).monospacedDigit().foregroundStyle(.secondary)
+        Text(String(format: format, editing ? draft : value)).monospacedDigit().foregroundStyle(.secondary)
       }
-      Slider(value: $value, in: range, step: step).accessibilityLabel(label)
+      Slider(value: Binding(get: { editing ? draft : value }, set: { next in
+        draft = next
+        // Keyboard and accessibility adjustments are discrete edits.
+        if !editing, value != next { value = next }
+      }), in: range, step: step, onEditingChanged: { active in
+        if active { draft = value; editing = true }
+        else { editing = false; if value != draft { value = draft } }
+      }).accessibilityLabel(label)
     }
+    .onDisappear { if editing, value != draft { value = draft }; editing = false }
   }
 }

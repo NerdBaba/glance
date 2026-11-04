@@ -4,6 +4,23 @@ import SwiftUI
 
 struct CuratedIcons {
     static let all: [(symbol: String, label: String)] = [
+        // Playback and formatting
+        ("play.fill", "Play"), ("pause.fill", "Pause"), ("stop.fill", "Stop"),
+        ("backward.end.fill", "Previous"), ("forward.end.fill", "Next"),
+        ("shuffle", "Shuffle"), ("repeat", "Repeat"), ("waveform", "Waveform"),
+        ("speaker.slash.fill", "Muted"), ("speaker.wave.1.fill", "Quiet"),
+        ("mic.slash.fill", "Mic off"), ("power", "Power"), ("arrow.clockwise", "Restart"),
+        ("rectangle.portrait.and.arrow.right", "Log out"), ("bell.fill", "Notifications"),
+        ("circle", "Ring"), ("circle.lefthalf.filled", "Half circle"), ("capsule.fill", "Pill"),
+        ("square.grid.2x2.fill", "Launcher"), ("paintpalette.fill", "Palette"),
+        ("cpu", "CPU"), ("memorychip.fill", "Memory"), ("internaldrive.fill", "Storage"),
+        ("thermometer.medium", "Temperature"), ("fan.fill", "Fan"),
+        ("network", "Network"), ("antenna.radiowaves.left.and.right", "Wireless"),
+        ("arrow.down", "Download"), ("arrow.up", "Upload"), ("arrow.up.arrow.down", "Traffic"),
+        ("sun.min.fill", "Dim"), ("cloud.sun.fill", "Partly cloudy"), ("cloud.rain.fill", "Rain"),
+        ("snowflake", "Snow"), ("cloud.moon.fill", "Cloudy night"),
+        ("link", "Link"), ("externaldrive.fill", "External drive"), ("display", "Display"),
+        ("slider.horizontal.3", "Adjustments"), ("ellipsis", "More"),
         // Desktop
         ("desktopcomputer", "Desktop"),
         ("laptopcomputer", "Laptop"),
@@ -112,7 +129,10 @@ struct IconPickerView: View {
             return CuratedIcons.all
         }
         let results = CuratedIcons.search(searchText)
-        return results.isEmpty ? CuratedIcons.all : results
+        if results.isEmpty, NSImage(systemSymbolName: searchText, accessibilityDescription: nil) != nil {
+            return [(symbol: searchText, label: searchText)]
+        }
+        return results
     }
 
     var body: some View {
@@ -131,6 +151,7 @@ struct IconPickerView: View {
             .background(Color(nsColor: .windowBackgroundColor))
 
             Divider()
+            TextField("Search icons", text: $searchText).textFieldStyle(.roundedBorder).padding(.horizontal).padding(.top, 12)
 
             // Searchable scroll content
             ScrollView {
@@ -151,6 +172,8 @@ struct IconPickerView: View {
                         }
                     }
 
+                    if filteredIcons.isEmpty { Text("No matching icons").foregroundStyle(.secondary) }
+
                     // Curated grid
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Icons")
@@ -167,7 +190,7 @@ struct IconPickerView: View {
                 }
                 .padding()
             }
-            .searchable(text: $searchText, prompt: "Search SF Symbols...")
+
         }
         .frame(width: 520, height: 480)
     }
@@ -202,5 +225,8 @@ private struct IconGridItem: View {
             )
         }
         .buttonStyle(.plain)
+        .help(label + " · " + symbol)
+        .accessibilityLabel(label)
+        .accessibilityValue(isSelected ? "Selected" : "")
     }
 }

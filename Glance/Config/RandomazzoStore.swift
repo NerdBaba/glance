@@ -22,6 +22,8 @@ struct RandomazzoEntry: Equatable, Hashable, Codable, Identifiable {
 /// Metadata container for JSON serialization.
 private struct RandomazzoMetadata: Codable {
   var entries: [RandomazzoEntry]
+  var currentPresetName: String?
+  var version: Int?
 }
 
 /// Manages the randomazzo configuration container.
@@ -30,6 +32,7 @@ final class RandomazzoStore: ObservableObject {
   static let shared = RandomazzoStore()
 
   @Published private(set) var entries: [RandomazzoEntry] = []
+  @Published private(set) var currentPresetName: String?
 
   let storageDir: URL
   private let metadataURL: URL
@@ -40,9 +43,17 @@ final class RandomazzoStore: ObservableObject {
     storageDir = appSupport.appendingPathComponent("glance/randomazzo", isDirectory: true)
     metadataURL = storageDir.appendingPathComponent("metadata.json")
 
-    try? fm.createDirectory(at: storageDir, withIntermediateDirectories: true)
+    let diagnostic = ["--preview-settings", "--preview-panel", "--benchmark-panel", "--export-bar", "--export-module-editor"]
+      .contains(where: CommandLine.arguments.contains)
+    if !diagnostic { try? fm.createDirectory(at: storageDir, withIntermediateDirectories: true) }
     loadMetadata()
-    seedBundledPolybarPresets()
+    // Opening a diagnostic view must not seed, delete, or rewrite presets.
+    if diagnostic { return }
+    for entry in entries where entry.name.hasPrefix("Polybar — Adi — Pwidgets") {
+      delete(name: entry.name)
+    }
+    seedBundledPresets(directory: "PolybarThemeDrafts", namePrefix: "Polybar — ")
+    seedBundledPresets(directory: "GlanceThemePresets")
   }
 
   // MARK: - Metadata
@@ -55,26 +66,38 @@ final class RandomazzoStore: ObservableObject {
       return
     }
     entries = metadata.entries
+    currentPresetName = metadata.currentPresetName.flatMap { exists($0) ? $0 : nil }
+    // Older stores tracked every apply/roll in lastRolled. Migrate once;
+    // versioned stores keep an explicit nil after the active preset is deleted.
+    if metadata.version == nil {
+      currentPresetName = entries.filter { $0.lastRolled != nil }
+        .max { ($0.lastRolled ?? .distantPast) < ($1.lastRolled ?? .distantPast) }?.name
+    }
     var assignedIcons = false
     for index in entries.indices where entries[index].iconSeed == nil {
       entries[index].iconSeed = UInt32.random(in: .min ... .max)
       assignedIcons = true
     }
-    if assignedIcons { saveMetadata() }
+    if assignedIcons || metadata.version == nil { saveMetadata() }
   }
 
-  private func saveMetadata() {
-    let metadata = RandomazzoMetadata(entries: entries)
-    if let data = try? JSONEncoder().encode(metadata) {
-      try? data.write(to: metadataURL, options: .atomic)
+  @discardableResult private func saveMetadata() -> Bool {
+    let metadata = RandomazzoMetadata(entries: entries, currentPresetName: currentPresetName, version: 1)
+    do {
+      let data = try JSONEncoder().encode(metadata)
+      try data.write(to: metadataURL, options: .atomic)
+      return true
+    } catch {
+      AppLogger.shared.error("Randomazzo: failed to save preset metadata: \(error.localizedDescription)", category: .app)
+      return false
     }
   }
 
-  /// Import the bundled Polybar-inspired themes as ordinary Randomazzo
-  /// snapshots. Existing entries and files are never overwritten.
-  private func seedBundledPolybarPresets() {
+  /// Import bundled bar snapshots with ordinary Randomazzo names and icons.
+  /// Existing entries and files are never overwritten.
+  private func seedBundledPresets(directory: String, namePrefix: String = "") {
     guard let resourceURL = Bundle.main.resourceURL else { return }
-    let presetsURL = resourceURL.appendingPathComponent("PolybarThemeDrafts", isDirectory: true)
+    let presetsURL = resourceURL.appendingPathComponent(directory, isDirectory: true)
     guard
       let files = try? fm.contentsOfDirectory(
         at: presetsURL,
@@ -89,7 +112,8 @@ final class RandomazzoStore: ObservableObject {
       .sorted(by: { $0.lastPathComponent < $1.lastPathComponent })
     {
       let themeName = sourceURL.deletingPathExtension().lastPathComponent
-      let entryName = "Polybar — \(themeName)"
+      guard !themeName.localizedCaseInsensitiveContains("Pwidgets") else { continue }
+      let entryName = namePrefix + themeName
       let destinationURL = tomlURL(for: entryName)
 
       guard !entries.contains(where: { $0.name == entryName }),
@@ -103,7 +127,7 @@ final class RandomazzoStore: ObservableObject {
       let decoder = TOMLDecoder()
       guard (try? decoder.decode(RootToml.self, from: content)) != nil else {
         AppLogger.shared.error(
-          "Randomazzo: bundled Polybar preset '\(themeName)' is invalid TOML",
+          "Randomazzo: bundled preset '\(themeName)' is invalid TOML",
           category: .app
         )
         continue
@@ -114,12 +138,12 @@ final class RandomazzoStore: ObservableObject {
         entries.append(RandomazzoEntry(name: entryName))
         importedAny = true
         AppLogger.shared.info(
-          "Randomazzo: imported Polybar preset '\(themeName)'",
+          "Randomazzo: imported preset '\(themeName)'",
           category: .app
         )
       } catch {
         AppLogger.shared.error(
-          "Randomazzo: failed to import Polybar preset '\(themeName)': \(error.localizedDescription)",
+          "Randomazzo: failed to import preset '\(themeName)': \(error.localizedDescription)",
           category: .app
         )
       }
@@ -182,29 +206,40 @@ final class RandomazzoStore: ObservableObject {
   // MARK: - Save
 
   /// Snapshot the current config into the randomazzo container.
-  func save(name: String) {
-    let sanitizedName = sanitized(name)
-    let finalName = sanitizedName.isEmpty ? defaultName() : sanitizedName
+  @discardableResult func save(name: String) -> Bool {
+    let finalName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      ? defaultName() : sanitized(name)
 
-    // Read current config file
     guard let configPath = ConfigManager.shared.configFilePath,
       let tomlContent = try? String(contentsOfFile: configPath, encoding: .utf8)
     else {
       AppLogger.shared.error("Randomazzo: no config file to save", category: .app)
-      return
+      return false
     }
 
-    // Write TOML snapshot
-    let url = tomlURL(for: finalName)
-    try? tomlContent.write(to: url, atomically: true, encoding: .utf8)
+    do {
+      try tomlContent.write(to: tomlURL(for: finalName), atomically: true, encoding: .utf8)
+    } catch {
+      AppLogger.shared.error("Randomazzo: failed to save preset '\(finalName)': \(error.localizedDescription)", category: .app)
+      return false
+    }
 
-    // Upsert metadata entry
     if let existingIndex = entries.firstIndex(where: { $0.name == finalName }) {
+      // Preserve the icon and usage history when replacing a preset.
       entries[existingIndex].savedAt = Date()
     } else {
       entries.append(RandomazzoEntry(name: finalName))
     }
-    saveMetadata()
+    currentPresetName = finalName
+    return saveMetadata()
+  }
+
+  /// Replace the active snapshot with the persisted settings, without applying
+  /// it again or writing to the active config. Session-only palette shuffles
+  /// remain temporary because they are absent from that config file.
+  @discardableResult func replaceCurrentPreset() -> Bool {
+    guard let name = currentPresetName, exists(name) else { return false }
+    return save(name: name)
   }
 
   private func defaultName() -> String {
@@ -260,6 +295,8 @@ final class RandomazzoStore: ObservableObject {
     }
     ConfigManager.shared.resumeWatching()
 
+    currentPresetName = name
+
     // Update lastRolled
     if let index = entries.firstIndex(where: { $0.name == name }) {
       entries[index].lastRolled = Date()
@@ -269,12 +306,20 @@ final class RandomazzoStore: ObservableObject {
     return name
   }
 
-  /// Check if a TOML file is valid (can be parsed).
-  func isCorrupted(_ name: String) -> Bool {
-    let url = tomlURL(for: name)
-    guard let content = try? String(contentsOf: url, encoding: .utf8) else { return true }
-    let decoder = TOMLDecoder()
-    return (try? decoder.decode(RootToml.self, from: content)) == nil
+  /// Match applyConfig's read requirement. ConfigManager supports both strict
+  /// and lenient parsing, so strict decoding alone must not disable a preset
+  /// that can already be applied by the randomizer hotkey.
+  func isUnavailable(_ name: String) -> Bool {
+    (try? String(contentsOf: tomlURL(for: name), encoding: .utf8)) == nil
+  }
+
+  func unavailableNames(in names: [String]) async -> Set<String> {
+    let files = names.map { (name: $0, url: tomlURL(for: $0)) }
+    return await Task.detached(priority: .utility) {
+      Set(files.compactMap { file in
+        (try? String(contentsOf: file.url, encoding: .utf8)) == nil ? file.name : nil
+      })
+    }.value
   }
 
   // MARK: - Delete
@@ -286,6 +331,7 @@ final class RandomazzoStore: ObservableObject {
 
     // Remove metadata entry
     entries.removeAll { $0.name == name }
+    if currentPresetName == name { currentPresetName = nil }
     saveMetadata()
   }
 
@@ -298,12 +344,18 @@ final class RandomazzoStore: ObservableObject {
     // Rename TOML file
     let oldURL = tomlURL(for: oldName)
     let newURL = tomlURL(for: sanitizedName)
-    try? fm.moveItem(at: oldURL, to: newURL)
+    do {
+      try fm.moveItem(at: oldURL, to: newURL)
+    } catch {
+      AppLogger.shared.error("Randomazzo: failed to rename preset: \(error.localizedDescription)", category: .app)
+      return
+    }
 
     // Update metadata
     if let index = entries.firstIndex(where: { $0.name == oldName }) {
       entries[index].name = sanitizedName
     }
+    if currentPresetName == oldName { currentPresetName = sanitizedName }
     saveMetadata()
   }
 }

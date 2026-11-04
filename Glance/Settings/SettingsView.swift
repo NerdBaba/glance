@@ -8,13 +8,15 @@ enum SettingsDestination: Hashable {
 
 struct SettingsView: View {
   @ObservedObject private var configManager = ConfigManager.shared
+  @ObservedObject private var randomazzo = RandomazzoStore.shared
   @State private var selection: SettingsDestination? = .appearance
   @State private var search = ""
 
   private var modules: [SettingsModule] {
     SettingsModule.all(config: configManager.config).filter {
       search.isEmpty || $0.title.localizedCaseInsensitiveContains(search)
-        || $0.id.localizedCaseInsensitiveContains(search)
+        || $0.category.localizedCaseInsensitiveContains(search)
+        || $0.summary.localizedCaseInsensitiveContains(search)
     }
   }
 
@@ -22,6 +24,9 @@ struct SettingsView: View {
     NavigationSplitView {
       List(selection: $selection) {
         if search.isEmpty {
+          Section("Library") {
+            route("Randomazzo", icon: "dice.fill", to: .randomazzo)
+          }
           Section("Bar") {
             route("Appearance", icon: "paintpalette", to: .appearance)
             route("Layout", icon: "rectangle.3.group", to: .layout)
@@ -29,28 +34,25 @@ struct SettingsView: View {
             route("Fonts", icon: "textformat", to: .fonts)
           }
         }
-        Section("Modules") {
-          ForEach(modules) { module in
-            HStack(spacing: 10) {
-              Label(module.title, systemImage: module.icon)
-              Spacer(minLength: 0)
-              if configManager.config.rootToml.widgets?.displayed.contains(where: {
-                $0.id == module.id
-              }) == true {
-                Circle().fill(Color.accentColor).frame(width: 5, height: 5)
-                  .accessibilityLabel("In bar")
+        ForEach(SettingsModule.categories, id: \.self) { category in
+          let grouped = modules.filter { $0.category == category }
+          if !grouped.isEmpty {
+            Section(category) {
+              ForEach(grouped) { module in
+                HStack(spacing: 10) {
+                  Label(module.title, systemImage: module.icon)
+                  Spacer(minLength: 0)
+                  if configManager.config.rootToml.widgets?.displayed.contains(where: { $0.id == module.id }) == true {
+                    Circle().fill(Color.accentColor).frame(width: 5, height: 5).accessibilityLabel("In bar")
+                  }
+                }
+                .tag(SettingsDestination.module(module.id))
               }
             }
-            .tag(SettingsDestination.module(module.id))
-          }
-          if modules.isEmpty {
-            Text("No matching modules").foregroundStyle(.secondary)
           }
         }
+        if modules.isEmpty { Text("No matching modules").foregroundStyle(.secondary) }
         if search.isEmpty {
-          Section("Library") {
-            route("Randomazzo", icon: "dice.fill", to: .randomazzo)
-          }
           Section("App") {
             route("Preferences", icon: "gearshape", to: .application)
             route("About", icon: "info.circle", to: .about)
@@ -69,6 +71,12 @@ struct SettingsView: View {
           Button("Save current configuration…") {
             SettingsWindowController.shared.saveCurrentConfiguration()
           }
+          Button("Replace Current Preset with Current Settings", systemImage: "arrow.triangle.2.circlepath") {
+            SettingsWindowController.shared.replaceCurrentConfiguration()
+          }
+          .disabled(randomazzo.currentPresetName == nil)
+          .help(randomazzo.currentPresetName.map { "Replace “\($0)” with the current bar settings" } ?? "Apply or save a preset first")
+          Divider()
           Button("Open Randomazzo") {
             search = ""
             selection = .randomazzo
@@ -76,7 +84,7 @@ struct SettingsView: View {
         } label: {
           Label("Randomazzo", systemImage: "dice.fill")
         }
-        .help("Save or browse configurations")
+        .help("Save, replace, or browse configurations")
       }
     }
     .onReceive(
