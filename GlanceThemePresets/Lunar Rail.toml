@@ -1,0 +1,391 @@
+# Glance preset. Approved for Randomazzo on 2026-10-10.
+theme = "system"
+preset = "flat-dark"
+style = "solid"
+use-pywal = true
+
+[appearance]
+roundness = 0
+border-width = 0
+fill-opacity = 0
+shadow-opacity = 0
+shadow-radius = 0
+bar-font-name = "HelveticaNeue"
+bar-font-size = 14
+bar-font-weight = 3
+widget-font-name = "HelveticaNeue"
+widget-font-size = 14
+widget-font-weight = 3
+widget-background-color = "#08090e"
+foreground-color = "#a0a0b8"
+
+[experimental]
+
+[experimental.foreground]
+formation = "full"
+position = "left"
+height = 56
+top-margin = 0
+margin = 0
+horizontal-padding = 12
+spacing = 8
+scale-content = false
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.launcher", "script.layout", "script.files", "script.editor", "script.terminal", "script.notes", "script.palette", "script.spaces", "spacer", "script.window_icon", "script.window", "spacer", "script.music_app", "script.games", "script.clock", "script.power"]
+
+[widgets.pywal]
+foreground-index = 15
+background-index = 0
+accent-index = 10
+
+[widgets.widget-colors]
+mode = "disabled"
+
+[widgets.script]
+
+[widgets.script.launcher]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "glance.pacman"
+format-height = 28
+native-action = "launcher"
+capsule-group = "navigation"
+capsule-background = "pywal:0"
+capsule-background-opacity = 0.94
+capsule-width = 40
+capsule-vertical-padding = 10
+capsule-spacing = 4
+capsule-radius = 20
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+[widgets.script.layout]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "rectangle.3.group"
+format-height = 28
+native-action = "settings"
+capsule-group = "navigation"
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+[widgets.script.files]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "folder.fill"
+format-height = 28
+native-action = "files"
+capsule-group = "navigation"
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+[widgets.script.editor]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "chevron.left.forwardslash.chevron.right"
+format-height = 28
+native-action = "open-app"
+action-app = "/Applications/Visual Studio Code.app"
+capsule-group = "navigation"
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+[widgets.script.terminal]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "terminal"
+format-height = 28
+native-action = "terminal"
+capsule-group = "navigation"
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+[widgets.script.notes]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "doc.text"
+format-height = 28
+native-action = "open-app"
+action-app = "/System/Applications/Notes.app"
+capsule-group = "navigation"
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+[widgets.script.palette]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:0"
+font-0 = "HelveticaNeue:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "paintpalette.fill"
+format-background = "pywal:4"
+format-height = 30
+format-radius = 15
+native-action = "shuffle-colors"
+format-min-width = 30
+capsule-group = "navigation"
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+[widgets.script.spaces]
+native-source = "workspaces"
+format = "<label>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+label-active = "●"
+label-active-foreground = "pywal:15"
+label-focused = "●"
+label-focused-foreground = "pywal:15"
+label-occupied = "○"
+label-empty = "○"
+label-active-padding = 1
+label-focused-padding = 1
+label-occupied-padding = 1
+label-empty-padding = 1
+native-orientation = "vertical"
+workspace-indicator = "ring-active"
+workspace-dot-size = 7
+workspace-dot-spacing = 4
+workspace-hit-height = 22
+workspace-inactive-opacity = 0.35
+label-empty-foreground = "pywal:15"
+label-occupied-foreground = "pywal:15"
+native-decoration = true
+capsule-group = "navigation"
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+[widgets.script.window_icon]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "display"
+format-height = 20
+native-action = "settings"
+format-offset-y = 0
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 15
+format-font-weight = 3
+
+capsule-group = "focus"
+
+capsule-background = "pywal:0"
+
+capsule-background-opacity = 0.94
+
+capsule-width = 40
+
+capsule-vertical-padding = 10
+
+capsule-spacing = 6
+
+capsule-radius = 20
+
+[widgets.script.window]
+native-source = "window"
+format = "<label>"
+label = "%name%"
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue-Medium:size=14"
+format-height = 76
+native-text-direction = "down"
+label-maxlen = 10
+format-font-name = "HelveticaNeue-Medium"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+capsule-group = "focus"
+
+label-ellipsis = true
+
+[widgets.script.music_app]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+format-height = 28
+native-action = "open-app"
+action-app = "/System/Applications/Music.app"
+capsule-group = "lower"
+capsule-width = 40
+capsule-vertical-padding = 10
+capsule-spacing = 8
+capsule-radius = 20
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+native-symbol-label-prefix = "music.note"
+
+capsule-background = "pywal:0"
+
+capsule-background-opacity = 0.94
+
+[widgets.script.games]
+native-source = "text"
+format = "<label>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "FontAwesome6Brands-Regular:size=16"
+format-height = 28
+native-action = "open-app"
+action-app = "/Applications/Steam.app"
+capsule-group = "lower"
+format-font-name = "FontAwesome6Brands-Regular"
+format-font-size = 16
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0
+
+[widgets.script.clock]
+native-source = "date"
+format = "<label>"
+label = "%date%\n─\n%time%"
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "HelveticaNeue:size=14"
+format-height = 136
+format-radius = 0
+time-pattern = "hh\nmm\na"
+date-pattern = "EEE\nd"
+native-line-limit = 6
+format-min-width = 40
+date-layout = "rail"
+rail-clock-spacing = 4
+native-decoration = false
+format-offset-y = 0
+capsule-group = "lower"
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+rail-weekday-font = "HelveticaNeue:size=13"
+
+rail-date-font = "HelveticaNeue-Medium:size=16"
+
+rail-time-font = "HelveticaNeue-Medium:size=16"
+
+rail-period-font = "HelveticaNeue:size=13"
+
+[widgets.script.power]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:9"
+font-0 = "HelveticaNeue:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "power"
+format-height = 28
+native-action = "power"
+capsule-group = "lower"
+format-font-name = "HelveticaNeue"
+format-font-size = 14
+font-min-size = 6
+native-icon-size = 16
+format-font-weight = 3
+
+format-offset-y = 0

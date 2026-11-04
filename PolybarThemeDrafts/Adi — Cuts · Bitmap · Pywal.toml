@@ -1,0 +1,602 @@
+# Adapted from adi1090x/polybar-themes; GPL-3.0.
+# Source: bitmap/cuts/config.ini
+theme = "system"
+preset = "flat-dark"
+use-pywal = true
+
+[appearance]
+roundness = 0.0
+border-width = 0.0
+border-opacity = 1
+fill-opacity = 0.5490196078431373
+shadow-opacity = 0
+shadow-radius = 0
+glow-opacity = 0
+bar-font-name = "GlanceTerminus14-Regular"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "GlanceTerminus14-Regular"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#0a0a0a"
+foreground-color = "#f5f5f5"
+accent-color = "#fdd835"
+
+[experimental]
+
+[experimental.foreground]
+formation = "full"
+position = "top"
+height = 28.0
+top-margin = 0
+reference-width = 1920
+scale-content = false
+margin = 0
+floating-width = 0
+horizontal-alignment = "left"
+horizontal-padding = 0.0
+spacing = 0.0
+gap = 0
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.adi_launcher", "script.adi_title", "script.adi_decor1", "script.adi_decor2", "script.adi_workspaces", "script.adi_decor1", "script.adi_decor2", "script.adi_color_switch", "script.adi_decor1", "spacer", "spacer", "script.adi_decor4", "script.adi_updates", "script.adi_decor3", "script.adi_decor4", "script.adi_temperature", "script.adi_keyboard", "script.adi_decor3", "script.adi_decor4", "script.adi_date", "script.adi_sysmenu"]
+
+[widgets.pywal]
+foreground-index = 15
+accent-index = 4
+border1-index = 8
+border2-index = 8
+background-index = 8
+
+[widgets.script.adi_launcher]
+content-background = "pywal:0"
+content-foreground = "pywal:4"
+content-padding = 1
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "launcher"
+format = "<label>"
+label = ""
+label-background = "pywal:0"
+label-foreground = "pywal:4"
+label-padding = 1
+
+[widgets.script.adi_title]
+format = "<label>"
+format-background = "pywal:0"
+format-padding = 0
+label = "%title%"
+label-maxlen = 30
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "window"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_decor1]
+content-background = "pywal:8"
+content-foreground = "pywal:0"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "pywal:8"
+label-foreground = "pywal:0"
+
+[widgets.script.adi_decor2]
+content-background = "pywal:8"
+content-foreground = "pywal:0"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "pywal:8"
+label-foreground = "pywal:0"
+
+[widgets.script.adi_workspaces]
+icon-0 = "1;"
+icon-1 = "2;"
+icon-2 = "3;"
+icon-3 = "4;"
+icon-4 = "5;"
+icon-default = ""
+format = "<label-state>"
+format-background = "pywal:0"
+format-padding = 0
+label-monitor = "%name%"
+label-active = "%icon%"
+label-active-foreground = "pywal:1"
+label-active-overline = "pywal:1"
+label-occupied = "%icon%"
+label-occupied-foreground = "pywal:3"
+label-urgent = "%icon%"
+label-urgent-foreground = "pywal:2"
+label-empty = "%icon%"
+label-active-padding = 1
+label-urgent-padding = 1
+label-occupied-padding = 1
+label-empty-padding = 1
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "workspaces"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_color_switch]
+content-background = "pywal:0"
+content-foreground = "pywal:15"
+content-padding = 1
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "shuffle-colors"
+format = "<label>"
+label = ""
+label-background = "pywal:0"
+label-foreground = "pywal:15"
+label-padding = 1
+
+[widgets.script.adi_decor4]
+content-background = "pywal:8"
+content-foreground = "pywal:0"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "pywal:8"
+label-foreground = "pywal:0"
+
+[widgets.script.adi_updates]
+format = "<label-prefix><label>"
+format-background = "pywal:0"
+format-padding = 1
+label = "Updates"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "updates"
+label-prefix = " "
+
+[widgets.script.adi_decor3]
+content-background = "pywal:8"
+content-foreground = "pywal:0"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "pywal:8"
+label-foreground = "pywal:0"
+
+[widgets.script.adi_temperature]
+format = "<ramp> <label>"
+format-background = "pywal:0"
+format-padding = 1
+format-warn = "<ramp> <label-warn>"
+format-warn-background = "pywal:0"
+format-warn-padding = 1
+label = "%temperature-c%"
+label-warn = "%temperature-c%"
+label-warn-foreground = "pywal:1"
+ramp-0 = ""
+ramp-1 = ""
+ramp-2 = ""
+ramp-3 = ""
+ramp-4 = ""
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "temperature"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_keyboard]
+format = "<label-prefix><label-layout> <label-indicator>"
+format-padding = 1
+format-background = "pywal:0"
+label-layout = " %layout%"
+label-indicator-on = "%name%"
+label-indicator-on-foreground = "pywal:4"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "keyboard"
+native-decoration = false
+native-action = ""
+label-prefix = ""
+
+[widgets.script.adi_date]
+format = "<label>"
+format-background = "pywal:0"
+format-padding = 1
+label = "%time%"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "date"
+native-decoration = false
+native-action = ""
+date-pattern = ""
+time-pattern = " hh:mm a"
+seconds = false
+
+[widgets.script.adi_sysmenu]
+content-background = "pywal:0"
+content-foreground = "pywal:4"
+content-padding = 1
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "power"
+format = "<label>"
+label = ""
+label-background = "pywal:0"
+label-foreground = "pywal:4"
+label-padding = 1
+
+[additional-bars]
+
+[additional-bars.bottom]
+theme = "system"
+preset = "flat-dark"
+use-pywal = true
+
+[additional-bars.bottom.appearance]
+roundness = 0.0
+border-width = 0.0
+border-opacity = 1
+fill-opacity = 0.5490196078431373
+shadow-opacity = 0
+shadow-radius = 0
+glow-opacity = 0
+bar-font-name = "GlanceTerminus14-Regular"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "GlanceTerminus14-Regular"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#0a0a0a"
+foreground-color = "#f5f5f5"
+accent-color = "#fdd835"
+
+[additional-bars.bottom.experimental]
+
+[additional-bars.bottom.experimental.foreground]
+formation = "full"
+position = "bottom"
+height = 28.0
+top-margin = 0
+reference-width = 1920
+scale-content = false
+margin = 0
+floating-width = 0
+horizontal-alignment = "left"
+horizontal-padding = 0.0
+spacing = 0.0
+gap = 0
+
+[additional-bars.bottom.experimental.foreground.widgets-background]
+displayed = true
+
+[additional-bars.bottom.experimental.background]
+displayed = false
+
+[additional-bars.bottom.widgets]
+displayed = ["script.adi_mpd", "script.adi_decor3", "script.adi_decor4", "script.adi_cpu", "script.adi_memory", "script.adi_filesystem", "script.adi_decor3", "spacer", "spacer", "script.adi_decor2", "script.adi_network", "script.adi_decor1", "script.adi_decor2", "script.adi_volume", "script.adi_brightness"]
+
+[additional-bars.bottom.widgets.pywal]
+foreground-index = 15
+accent-index = 4
+border1-index = 8
+border2-index = 8
+background-index = 8
+
+[additional-bars.bottom.widgets.script.adi_mpd]
+format-online = "<label-online-prefix><label-song> <label-prev> <label-toggle> <label-next>"
+format-online-background = "pywal:0"
+format-online-padding = 1
+format-offline = "<label-offline-prefix><label-offline>"
+format-offline-background = "pywal:0"
+format-offline-padding = 1
+label-song = " %artist% - %title%"
+label-song-maxlen = 25
+label-song-ellipsis = true
+label-time = "%elapsed% / %total%"
+label-offline = " Offline"
+icon-play = ""
+icon-pause = ""
+icon-stop = ""
+icon-next = ""
+icon-prev = ""
+icon-seekf = ""
+icon-seekb = ""
+icon-random = ""
+icon-repeat = ""
+icon-repeatone = ""
+icon-single = ""
+icon-consume = ""
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "music"
+native-decoration = false
+native-action = ""
+label-prev = "%{A1:previous:}%{A}"
+label-next = "%{A1:next:}%{A}"
+label-stop = "%{A1:stop:}%{A}"
+label-play = "%{A1:toggle:}%{A}"
+label-pause = "%{A1:toggle:}%{A}"
+label-toggle = "%{A1:toggle:}<label-toggle>%{A}"
+label-repeat = "%{A1:toggle:}%{A}"
+label-random = "%{A1:toggle:}%{A}"
+label-single = "%{A1:toggle:}%{A}"
+label-consume = "%{A1:toggle:}%{A}"
+label-online-prefix = ""
+label-offline-prefix = ""
+
+[additional-bars.bottom.widgets.script.adi_decor3]
+content-background = "pywal:8"
+content-foreground = "pywal:0"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "pywal:8"
+label-foreground = "pywal:0"
+
+[additional-bars.bottom.widgets.script.adi_decor4]
+content-background = "pywal:8"
+content-foreground = "pywal:0"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "pywal:8"
+label-foreground = "pywal:0"
+
+[additional-bars.bottom.widgets.script.adi_cpu]
+format = "<label-prefix><label>"
+format-background = "pywal:0"
+format-padding = 1
+label = " %percentage%%"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "cpu"
+native-decoration = false
+native-action = ""
+label-prefix = ""
+
+[additional-bars.bottom.widgets.script.adi_memory]
+format = "<label-prefix><label>"
+format-background = "pywal:0"
+format-padding = 1
+label = " %mb_used%"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "memory"
+native-decoration = false
+native-action = ""
+label-prefix = ""
+
+[additional-bars.bottom.widgets.script.adi_filesystem]
+format-mounted = "<label-mounted-prefix><label-mounted>"
+format-mounted-background = "pywal:0"
+format-mounted-padding = 1
+format-unmounted = "<label-unmounted-prefix><label-unmounted>"
+format-unmounted-background = "pywal:0"
+format-unmounted-padding = 1
+label-mounted = " %free%"
+label-unmounted = " %mountpoint%: not mounted"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "disk"
+native-decoration = false
+native-action = ""
+label-mounted-prefix = ""
+label-unmounted-prefix = ""
+
+[additional-bars.bottom.widgets.script.adi_decor2]
+content-background = "pywal:8"
+content-foreground = "pywal:0"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "pywal:8"
+label-foreground = "pywal:0"
+
+[additional-bars.bottom.widgets.script.adi_network]
+format-connected = "<ramp-signal> <label-connected>"
+format-connected-background = "pywal:0"
+format-connected-padding = 1
+format-disconnected = "<label-disconnected-prefix><label-disconnected>"
+format-disconnected-background = "pywal:0"
+format-disconnected-padding = 1
+label-connected = "%{A1:network:}%essid%  %downspeed% %upspeed%%{A}"
+label-disconnected = "%{A1:network:} Offline%{A}"
+ramp-signal-0 = ""
+ramp-signal-1 = ""
+ramp-signal-2 = ""
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "network"
+native-decoration = false
+native-action = ""
+label-disconnected-prefix = ""
+
+[additional-bars.bottom.widgets.script.adi_decor1]
+content-background = "pywal:8"
+content-foreground = "pywal:0"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "pywal:8"
+label-foreground = "pywal:0"
+
+[additional-bars.bottom.widgets.script.adi_volume]
+format-volume = "<ramp-volume> <bar-volume>"
+format-volume-background = "pywal:0"
+format-volume-padding = 1
+format-muted = "<label-muted-prefix><label-muted>"
+format-muted-background = "pywal:0"
+format-muted-padding = 1
+label-volume = "%percentage%%"
+label-muted = " Muted"
+label-muted-foreground = "pywal:15"
+ramp-volume-0 = ""
+ramp-volume-1 = ""
+ramp-volume-2 = ""
+ramp-volume-3 = ""
+ramp-volume-4 = ""
+bar-volume-format = "%{T4}%fill%%indicator%%empty%%{F-}%{T-}"
+bar-volume-width = 6
+bar-volume-gradient = false
+bar-volume-indicator = ""
+bar-volume-indicator-foreground = "pywal:15"
+bar-volume-fill = "ﭳ"
+bar-volume-foreground-0 = "pywal:2"
+bar-volume-foreground-1 = "pywal:2"
+bar-volume-foreground-2 = "pywal:3"
+bar-volume-foreground-3 = "pywal:3"
+bar-volume-foreground-4 = "pywal:1"
+bar-volume-empty = "ﭳ"
+bar-volume-empty-foreground = "pywal:7"
+ramp-headphones-0 = ""
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "volume"
+native-decoration = false
+native-action = ""
+label-muted-prefix = ""
+
+[additional-bars.bottom.widgets.script.adi_brightness]
+format = "<ramp> <bar>"
+format-background = "pywal:0"
+format-padding = 1
+label = "%percentage%%"
+ramp-0 = ""
+ramp-1 = ""
+ramp-2 = ""
+ramp-3 = ""
+ramp-4 = ""
+bar-format = "%{T4}%fill%%indicator%%empty%%{F-}%{T-}"
+bar-width = 6
+bar-gradient = false
+bar-indicator = ""
+bar-indicator-foreground = "pywal:15"
+bar-fill = "ﭳ"
+bar-foreground-0 = "pywal:2"
+bar-foreground-1 = "pywal:2"
+bar-foreground-2 = "pywal:3"
+bar-foreground-3 = "pywal:3"
+bar-foreground-4 = "pywal:1"
+bar-empty = "ﭳ"
+bar-empty-foreground = "pywal:7"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+font-2 = "IosevkaNerdFontComplete-:size=25.33"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "IosevkaNerdFontComplete-:size=14"
+native-source = "brightness"
+native-decoration = false
+native-action = ""

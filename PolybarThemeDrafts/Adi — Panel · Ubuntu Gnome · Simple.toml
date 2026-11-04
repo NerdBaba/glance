@@ -1,0 +1,130 @@
+# Adapted from adi1090x/polybar-themes; GPL-3.0.
+# Source: simple/panels/panel/ubuntu_gnome.ini
+theme = "system"
+preset = "flat-dark"
+use-pywal = false
+
+[appearance]
+roundness = 0.0
+border-width = 0.0
+border-opacity = 1
+fill-opacity = 0.2
+shadow-opacity = 0
+shadow-radius = 0
+glow-opacity = 0
+bar-font-name = "NotoSans-Bold"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "NotoSans-Bold"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#000000"
+foreground-color = "#EAEAEA"
+accent-color = "#202020"
+
+[experimental]
+
+[experimental.foreground]
+formation = "full"
+position = "top"
+height = 30.0
+top-margin = 0
+reference-width = 1920
+scale-content = false
+margin = 0
+floating-width = 0
+horizontal-alignment = "left"
+horizontal-padding = 21.0
+spacing = 42.0
+gap = 0
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.adi_activity", "spacer", "script.adi_date", "spacer", "script.adi_style", "script.adi_alsa", "script.adi_network", "script.adi_sysmenu"]
+
+[widgets.pywal]
+foreground-index = 15
+accent-index = 4
+border1-index = 8
+border2-index = 8
+background-index = 0
+
+[widgets.script.adi_activity]
+content-foreground = "#EAEAEA"
+font-0 = "NotoSans-Bold:size=14"
+font-1 = "IosevkaNerdFontComplete-:size=16.0"
+native-source = "text"
+native-decoration = false
+native-action = "launcher"
+format = "<label>"
+label = "Activities"
+label-foreground = "#EAEAEA"
+
+[widgets.script.adi_date]
+format = "<label>"
+label = "%time%"
+font-0 = "NotoSans-Bold:size=14"
+font-1 = "IosevkaNerdFontComplete-:size=16.0"
+native-source = "date"
+native-decoration = false
+native-action = ""
+date-pattern = ""
+time-pattern = "EEE   hh:mm a"
+seconds = false
+
+[widgets.script.adi_style]
+font-0 = "NotoSans-Bold:size=14"
+font-1 = "IosevkaNerdFontComplete-:size=16.0"
+native-source = "text"
+native-decoration = false
+native-action = "style"
+format = "<label>"
+label = "פֿ"
+
+[widgets.script.adi_alsa]
+format-volume = "<ramp-volume>"
+label-volume = "%percentage%%"
+label-muted = "ﱝ"
+label-muted-foreground = "#9C9C9C"
+ramp-volume-0 = ""
+ramp-volume-1 = ""
+ramp-volume-2 = ""
+ramp-volume-3 = ""
+font-0 = "NotoSans-Bold:size=14"
+font-1 = "IosevkaNerdFontComplete-:size=16.0"
+native-source = "volume"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_network]
+format-connected = "<label-connected>"
+format-disconnected = "<label-disconnected>"
+label-connected = "%{A1:network:}直%{A}"
+label-disconnected = "%{A1:network:}睊%{A}"
+label-disconnected-foreground = "#9C9C9C"
+ramp-signal-0 = "直"
+ramp-signal-1 = "直"
+ramp-signal-2 = "直"
+ramp-signal-3 = "直"
+ramp-signal-4 = "直"
+font-0 = "NotoSans-Bold:size=14"
+font-1 = "IosevkaNerdFontComplete-:size=16.0"
+native-source = "network"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_sysmenu]
+content-foreground = "#EAEAEA"
+font-0 = "NotoSans-Bold:size=14"
+font-1 = "IosevkaNerdFontComplete-:size=16.0"
+native-source = "text"
+native-decoration = false
+native-action = "power"
+format = "<label>"
+label = "襤"
+label-foreground = "#EAEAEA"

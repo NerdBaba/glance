@@ -1,0 +1,189 @@
+# Glance bar preset. Approved for Randomazzo.
+theme = "system"
+preset = "flat-dark"
+style = "solid"
+use-pywal = true
+
+[appearance]
+roundness = 0
+border-width = 1
+fill-opacity = 1
+shadow-opacity = 0
+shadow-radius = 0
+bar-font-name = "IosevkaNerdFontComplete-"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "IosevkaNerdFontComplete-"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#201f32"
+foreground-color = "#f5edf0"
+border-opacity = 1
+border-color = "#869bb7"
+border-color2 = "#869bb7"
+
+[experimental]
+
+[experimental.foreground]
+formation = "full"
+position = "top"
+height = 30
+top-margin = 0
+margin = 0
+horizontal-padding = 6
+spacing = 5
+scale-content = false
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.cpu", "script.separator", "script.memory", "script.separator2", "script.spaces", "spacer", "script.music_app", "script.terminal", "script.files", "script.browser", "spacer", "script.volume", "script.network", "script.bluetooth", "script.clock"]
+
+[widgets.pywal]
+foreground-index = 15
+background-index = 0
+accent-index = 10
+
+[widgets.widget-colors]
+mode = "disabled"
+
+[widgets.script]
+
+[widgets.script.cpu]
+native-source = "cpu"
+format = "<label>"
+label = "CPU %percentage%%"
+format-padding = "2px"
+format-foreground = "pywal:9"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+
+[widgets.script.separator]
+native-source = "text"
+format = "<label>"
+label = "│"
+format-padding = "0px"
+format-foreground = "pywal:8"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+
+[widgets.script.memory]
+native-source = "memory"
+format = "<label>"
+label = "RAM %percentage%%"
+format-padding = "2px"
+format-foreground = "pywal:13"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+
+[widgets.script.separator2]
+native-source = "text"
+format = "<label>"
+label = "│"
+format-padding = "0px"
+format-foreground = "pywal:8"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+
+[widgets.script.spaces]
+native-source = "workspaces"
+format = "<label>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-active = "%index%"
+label-active-foreground = "pywal:9"
+label-focused = "%index%"
+label-focused-foreground = "pywal:9"
+label-occupied = "%index%"
+label-empty = "%index%"
+label-active-padding = 1
+label-focused-padding = 1
+label-occupied-padding = 1
+label-empty-padding = 1
+
+[widgets.script.music_app]
+native-source = "text"
+format = "<label>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:14"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+native-action = "open-app"
+module-name = "Music App"
+action-app = "/System/Applications/Music.app"
+
+[widgets.script.terminal]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "terminal"
+native-action = "terminal"
+
+[widgets.script.files]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:14"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "folder.fill"
+native-action = "files"
+
+[widgets.script.browser]
+native-source = "text"
+format = "<label>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:9"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+native-action = "browser"
+
+[widgets.script.volume]
+native-source = "volume"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:11"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "speaker.wave.2.fill"
+
+[widgets.script.network]
+native-source = "network"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:14"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "globe"
+format-connected = "<label-prefix>"
+format-disconnected = "<label-prefix>"
+
+[widgets.script.bluetooth]
+native-source = "text"
+format = "<label>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+native-action = "bluetooth"
+
+[widgets.script.clock]
+native-source = "date"
+format = "<label-prefix> <label>"
+label = "%date%  |  %time%"
+format-padding = "6px"
+format-foreground = "pywal:12"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "calendar"
+time-pattern = "HH:mm"
+date-pattern = "dd-MM-yy"

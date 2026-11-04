@@ -1,0 +1,130 @@
+[
+  {
+    "image": 5,
+    "name": "Sakura Dock — Reference",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-cc65eb63-6a4e-48d5-80ff-df0990857c1e.png",
+    "size": [
+      1366,
+      768
+    ],
+    "surface": "#eedfe2",
+    "text": "#814b65",
+    "layout": "Pale bottom strip, time/weather left, workspace capsule center.",
+    "vertical": false,
+    "original": "Sakura Dock",
+    "description": "Pale bottom dock, user circle, short clock, filled dots and active pill, compact status group.",
+    "count": 4
+  },
+  {
+    "image": 3,
+    "name": "Rose Orbit — Reference",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-6739f830-d323-4d80-807e-8876bef8f22b.png",
+    "size": [
+      1920,
+      1080
+    ],
+    "surface": "#091521",
+    "text": "#d5d3e8",
+    "layout": "Detached dark capsules, colored space dots, compact metrics.",
+    "vertical": false,
+    "original": "Rose Orbit",
+    "description": "Shared connection/system pills, ten large filled pastel workspace dots.",
+    "count": 10
+  },
+  {
+    "image": 13,
+    "name": "Cloud Ribbon — Reference",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-1fbad1e6-d2d5-4548-aec1-f808bcfc3fcb.png",
+    "size": [
+      1600,
+      900
+    ],
+    "surface": "#f5f6fa",
+    "text": "#44536a",
+    "layout": "Wide pale floating bar, colored space dots, volume ramp and pastel metrics.",
+    "vertical": false,
+    "original": "Cloud Ribbon",
+    "description": "Six filled dots, pale floating ribbon, compact joined metrics, slanted filled/empty volume segments.",
+    "count": 6
+  },
+  {
+    "image": 11,
+    "name": "River Tabs — Reference",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-2891e5c7-4076-424b-a291-9548ba7cf42b.png",
+    "size": [
+      1366,
+      768
+    ],
+    "surface": "#1c2125",
+    "text": "#a9b9b8",
+    "layout": "Bottom rectangular shortcut tabs, teal title strip, compact system status.",
+    "vertical": false,
+    "original": "River Tabs",
+    "description": "Correct shortcut order, broad teal region, time just right of center, quiet compact status strip.",
+    "count": 5
+  },
+  {
+    "image": 12,
+    "name": "Petal Toolbar — Reference",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-32061412-4eda-4d6b-bde2-1d4816911064.png",
+    "size": [
+      1920,
+      1080
+    ],
+    "surface": "#1e212a",
+    "text": "#c6cad5",
+    "layout": "Dark strip with pastel status pills, center music capsule.",
+    "vertical": false,
+    "original": "Petal Toolbar",
+    "description": "Play icon after track label, privacy control, joined output/input audio pill, trailing signal/messages.",
+    "count": 5
+  },
+  {
+    "image": 1,
+    "name": "Ember Capsules — Reference",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-5ba295b7-de28-42a8-9cff-c689d648fc21.png",
+    "size": [
+      1366,
+      768
+    ],
+    "surface": "#262626",
+    "text": "#dfd6b9",
+    "layout": "Three floating groups, dot spaces, terminal and compact clock/actions.",
+    "vertical": false,
+    "original": "Ember Capsules",
+    "description": "Separate launcher/workspace capsules, elongated active mark, dotted terminal divider and joined utility group.",
+    "count": 5
+  },
+  {
+    "image": 15,
+    "name": "Midnight Air — Reference",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-d56b4665-08d8-457f-aef8-7ea1cd82aa27.png",
+    "size": [
+      1024,
+      576
+    ],
+    "surface": "#1a2b33",
+    "text": "#b7aec1",
+    "layout": "Transparent bottom bar, music left, numerical spaces center, network/time right.",
+    "vertical": false,
+    "original": "Midnight Air",
+    "description": "Regular thin text, bare speaker, calendar clock, transparent bottom edge.",
+    "count": 5
+  },
+  {
+    "image": 7,
+    "name": "Crimson Rail — Reference",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-53b32e62-36df-4dd5-bbcb-7aafc3ea12aa.png",
+    "size": [
+      1200,
+      675
+    ],
+    "surface": "#2a292e",
+    "text": "#b06c6b",
+    "layout": "Left vertical inset rail, stacked clock, centered launcher/spaces.",
+    "vertical": true,
+    "original": "Crimson Rail",
+    "description": "36px inset rail, stacked clock, sparse centered ornament and empty lower rail.",
+    "count": 5
+  }
+]

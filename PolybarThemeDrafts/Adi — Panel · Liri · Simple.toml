@@ -1,0 +1,233 @@
+# Adapted from adi1090x/polybar-themes; GPL-3.0.
+# Source: simple/panels/panel/liri.ini
+theme = "system"
+preset = "flat-dark"
+use-pywal = false
+
+[appearance]
+roundness = 0.0
+border-width = 8.0
+border-opacity = 1
+fill-opacity = 0.0
+shadow-opacity = 0
+shadow-radius = 0
+glow-opacity = 0
+bar-font-name = "NotoSans-Regular"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "NotoSans-Regular"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#000000"
+foreground-color = "#EAEAEA"
+accent-color = "#202020"
+
+[experimental]
+
+[experimental.foreground]
+formation = "full"
+position = "bottom"
+height = 36.0
+top-margin = 0
+reference-width = 1920
+scale-content = false
+margin = 0
+floating-width = 0
+horizontal-alignment = "left"
+horizontal-padding = 0.0
+spacing = 0.0
+gap = 0
+
+[experimental.foreground.widgets-background]
+displayed = false
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.adi_menu", "script.adi_sep", "script.adi_term", "script.adi_web", "script.adi_files", "script.adi_settings", "spacer", "spacer", "script.adi_date", "script.adi_style", "script.adi_alsa", "script.adi_network", "script.adi_sysmenu"]
+
+[widgets.pywal]
+foreground-index = 15
+accent-index = 4
+border1-index = 8
+border2-index = 8
+background-index = 0
+
+[widgets.script.adi_menu]
+content-background = "#2F2F2F"
+content-foreground = "#EAEAEA"
+content-padding = 3
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "text"
+native-decoration = false
+native-action = "launcher"
+format = "<label>"
+label = ""
+label-background = "#2F2F2F"
+label-foreground = "#EAEAEA"
+label-padding = 3
+
+[widgets.script.adi_sep]
+content-foreground = "#00000000"
+content-background = "#00000000"
+content-padding = 2
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "|"
+label-foreground = "#00000000"
+label-background = "#00000000"
+label-padding = 2
+
+[widgets.script.adi_term]
+content-background = "#00000000"
+content-padding = 4
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "text"
+native-decoration = false
+native-action = "terminal"
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "#00000000"
+label-padding = 4
+
+[widgets.script.adi_web]
+content-background = "#00000000"
+content-padding = 4
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "text"
+native-decoration = false
+native-action = "browser"
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "#00000000"
+label-padding = 4
+
+[widgets.script.adi_files]
+content-background = "#00000000"
+content-padding = 4
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "text"
+native-decoration = false
+native-action = "files"
+format = "<label>"
+label = "%{T3}ﱮ%{T-}"
+label-background = "#00000000"
+label-padding = 4
+
+[widgets.script.adi_settings]
+content-background = "#00000000"
+content-padding = 4
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "text"
+native-decoration = false
+native-action = "settings"
+format = "<label>"
+label = "%{T3}%{T-}"
+label-background = "#00000000"
+label-padding = 4
+
+[widgets.script.adi_date]
+format = "<label>"
+format-background = "#2F2F2F"
+format-padding = 3
+label = "%time%"
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "date"
+native-decoration = false
+native-action = ""
+date-pattern = ""
+time-pattern = "hh:mm"
+seconds = false
+
+[widgets.script.adi_style]
+content-background = "#2F2F2F"
+content-foreground = "#EAEAEA"
+content-padding = 2
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "text"
+native-decoration = false
+native-action = "style"
+format = "<label>"
+label = ""
+label-background = "#2F2F2F"
+label-foreground = "#EAEAEA"
+label-padding = 2
+
+[widgets.script.adi_alsa]
+format-volume = "<ramp-volume>"
+format-volume-background = "#2F2F2F"
+format-volume-padding = 2
+format-muted = "<label-muted>"
+format-muted-background = "#2F2F2F"
+format-muted-padding = 2
+label-volume = "%percentage%%"
+label-muted = ""
+label-muted-foreground = "#9C9C9C"
+ramp-volume-0 = ""
+ramp-volume-1 = ""
+ramp-volume-2 = ""
+ramp-volume-3 = ""
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "volume"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_network]
+format-connected = "<label-connected>"
+format-connected-background = "#2F2F2F"
+format-connected-padding = 2
+format-disconnected = "<label-disconnected>"
+format-disconnected-background = "#2F2F2F"
+format-disconnected-padding = 2
+label-connected = "%{A1:network:}%{A}"
+label-disconnected = "%{A1:network:}%{A}"
+label-disconnected-foreground = "#9C9C9C"
+ramp-signal-0 = ""
+ramp-signal-1 = ""
+ramp-signal-2 = ""
+ramp-signal-3 = ""
+ramp-signal-4 = ""
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "network"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_sysmenu]
+content-background = "#2F2F2F"
+content-foreground = "#EAEAEA"
+content-padding = 3
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "Material:size=16.0"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+native-source = "text"
+native-decoration = false
+native-action = "power"
+format = "<label>"
+label = ""
+label-background = "#2F2F2F"
+label-foreground = "#EAEAEA"
+label-padding = 3

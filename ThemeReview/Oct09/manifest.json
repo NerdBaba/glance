@@ -1,0 +1,210 @@
+[
+  {
+    "image": 1,
+    "name": "Ember Capsules",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-5ba295b7-de28-42a8-9cff-c689d648fc21.png",
+    "size": [
+      1366,
+      768
+    ],
+    "surface": "#262626",
+    "text": "#dfd6b9",
+    "layout": "Three floating groups, dot spaces, terminal and compact clock/actions.",
+    "vertical": false
+  },
+  {
+    "image": 2,
+    "name": "Moss Panel",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-8e14c8fb-768a-444d-9496-ff1fe61d77cb.png",
+    "size": [
+      1200,
+      744
+    ],
+    "surface": "#24292c",
+    "text": "#a4b3ac",
+    "layout": "Inset continuous slate bar, left clock/music, center number buttons.",
+    "vertical": false
+  },
+  {
+    "image": 3,
+    "name": "Rose Orbit",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-6739f830-d323-4d80-807e-8876bef8f22b.png",
+    "size": [
+      1920,
+      1080
+    ],
+    "surface": "#091521",
+    "text": "#d5d3e8",
+    "layout": "Detached dark capsules, colored space dots, compact metrics.",
+    "vertical": false
+  },
+  {
+    "image": 4,
+    "name": "Glacier Metrics",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-385def6d-2920-4d2f-8334-62b991ac798b.png",
+    "size": [
+      1920,
+      1080
+    ],
+    "surface": "#2c303b",
+    "text": "#b1bece",
+    "layout": "Slate strip, light ring spaces, compact metrics, separate volume/date pills.",
+    "vertical": false
+  },
+  {
+    "image": 5,
+    "name": "Sakura Dock",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-cc65eb63-6a4e-48d5-80ff-df0990857c1e.png",
+    "size": [
+      1366,
+      768
+    ],
+    "surface": "#eedfe2",
+    "text": "#814b65",
+    "layout": "Pale bottom strip, time/weather left, workspace capsule center.",
+    "vertical": false
+  },
+  {
+    "image": 6,
+    "name": "Night Links",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-cffcf69b-4a8b-47ac-8224-084ed43b6907.png",
+    "size": [
+      1200,
+      675
+    ],
+    "surface": "#111822",
+    "text": "#d2e2e2",
+    "layout": "Dark continuous top bar, white block spaces and status labels.",
+    "vertical": false
+  },
+  {
+    "image": 7,
+    "name": "Crimson Rail",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-53b32e62-36df-4dd5-bbcb-7aafc3ea12aa.png",
+    "size": [
+      1200,
+      675
+    ],
+    "surface": "#2a292e",
+    "text": "#b06c6b",
+    "layout": "Left vertical inset rail, stacked clock, centered launcher/spaces.",
+    "vertical": true
+  },
+  {
+    "image": 8,
+    "name": "Ocean Twin",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-00e52a79-125e-4e99-bf2e-7ad0240e24e4.png",
+    "size": [
+      1920,
+      1080
+    ],
+    "surface": "#1c4056",
+    "text": "#9dc0d3",
+    "layout": "Two blue edge panels, top shortcuts, bottom music/metrics/progress.",
+    "vertical": false
+  },
+  {
+    "image": 9,
+    "name": "Neon Blocks",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-c63fe295-065f-45d3-abef-bea593d5a32f.png",
+    "size": [
+      1366,
+      768
+    ],
+    "surface": "#1b1b27",
+    "text": "#acafce",
+    "layout": "Inset navy strip, joined colored icon blocks and dark value blocks.",
+    "vertical": false
+  },
+  {
+    "image": 10,
+    "name": "Plum Toolbar",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-626ecf09-1bc7-4293-b683-40608f0e6bae.png",
+    "size": [
+      2944,
+      1839
+    ],
+    "surface": "#1f1f29",
+    "text": "#dcdde1",
+    "layout": "Dark rounded shortcut chips, music left, underlined numerical center spaces.",
+    "vertical": false
+  },
+  {
+    "image": 11,
+    "name": "River Tabs",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-2891e5c7-4076-424b-a291-9548ba7cf42b.png",
+    "size": [
+      1366,
+      768
+    ],
+    "surface": "#1c2125",
+    "text": "#a9b9b8",
+    "layout": "Bottom rectangular shortcut tabs, teal title strip, compact system status.",
+    "vertical": false
+  },
+  {
+    "image": 12,
+    "name": "Petal Toolbar",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-32061412-4eda-4d6b-bde2-1d4816911064.png",
+    "size": [
+      1920,
+      1080
+    ],
+    "surface": "#1e212a",
+    "text": "#c6cad5",
+    "layout": "Dark strip with pastel status pills, center music capsule.",
+    "vertical": false
+  },
+  {
+    "image": 13,
+    "name": "Cloud Ribbon",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-1fbad1e6-d2d5-4548-aec1-f808bcfc3fcb.png",
+    "size": [
+      1600,
+      900
+    ],
+    "surface": "#f5f6fa",
+    "text": "#44536a",
+    "layout": "Wide pale floating bar, colored space dots, volume ramp and pastel metrics.",
+    "vertical": false
+  },
+  {
+    "image": 14,
+    "name": "Dusk Islands",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-d4e184cd-00f7-4ea1-9edf-d6cf724744e6.png",
+    "size": [
+      1920,
+      1080
+    ],
+    "surface": "#000000",
+    "text": "#d1cca4",
+    "layout": "Separate dark rectangular islands, left spaces/temperature/music, center clock.",
+    "vertical": false
+  },
+  {
+    "image": 15,
+    "name": "Midnight Air",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-d56b4665-08d8-457f-aef8-7ea1cd82aa27.png",
+    "size": [
+      1024,
+      576
+    ],
+    "surface": "#1a2b33",
+    "text": "#b7aec1",
+    "layout": "Transparent bottom bar, music left, numerical spaces center, network/time right.",
+    "vertical": false
+  },
+  {
+    "image": 16,
+    "name": "Twilight Rail",
+    "reference": "/var/folders/2p/rx0jsrg15hz2w4bhdy2tqqrw0000gn/T/codex-clipboard-8c6f5dd1-b50d-4f5d-abe9-44a83ba567f3.png",
+    "size": [
+      960,
+      540
+    ],
+    "surface": "#292323",
+    "text": "#e5dfdf",
+    "layout": "Full-height left rail, launcher and vertical spaces above, status and stacked clock below.",
+    "vertical": true
+  }
+]

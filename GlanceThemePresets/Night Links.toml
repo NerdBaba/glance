@@ -1,0 +1,175 @@
+# Glance bar preset. Approved for Randomazzo.
+theme = "system"
+preset = "flat-dark"
+style = "solid"
+use-pywal = true
+
+[appearance]
+roundness = 0
+border-width = 0
+fill-opacity = 1
+shadow-opacity = 0
+shadow-radius = 0
+bar-font-name = "IosevkaNerdFontComplete-"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "IosevkaNerdFontComplete-"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#111822"
+foreground-color = "#d2e2e2"
+
+[experimental]
+
+[experimental.foreground]
+formation = "full"
+position = "top"
+height = 30
+top-margin = 0
+margin = 0
+horizontal-padding = 6
+spacing = 5
+scale-content = false
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.spaces", "script.term", "script.web", "script.files", "spacer", "script.window", "spacer", "script.volume", "script.bluetooth", "script.cpu", "script.settings", "script.clock"]
+
+[widgets.pywal]
+foreground-index = 15
+background-index = 0
+accent-index = 10
+
+[widgets.widget-colors]
+mode = "disabled"
+
+[widgets.script]
+
+[widgets.script.spaces]
+native-source = "workspaces"
+format = "<label>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-background = "pywal:15"
+format-height = 24
+format-radius = 2
+label-active = "%index%"
+label-active-foreground = "pywal:9"
+label-focused = "%index%"
+label-focused-foreground = "pywal:9"
+label-occupied = "%index%"
+label-empty = "%index%"
+label-active-padding = 1
+label-focused-padding = 1
+label-occupied-padding = 1
+label-empty-padding = 1
+
+[widgets.script.term]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "terminal"
+native-action = "terminal"
+
+[widgets.script.web]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "globe"
+native-action = "browser"
+
+[widgets.script.files]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "folder.fill"
+native-action = "files"
+
+[widgets.script.window]
+native-source = "window"
+format = "<label>"
+label = "%title%"
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-height = 26
+
+[widgets.script.volume]
+native-source = "volume"
+format = "<label-prefix> <label>"
+label = "%percentage%%"
+format-padding = "6px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "speaker.wave.2.fill"
+format-background = "pywal:15"
+format-height = 24
+format-radius = 2
+
+[widgets.script.bluetooth]
+native-source = "bluetooth"
+format = "<label-prefix> <label>"
+label = "%count% connected"
+format-padding = "6px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-background = "pywal:15"
+format-height = 24
+format-radius = 2
+label-prefix = ""
+native-action = "bluetooth"
+
+[widgets.script.cpu]
+native-source = "cpu"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "chart.bar.fill"
+format-height = 26
+
+[widgets.script.settings]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "square.3.layers.3d"
+native-action = "settings"
+
+[widgets.script.clock]
+native-source = "date"
+format = "<label>"
+label = "%time%"
+format-padding = "6px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-background = "pywal:15"
+format-height = 24
+format-radius = 2
+time-pattern = "EEEE HH:mm"
+date-pattern = "dd-MM-yy"

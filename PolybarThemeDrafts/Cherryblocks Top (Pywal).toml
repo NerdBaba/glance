@@ -23,6 +23,7 @@ widget-font-size = 14.6667
 widget-font-weight = 2
 
 [experimental.foreground]
+scale-content = false
 reference-width = 1920
 formation = "pills"
 position = "top"
@@ -77,7 +78,7 @@ icon-play = ""
 icon-pause = ""
 icon-next = ""
 icon-font-name = "FontAwesome5Free-Solid"
-icon-font-size = 12
+icon-font-size = 14
 control-spacing = 9
 format-background = "pywal:4"
 format-foreground = "pywal:0"
@@ -114,7 +115,7 @@ ramp-volume-0 = ""
 ramp-volume-1 = ""
 ramp-volume-2 = ""
 icon-font-name = "FontAwesome5Free-Solid"
-icon-font-size = 12
+icon-font-size = 14
 format-background = "pywal:6"
 format-foreground = "pywal:0"
 format-padding = 18
@@ -138,7 +139,7 @@ show-events = false
 [widgets.default.power]
 glyph = ""
 icon-font-name = "FontAwesome5Free-Solid"
-icon-font-size = 12
+icon-font-size = 14
 icon-offset-y = 1
 format-foreground = "pywal:6"
 format-padding = 20

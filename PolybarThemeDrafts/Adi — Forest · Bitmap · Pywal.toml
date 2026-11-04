@@ -1,0 +1,315 @@
+# Adapted from adi1090x/polybar-themes; GPL-3.0.
+# Source: bitmap/forest/config.ini
+theme = "system"
+preset = "flat-dark"
+use-pywal = true
+
+[appearance]
+roundness = 0.0
+border-width = 0.0
+border-opacity = 1
+fill-opacity = 1
+shadow-opacity = 0
+shadow-radius = 0
+glow-opacity = 0
+bar-font-name = "GlanceTerminus14-Regular"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "GlanceTerminus14-Regular"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#212B30"
+foreground-color = "#C4C7C5"
+accent-color = "#202020"
+
+[experimental]
+
+[experimental.foreground]
+formation = "full"
+position = "top"
+height = 30.0
+top-margin = 0
+reference-width = 1920
+scale-content = false
+margin = 0
+floating-width = 0
+horizontal-alignment = "left"
+horizontal-padding = 14.0
+spacing = 14.0
+gap = 0
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.adi_launcher", "script.adi_sep", "script.adi_workspaces", "script.adi_sep", "script.adi_cpu", "script.adi_memory", "script.adi_filesystem", "spacer", "script.adi_mpd", "script.adi_sep", "script.adi_date", "spacer", "script.adi_color_switch", "script.adi_sep", "script.adi_network", "script.adi_sep", "script.adi_volume", "script.adi_brightness", "script.adi_sep", "script.adi_sysmenu"]
+
+[widgets.pywal]
+foreground-index = 15
+accent-index = 4
+border1-index = 8
+border2-index = 8
+background-index = 0
+
+[widgets.script.adi_launcher]
+content-foreground = "pywal:5"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "launcher"
+format = "<label>"
+label = ""
+label-foreground = "pywal:5"
+
+[widgets.script.adi_sep]
+content-foreground = "pywal:4"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "text"
+native-decoration = true
+native-action = ""
+format = "<label>"
+label = "|"
+label-foreground = "pywal:4"
+
+[widgets.script.adi_workspaces]
+icon-0 = "1;"
+icon-1 = "2;"
+icon-2 = "3;"
+icon-3 = "4;"
+icon-4 = "5;"
+icon-default = ""
+format = "<label-state>"
+label-monitor = "%name%"
+label-active = ""
+label-active-foreground = "pywal:5"
+label-occupied = ""
+label-occupied-foreground = "pywal:6"
+label-urgent = ""
+label-urgent-foreground = "pywal:1"
+label-empty = ""
+label-empty-foreground = "pywal:15"
+label-active-padding = 1
+label-urgent-padding = 1
+label-occupied-padding = 1
+label-empty-padding = 1
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "workspaces"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_cpu]
+format = "<label-prefix><label>"
+label = " %percentage%%"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "cpu"
+native-decoration = false
+native-action = ""
+label-prefix = ""
+label-prefix-foreground = "pywal:3"
+
+[widgets.script.adi_memory]
+format = "<label-prefix><label>"
+label = " %mb_used%"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "memory"
+native-decoration = false
+native-action = ""
+label-prefix = ""
+label-prefix-foreground = "pywal:4"
+
+[widgets.script.adi_filesystem]
+format-mounted = "<label-mounted-prefix><label-mounted>"
+format-unmounted = "<label-unmounted-prefix><label-unmounted>"
+label-mounted = " %free%"
+label-unmounted = " %mountpoint%: NA"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "disk"
+native-decoration = false
+native-action = ""
+label-mounted-prefix = ""
+label-mounted-prefix-foreground = "pywal:11"
+label-unmounted-prefix = ""
+label-unmounted-prefix-foreground = "pywal:1"
+
+[widgets.script.adi_mpd]
+format-online = "<label-online-prefix><label-song> <label-prev> <label-toggle> <label-next>"
+format-offline = "<label-offline-prefix><label-offline>"
+label-song = " %artist% - %title%"
+label-song-maxlen = 25
+label-song-ellipsis = true
+label-time = "%elapsed% / %total%"
+label-time-background = "pywal:8"
+label-time-padding = 1
+label-offline = " Offline"
+icon-play = ""
+icon-play-foreground = "pywal:6"
+icon-pause = ""
+icon-pause-foreground = "pywal:6"
+icon-stop = ""
+icon-stop-foreground = "pywal:1"
+icon-next = ""
+icon-next-foreground = "pywal:6"
+icon-prev = ""
+icon-prev-foreground = "pywal:6"
+icon-seekf = ""
+icon-seekb = ""
+icon-random = ""
+icon-repeat = ""
+icon-repeatone = ""
+icon-single = ""
+icon-consume = ""
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "music"
+native-decoration = false
+native-action = ""
+label-prev = "%{A1:previous:}%{A}"
+label-prev-foreground = "pywal:6"
+label-next = "%{A1:next:}%{A}"
+label-next-foreground = "pywal:6"
+label-stop = "%{A1:stop:}%{A}"
+label-stop-foreground = "pywal:1"
+label-play = "%{A1:toggle:}%{A}"
+label-play-foreground = "pywal:6"
+label-pause = "%{A1:toggle:}%{A}"
+label-pause-foreground = "pywal:6"
+label-toggle = "%{A1:toggle:}<label-toggle>%{A}"
+label-repeat = "%{A1:toggle:}%{A}"
+label-random = "%{A1:toggle:}%{A}"
+label-single = "%{A1:toggle:}%{A}"
+label-consume = "%{A1:toggle:}%{A}"
+label-online-prefix = ""
+label-online-prefix-foreground = "pywal:2"
+label-offline-prefix = ""
+label-offline-prefix-foreground = "pywal:1"
+
+[widgets.script.adi_date]
+format = "<label-prefix><label>"
+label = "%date% %time%"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "date"
+native-decoration = false
+native-action = ""
+date-pattern = "EEEE, dd MMMM"
+time-pattern = "'at 'hh:mm a"
+seconds = false
+label-prefix = " "
+label-prefix-foreground = "pywal:1"
+
+[widgets.script.adi_color_switch]
+content-foreground = "pywal:1"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "shuffle-colors"
+format = "<label>"
+label = ""
+label-foreground = "pywal:1"
+
+[widgets.script.adi_network]
+format-connected = "<ramp-signal> <label-connected>"
+format-disconnected = "<label-disconnected-prefix><label-disconnected>"
+label-connected = "%{A1:network:}%essid% %{F#6C77BB}%{F-} %downspeed%%{A}"
+label-disconnected = "%{A1:network:} Offline%{A}"
+ramp-signal-0 = ""
+ramp-signal-1 = ""
+ramp-signal-2 = ""
+ramp-signal-3 = ""
+ramp-signal-foreground = "pywal:5"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "network"
+native-decoration = false
+native-action = ""
+label-disconnected-prefix = ""
+label-disconnected-prefix-foreground = "pywal:11"
+
+[widgets.script.adi_volume]
+format-volume = "<ramp-volume> <bar-volume>"
+format-muted = "<label-muted-prefix><label-muted>"
+label-volume = "%percentage%%"
+label-muted = " Muted"
+label-muted-foreground = "pywal:4"
+ramp-volume-0 = ""
+ramp-volume-1 = ""
+ramp-volume-2 = ""
+ramp-volume-3 = ""
+ramp-volume-4 = ""
+ramp-volume-foreground = "pywal:4"
+bar-volume-format = "%fill%%indicator%%empty%"
+bar-volume-width = 11
+bar-volume-gradient = false
+bar-volume-indicator = ""
+bar-volume-indicator-foreground = "pywal:15"
+bar-volume-indicator-font = 2
+bar-volume-fill = ""
+bar-volume-fill-font = 2
+bar-volume-foreground-0 = "pywal:2"
+bar-volume-foreground-1 = "pywal:2"
+bar-volume-foreground-2 = "pywal:3"
+bar-volume-foreground-3 = "pywal:3"
+bar-volume-foreground-4 = "pywal:1"
+bar-volume-empty = ""
+bar-volume-empty-font = 2
+bar-volume-empty-foreground = "pywal:4"
+ramp-headphones-0 = ""
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "volume"
+native-decoration = false
+native-action = ""
+label-muted-prefix = ""
+label-muted-prefix-foreground = "pywal:1"
+
+[widgets.script.adi_brightness]
+format = "<ramp> <bar>"
+label = "%percentage%%"
+ramp-0 = ""
+ramp-1 = ""
+ramp-2 = ""
+ramp-3 = ""
+ramp-4 = ""
+ramp-foreground = "pywal:10"
+bar-format = "%fill%%indicator%%empty%"
+bar-width = 11
+bar-gradient = false
+bar-indicator = ""
+bar-indicator-foreground = "pywal:15"
+bar-indicator-font = 2
+bar-fill = ""
+bar-fill-font = 2
+bar-foreground-0 = "pywal:2"
+bar-foreground-1 = "pywal:2"
+bar-foreground-2 = "pywal:3"
+bar-foreground-3 = "pywal:3"
+bar-foreground-4 = "pywal:1"
+bar-empty = ""
+bar-empty-font = 2
+bar-empty-foreground = "pywal:4"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "brightness"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_sysmenu]
+content-foreground = "pywal:6"
+font-0 = "GlanceTerminus14-Regular:size=14"
+font-1 = "GlanceWaffle10-Regular:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "power"
+format = "<label>"
+label = ""
+label-foreground = "pywal:6"

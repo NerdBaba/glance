@@ -11,14 +11,15 @@ border-opacity = 0.45
 fill-opacity = 0.76
 shadow-opacity = 0.0
 shadow-radius = 0.0
-bar-font-name = "Menlo"
-bar-font-size = 9
-bar-font-weight = 4
-widget-font-name = "Menlo"
-widget-font-size = 9
-widget-font-weight = 4
+bar-font-name = "SatoshiVariable-Bold"
+bar-font-size = 14
+bar-font-weight = 6
+widget-font-name = "SatoshiVariable-Bold"
+widget-font-size = 14
+widget-font-weight = 6
 
 [experimental.foreground]
+scale-content = false
 formation = "full"
 position = "top"
 height = 38

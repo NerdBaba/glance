@@ -1,0 +1,200 @@
+# Glance bar preset. Approved for Randomazzo.
+theme = "system"
+preset = "flat-dark"
+style = "solid"
+use-pywal = true
+
+[appearance]
+roundness = 18
+border-width = 0
+fill-opacity = 0
+shadow-opacity = 0
+shadow-radius = 0
+bar-font-name = "IosevkaNerdFontComplete-"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "IosevkaNerdFontComplete-"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#000000"
+foreground-color = "#d1cca4"
+
+[experimental]
+
+[experimental.foreground]
+formation = "floating"
+position = "top"
+height = 38
+top-margin = 10
+margin = 15
+horizontal-padding = 6
+spacing = 7
+scale-content = false
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.apps", "script.spaces", "script.temperature", "script.music", "spacer", "script.clock", "spacer", "script.volume", "script.bluetooth", "script.network", "script.power"]
+
+[widgets.pywal]
+foreground-index = 15
+background-index = 0
+accent-index = 10
+
+[widgets.widget-colors]
+mode = "disabled"
+
+[widgets.script]
+
+[widgets.script.apps]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:13"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "square.grid.2x2.fill"
+format-background = "pywal:0"
+format-height = 26
+format-radius = 5
+native-action = "launcher"
+
+[widgets.script.spaces]
+native-source = "workspaces"
+format = "<label>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-background = "pywal:0"
+format-height = 32
+format-radius = 5
+label-active = "%index%"
+label-active-foreground = "pywal:9"
+label-focused = "%index%"
+label-focused-foreground = "pywal:9"
+label-occupied = "%index%"
+label-empty = "%index%"
+label-active-padding = 1
+label-focused-padding = 1
+label-occupied-padding = 1
+label-empty-padding = 1
+
+[widgets.script.temperature]
+native-source = "temperature"
+format = "<label-prefix> <label>"
+label = "%temperature-c%°C"
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "thermometer"
+format-background = "pywal:0"
+format-height = 32
+format-radius = 5
+
+[widgets.script.music]
+native-source = "music"
+format = "<label>"
+label = "No music"
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-background = "pywal:0"
+format-height = 32
+format-radius = 5
+format-online = "<label-prefix> <label-song>"
+format-offline = "<label-prefix> <label>"
+label-song = "%artist% - %title%"
+label-song-maxlen = 42
+label-song-ellipsis = true
+label-prefix = ""
+native-symbol-label-prefix = "music.note"
+icon-prev = "⏮"
+icon-next = "⏭"
+icon-pause = "Ⅱ"
+icon-play = "▶"
+native-symbol-icon-prev = "backward.end.fill"
+native-symbol-icon-next = "forward.end.fill"
+native-symbol-icon-play = "play.fill"
+native-symbol-icon-pause = "pause.fill"
+label-prev = "%{A1:previous:}⏮%{A}"
+label-next = "%{A1:next:}⏭%{A}"
+label-toggle = ""
+
+[widgets.script.clock]
+native-source = "date"
+format = "<label-prefix> <label>"
+label = "%time%"
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "clock"
+format-background = "pywal:0"
+format-height = 32
+format-radius = 5
+time-pattern = "hh:mm a"
+date-pattern = "dd-MM-yy"
+
+[widgets.script.volume]
+native-source = "volume"
+format = "<label-prefix> <label>"
+label = "%percentage%%"
+format-padding = "6px"
+format-foreground = "pywal:10"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "speaker.wave.2.fill"
+format-background = "pywal:0"
+format-height = 32
+format-radius = 5
+
+[widgets.script.bluetooth]
+native-source = "bluetooth"
+format = "<label-prefix> <label>"
+label = "%count%"
+format-padding = "6px"
+format-foreground = "pywal:9"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-background = "pywal:0"
+format-height = 32
+format-radius = 5
+label-prefix = ""
+native-action = "bluetooth"
+
+[widgets.script.network]
+native-source = "network"
+format = "<label-prefix> <label>"
+label = "%essid%"
+format-padding = "6px"
+format-foreground = "pywal:13"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "wifi"
+format-background = "pywal:0"
+format-height = 32
+format-radius = 5
+format-connected = "<label-prefix> <label-connected>"
+label-connected = "%essid%"
+format-disconnected = "<label-prefix> <label-disconnected>"
+label-disconnected = "Offline"
+
+[widgets.script.power]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:9"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "power"
+format-background = "pywal:0"
+format-height = 32
+format-radius = 5
+native-action = "power"

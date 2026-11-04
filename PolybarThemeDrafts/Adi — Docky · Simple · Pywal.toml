@@ -1,0 +1,233 @@
+# Adapted from adi1090x/polybar-themes; GPL-3.0.
+# Source: simple/docky/config.ini
+theme = "system"
+preset = "flat-dark"
+use-pywal = true
+
+[appearance]
+roundness = 0.0
+border-width = 0.0
+border-opacity = 1
+fill-opacity = 1
+shadow-opacity = 0
+shadow-radius = 0
+glow-opacity = 0
+bar-font-name = "IosevkaNerdFontComplete-"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "IosevkaNerdFontComplete-"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#1F1F1F"
+foreground-color = "#FFFFFF"
+accent-color = "#e53935"
+
+[experimental]
+
+[experimental.foreground]
+formation = "floating"
+position = "bottom"
+height = 40.0
+top-margin = 5
+reference-width = 1920
+scale-content = false
+margin = 19.2
+floating-width = 1881.6
+horizontal-alignment = "left"
+horizontal-padding = 0.0
+spacing = 28.0
+gap = 0
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.adi_launcher", "script.adi_workspaces", "spacer", "script.adi_mpd", "spacer", "script.adi_updates", "script.adi_color_switch", "script.adi_alsa", "script.adi_backlight", "script.adi_network", "script.adi_date", "script.adi_sysmenu"]
+
+[widgets.pywal]
+foreground-index = 15
+accent-index = 4
+border1-index = 8
+border2-index = 8
+background-index = 0
+
+[widgets.script.adi_launcher]
+content-background = "pywal:4"
+content-foreground = "pywal:0"
+content-padding = 2
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "text"
+native-decoration = false
+native-action = "launcher"
+format = "<label>"
+label = ""
+label-background = "pywal:4"
+label-foreground = "pywal:0"
+label-padding = 2
+
+[widgets.script.adi_workspaces]
+icon-0 = "1;"
+icon-1 = "2;"
+icon-2 = "3;"
+icon-3 = "4;"
+icon-4 = "5;"
+icon-default = ""
+format = "<label-state>"
+format-padding = 0
+label-monitor = "%name%"
+label-active = "%icon%"
+label-active-foreground = "pywal:4"
+label-active-overline = "pywal:4"
+label-occupied = "%icon%"
+label-occupied-foreground = "pywal:4"
+label-urgent = "%icon%"
+label-urgent-foreground = "pywal:4"
+label-empty = "%icon%"
+label-active-padding = 2
+label-urgent-padding = 2
+label-occupied-padding = 2
+label-empty-padding = 2
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "workspaces"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_mpd]
+format-online = "<label-online-prefix><label-song> <label-prev> <label-toggle> <label-next>"
+format-offline = "<label-offline-prefix><label-offline>"
+label-song = " %artist% - %title%"
+label-song-maxlen = 25
+label-song-ellipsis = true
+label-time = "%elapsed% / %total%"
+label-offline = " Offline"
+icon-play = ""
+icon-pause = ""
+icon-stop = ""
+icon-next = ""
+icon-prev = ""
+icon-seekf = ""
+icon-seekb = ""
+icon-random = ""
+icon-repeat = ""
+icon-repeatone = ""
+icon-single = ""
+icon-consume = ""
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "music"
+native-decoration = false
+native-action = ""
+label-prev = "%{A1:previous:}%{A}"
+label-next = "%{A1:next:}%{A}"
+label-stop = "%{A1:stop:}%{A}"
+label-play = "%{A1:toggle:}%{A}"
+label-pause = "%{A1:toggle:}%{A}"
+label-toggle = "%{A1:toggle:}<label-toggle>%{A}"
+label-repeat = "%{A1:toggle:}%{A}"
+label-random = "%{A1:toggle:}%{A}"
+label-single = "%{A1:toggle:}%{A}"
+label-consume = "%{A1:toggle:}%{A}"
+label-online-prefix = ""
+label-offline-prefix = ""
+
+[widgets.script.adi_updates]
+format = "<label-prefix><label>"
+label = "Updates"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "text"
+native-decoration = false
+native-action = "updates"
+label-prefix = " "
+
+[widgets.script.adi_color_switch]
+content-background = "pywal:0"
+content-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "text"
+native-decoration = false
+native-action = "shuffle-colors"
+format = "<label>"
+label = ""
+label-background = "pywal:0"
+label-foreground = "pywal:15"
+
+[widgets.script.adi_alsa]
+format-volume = "<ramp-volume> <label-volume>"
+format-muted = "<label-muted-prefix><label-muted>"
+label-volume = "%percentage%%"
+label-muted = " Muted"
+label-muted-foreground = "pywal:7"
+ramp-volume-0 = ""
+ramp-volume-1 = ""
+ramp-volume-2 = ""
+ramp-headphones-0 = ""
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "volume"
+native-decoration = false
+native-action = ""
+label-muted-prefix = ""
+
+[widgets.script.adi_backlight]
+format = "<ramp> <label>"
+label = "%percentage%%"
+ramp-0 = ""
+ramp-1 = ""
+ramp-2 = ""
+ramp-3 = ""
+ramp-4 = ""
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "brightness"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_network]
+format-connected = "<label-connected-prefix><label-connected>"
+format-disconnected = "<label-disconnected-prefix><label-disconnected>"
+label-connected = "%{A1:network:} %essid%%{A}"
+label-disconnected = "%{A1:network:} Offline%{A}"
+ramp-signal-0 = ""
+ramp-signal-1 = ""
+ramp-signal-2 = ""
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "network"
+native-decoration = false
+native-action = ""
+label-connected-prefix = ""
+label-disconnected-prefix = ""
+
+[widgets.script.adi_date]
+format = "<label>"
+label = "%time%"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "date"
+native-decoration = false
+native-action = ""
+date-pattern = ""
+time-pattern = " hh:mm a"
+seconds = false
+
+[widgets.script.adi_sysmenu]
+content-background = "pywal:4"
+content-foreground = "pywal:0"
+content-padding = 2
+font-0 = "IosevkaNerdFontComplete-:size=14"
+font-1 = "feather:size=16.0"
+native-source = "text"
+native-decoration = false
+native-action = "power"
+format = "<label>"
+label = ""
+label-background = "pywal:4"
+label-foreground = "pywal:0"
+label-padding = 2

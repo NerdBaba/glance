@@ -19,10 +19,11 @@ widget-font-size = 14
 widget-font-weight = 4
 
 [experimental.foreground]
+scale-content = false
 formation = "pills"
 position = "top"
-height = 42
-top-margin = 16
+height = 34
+top-margin = 4
 margin = 40
 horizontal-padding = 16
 spacing = 10

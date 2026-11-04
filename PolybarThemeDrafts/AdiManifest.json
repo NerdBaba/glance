@@ -1,0 +1,582 @@
+[
+  {
+    "preset": "Adi — Blocks · Simple · Pywal",
+    "source": "simple/blocks/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Colorblocks · Simple · Pywal",
+    "source": "simple/colorblocks/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Cuts · Simple · Pywal",
+    "source": "simple/cuts/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/top",
+      "bar/bottom"
+    ]
+  },
+  {
+    "preset": "Adi — Docky · Simple · Pywal",
+    "source": "simple/docky/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Forest · Simple · Pywal",
+    "source": "simple/forest/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Grayblocks · Simple · Pywal",
+    "source": "simple/grayblocks/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Hack · Simple · Pywal",
+    "source": "simple/hack/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/top",
+      "bar/bottom"
+    ]
+  },
+  {
+    "preset": "Adi — Material · Simple · Pywal",
+    "source": "simple/material/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Budgie · Simple",
+    "source": "simple/panels/panel/budgie.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Deepin · Simple",
+    "source": "simple/panels/panel/deepin.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Elementary · Simple",
+    "source": "simple/panels/panel/elementary.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Elementary Dark · Simple",
+    "source": "simple/panels/panel/elementary_dark.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Gnome · Simple",
+    "source": "simple/panels/panel/gnome.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Kde · Simple",
+    "source": "simple/panels/panel/kde.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Kde Dark · Simple",
+    "source": "simple/panels/panel/kde_dark.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Liri · Simple",
+    "source": "simple/panels/panel/liri.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Mint · Simple",
+    "source": "simple/panels/panel/mint.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Ubuntu Gnome · Simple",
+    "source": "simple/panels/panel/ubuntu_gnome.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Ubuntu Unity · Simple",
+    "source": "simple/panels/panel/ubuntu_unity.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Xubuntu · Simple",
+    "source": "simple/panels/panel/xubuntu.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Panel · Zorin · Simple",
+    "source": "simple/panels/panel/zorin.ini",
+    "variant": null,
+    "pywal": false,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Pwidgets · Main · Simple · Pywal",
+    "source": "simple/pwidgets/main.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/primary",
+      "bar/secondary",
+      "bar/top"
+    ]
+  },
+  {
+    "preset": "Adi — Pwidgets · Apps · Simple · Pywal",
+    "source": "simple/pwidgets/apps.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/primary",
+      "bar/secondary"
+    ]
+  },
+  {
+    "preset": "Adi — Pwidgets · System · Simple · Pywal",
+    "source": "simple/pwidgets/system.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/primary",
+      "bar/secondary"
+    ]
+  },
+  {
+    "preset": "Adi — Pwidgets · Mpd · Simple · Pywal",
+    "source": "simple/pwidgets/mpd.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/primary",
+      "bar/secondary"
+    ]
+  },
+  {
+    "preset": "Adi — Pwidgets · Workspace · Simple · Pywal",
+    "source": "simple/pwidgets/workspace.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/primary",
+      "bar/secondary"
+    ]
+  },
+  {
+    "preset": "Adi — Pwidgets · Cpu · Simple · Pywal",
+    "source": "simple/pwidgets/cpu.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/primary",
+      "bar/secondary"
+    ]
+  },
+  {
+    "preset": "Adi — Pwidgets · Memory · Simple · Pywal",
+    "source": "simple/pwidgets/memory.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/primary",
+      "bar/secondary"
+    ]
+  },
+  {
+    "preset": "Adi — Pwidgets · Fs · Simple · Pywal",
+    "source": "simple/pwidgets/fs.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/primary",
+      "bar/secondary"
+    ]
+  },
+  {
+    "preset": "Adi — Shades · Simple · Pywal",
+    "source": "simple/shades/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 01 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 1,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 02 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 2,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 03 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 3,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 04 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 4,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 05 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 5,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 06 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 6,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 07 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 7,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 08 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 8,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 09 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 9,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 10 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 10,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 11 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 11,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 12 · Simple · Pywal",
+    "source": "simple/shapes/config.ini",
+    "variant": 12,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Blocks · Bitmap · Pywal",
+    "source": "bitmap/blocks/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Colorblocks · Bitmap · Pywal",
+    "source": "bitmap/colorblocks/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Cuts · Bitmap · Pywal",
+    "source": "bitmap/cuts/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/top",
+      "bar/bottom"
+    ]
+  },
+  {
+    "preset": "Adi — Docky · Bitmap · Pywal",
+    "source": "bitmap/docky/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Forest · Bitmap · Pywal",
+    "source": "bitmap/forest/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Grayblocks · Bitmap · Pywal",
+    "source": "bitmap/grayblocks/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Hack · Bitmap · Pywal",
+    "source": "bitmap/hack/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/top",
+      "bar/bottom"
+    ]
+  },
+  {
+    "preset": "Adi — Material · Bitmap · Pywal",
+    "source": "bitmap/material/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shades · Bitmap · Pywal",
+    "source": "bitmap/shades/config.ini",
+    "variant": null,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 01 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 1,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 02 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 2,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 03 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 3,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 04 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 4,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 05 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 5,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 06 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 6,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 07 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 7,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 08 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 8,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 09 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 9,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 10 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 10,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 11 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 11,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  },
+  {
+    "preset": "Adi — Shapes 12 · Bitmap · Pywal",
+    "source": "bitmap/shapes/config.ini",
+    "variant": 12,
+    "pywal": true,
+    "bars": [
+      "bar/main"
+    ]
+  }
+]

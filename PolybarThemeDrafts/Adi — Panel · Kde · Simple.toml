@@ -1,0 +1,156 @@
+# Adapted from adi1090x/polybar-themes; GPL-3.0.
+# Source: simple/panels/panel/kde.ini
+theme = "system"
+preset = "flat-dark"
+use-pywal = false
+
+[appearance]
+roundness = 0.0
+border-width = 0.0
+border-opacity = 1
+fill-opacity = 0.8
+shadow-opacity = 0
+shadow-radius = 0
+glow-opacity = 0
+bar-font-name = "NotoSans-Regular"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "NotoSans-Regular"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#FFFFFF"
+foreground-color = "#1d1d1d"
+accent-color = "#202020"
+
+[experimental]
+
+[experimental.foreground]
+formation = "full"
+position = "bottom"
+height = 34.0
+top-margin = 0
+reference-width = 1920
+scale-content = false
+margin = 0
+floating-width = 0
+horizontal-alignment = "left"
+horizontal-padding = 21.0
+spacing = 28.0
+gap = 0
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.adi_kde", "spacer", "spacer", "script.adi_alsa", "script.adi_network", "script.adi_sysmenu", "script.adi_date", "script.adi_style"]
+
+[widgets.pywal]
+foreground-index = 15
+accent-index = 4
+border1-index = 8
+border2-index = 8
+background-index = 0
+
+[widgets.script.adi_kde]
+content-foreground = "#1d1d1d"
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "icomoon-feather:size=17.33"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "NotoSans-Regular:size=21.33"
+font-5 = "NotoSans-Regular:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "launcher"
+format = "<label>"
+label = "%{T3}%{T-}"
+label-foreground = "#1d1d1d"
+
+[widgets.script.adi_alsa]
+format-volume = "<ramp-volume>"
+label-volume = "%percentage%%"
+label-muted = ""
+label-muted-foreground = "#606060"
+ramp-volume-0 = ""
+ramp-volume-1 = ""
+ramp-volume-2 = ""
+ramp-volume-3 = ""
+ramp-volume-4 = ""
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "icomoon-feather:size=17.33"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "NotoSans-Regular:size=21.33"
+font-5 = "NotoSans-Regular:size=14"
+native-source = "volume"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_network]
+format-connected = "<label-connected>"
+format-disconnected = "<label-disconnected>"
+label-connected = "%{A1:network:}%{A}"
+label-disconnected = "%{A1:network:}%{A}"
+label-disconnected-foreground = "#606060"
+ramp-signal-0 = ""
+ramp-signal-1 = ""
+ramp-signal-2 = ""
+ramp-signal-3 = ""
+ramp-signal-4 = ""
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "icomoon-feather:size=17.33"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "NotoSans-Regular:size=21.33"
+font-5 = "NotoSans-Regular:size=14"
+native-source = "network"
+native-decoration = false
+native-action = ""
+
+[widgets.script.adi_sysmenu]
+content-foreground = "#1d1d1d"
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "icomoon-feather:size=17.33"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "NotoSans-Regular:size=21.33"
+font-5 = "NotoSans-Regular:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "power"
+format = "<label>"
+label = "%{T3}%{T-}"
+label-foreground = "#1d1d1d"
+
+[widgets.script.adi_date]
+format = "<label>"
+format-font = 5
+label = "%time%"
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "icomoon-feather:size=17.33"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "NotoSans-Regular:size=21.33"
+font-5 = "NotoSans-Regular:size=14"
+native-source = "date"
+native-decoration = false
+native-action = ""
+date-pattern = ""
+time-pattern = "hh:mm"
+seconds = false
+
+[widgets.script.adi_style]
+font-0 = "NotoSans-Regular:size=14"
+font-1 = "icomoon-feather:size=17.33"
+font-2 = "IosevkaNerdFontComplete-:size=26.67"
+font-3 = "IosevkaNerdFontComplete-:size=16.0"
+font-4 = "NotoSans-Regular:size=21.33"
+font-5 = "NotoSans-Regular:size=14"
+native-source = "text"
+native-decoration = false
+native-action = "style"
+format = "<label>"
+label = "%{T4}%{T-}"

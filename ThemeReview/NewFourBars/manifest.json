@@ -1,0 +1,64 @@
+[
+  {
+    "image": 1,
+    "name": "Umber Line",
+    "spaces": 7,
+    "active": "6",
+    "vertical": false,
+    "description": "Square 24px edge strip, Menlo regular, two-tone identity and bracketed spaces.",
+    "space_ids": [
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8"
+    ],
+    "preview_tokens": {
+      "user": "icy",
+      "host": "nix",
+      "name": "icy"
+    }
+  },
+  {
+    "image": 2,
+    "name": "Lunar Rail",
+    "spaces": 8,
+    "active": "2",
+    "vertical": true,
+    "description": "50px square left surface; distinct 34px navigation capsule, centered rotated app and bottom music/game/date/power group.",
+    "preview_tokens": {
+      "name": "Desktop",
+      "date": "Fri\n9",
+      "time": "11\n46\nam"
+    }
+  },
+  {
+    "image": 3,
+    "name": "Graphite Pulse",
+    "spaces": 8,
+    "active": "2",
+    "vertical": false,
+    "description": "34px full strip; eight spaces, centered miniature waveform, stacked clock, elapsed timer and 22px status chips.",
+    "preview_tokens": {
+      "time": "20:07:01",
+      "date": "Friday, October 09",
+      "elapsed": "00:01",
+      "temperature": "10.7",
+      "essid": "Tenda"
+    }
+  },
+  {
+    "image": 4,
+    "name": "Cobalt Capsule",
+    "spaces": 5,
+    "active": "1",
+    "vertical": false,
+    "description": "460px centered black capsule, Roman spaces, microphone/recording, date/time, actual cover art/progress, Discord/calendar, brightness and vertical battery.",
+    "preview_tokens": {
+      "time": "23:24",
+      "date": "Wed 7 Oct"
+    }
+  }
+]

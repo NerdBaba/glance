@@ -1,0 +1,117 @@
+# Glance bar preset. Approved for Randomazzo.
+theme = "system"
+preset = "flat-dark"
+style = "solid"
+use-pywal = true
+
+[appearance]
+roundness = 8
+border-width = 0
+fill-opacity = 1
+shadow-opacity = 0
+shadow-radius = 0
+bar-font-name = "IosevkaNerdFontComplete-"
+bar-font-size = 14
+bar-font-weight = 4
+widget-font-name = "IosevkaNerdFontComplete-"
+widget-font-size = 14
+widget-font-weight = 4
+widget-background-color = "#2a292e"
+foreground-color = "#b06c6b"
+
+[experimental]
+
+[experimental.foreground]
+formation = "floating"
+position = "left"
+height = 38
+top-margin = 12
+margin = 12
+horizontal-padding = 12
+spacing = 12
+scale-content = false
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.clock", "spacer", "script.apps", "script.spaces", "spacer", "script.music_app", "script.volume"]
+
+[widgets.pywal]
+foreground-index = 15
+background-index = 0
+accent-index = 10
+
+[widgets.widget-colors]
+mode = "disabled"
+
+[widgets.script]
+
+[widgets.script.clock]
+native-source = "date"
+format = "<label>"
+label = "%time%"
+format-padding = "6px"
+format-foreground = "pywal:9"
+font-0 = "IosevkaNerdFontComplete-:size=18"
+time-pattern = "HH\nmm"
+date-pattern = "dd-MM-yy"
+native-line-limit = 2
+format-height = 46
+
+[widgets.script.spaces]
+native-source = "workspaces"
+format = "<label>"
+label = ""
+format-padding = "0px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-active = "●"
+label-active-foreground = "pywal:9"
+label-focused = "●"
+label-focused-foreground = "pywal:9"
+label-occupied = "○"
+label-empty = "○"
+label-active-padding = 0
+label-focused-padding = 1
+label-occupied-padding = 0
+label-empty-padding = 0
+native-orientation = "vertical"
+
+[widgets.script.apps]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:9"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "square.grid.2x2.fill"
+format-height = 26
+native-action = "launcher"
+
+[widgets.script.music_app]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:9"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "music.note"
+native-action = "open-app"
+action-app = "/System/Applications/Music.app"
+
+[widgets.script.volume]
+native-source = "volume"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:9"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "speaker.wave.2.fill"
+format-height = 26

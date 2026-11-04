@@ -1,0 +1,312 @@
+# Glance bar variant. Review before saving to Randomazzo.
+theme = "system"
+preset = "flat-dark"
+style = "solid"
+use-pywal = true
+
+[appearance]
+roundness = 0
+border-width = 0
+fill-opacity = 1
+shadow-opacity = 0
+shadow-radius = 0
+bar-font-name = "IosevkaNerdFontComplete-"
+bar-font-size = 14
+bar-font-weight = 3
+widget-font-name = "IosevkaNerdFontComplete-"
+widget-font-size = 14
+widget-font-weight = 3
+widget-background-color = "#1e212a"
+foreground-color = "#c6cad5"
+
+[experimental]
+
+[experimental.foreground]
+formation = "full"
+position = "top"
+height = 36
+top-margin = 0
+margin = 0
+horizontal-padding = 6
+spacing = 5
+scale-content = false
+
+[experimental.foreground.widgets-background]
+displayed = true
+
+[experimental.background]
+displayed = false
+
+[widgets]
+displayed = ["script.term", "script.web", "script.files", "script.notes", "script.editor", "spacer", "script.music", "spacer", "script.palette", "script.privacy", "script.bluetooth", "script.volume", "script.microphone", "script.brightness", "script.network", "script.clock", "script.signal", "script.messages"]
+
+[widgets.pywal]
+foreground-index = 15
+background-index = 0
+accent-index = 10
+
+[widgets.widget-colors]
+mode = "disabled"
+
+[widgets.script]
+
+[widgets.script.term]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "terminal"
+native-action = "terminal"
+format-font-weight = 3
+
+[widgets.script.web]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "globe"
+native-action = "browser"
+format-font-weight = 3
+
+[widgets.script.files]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "folder.fill"
+native-action = "files"
+format-font-weight = 3
+
+[widgets.script.notes]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "doc.text.fill"
+native-action = "open-app"
+action-app = "/System/Applications/Notes.app"
+format-font-weight = 3
+
+[widgets.script.editor]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "chevron.left.forwardslash.chevron.right"
+format-background = "pywal:9"
+format-height = 28
+format-radius = 14
+native-action = "open-app"
+action-app = "/Applications/Visual Studio Code.app"
+format-font-weight = 3
+
+[widgets.script.music]
+native-source = "music"
+format = "<label>"
+label = "No music"
+format-padding = "6px"
+format-foreground = "pywal:15"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-background = "pywal:8"
+format-height = 26
+format-radius = 14
+format-online = "<label-song> <label-play>"
+format-offline = "<label> <label-play>"
+label-song = "%artist% - %title%"
+label-song-maxlen = 32
+label-song-ellipsis = true
+label-prefix = ""
+native-symbol-label-prefix = "music.note"
+icon-prev = "⏮"
+icon-next = "⏭"
+icon-pause = "Ⅱ"
+icon-play = "▶"
+native-symbol-icon-prev = "backward.end.fill"
+native-symbol-icon-next = "forward.end.fill"
+native-symbol-icon-play = "play.fill"
+native-symbol-icon-pause = "pause.fill"
+label-prev = "%{A1:previous:}⏮%{A}"
+label-next = "%{A1:next:}⏭%{A}"
+label-toggle = ""
+format-font-weight = 3
+label-play = "▶"
+
+[widgets.script.palette]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "paintpalette.fill"
+format-background = "pywal:9"
+format-height = 26
+format-radius = 14
+native-action = "shuffle-colors"
+format-font-weight = 3
+
+[widgets.script.bluetooth]
+native-source = "bluetooth"
+format = "<label-prefix> <label>"
+label = "%power%"
+format-padding = "6px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-background = "pywal:6"
+format-height = 26
+format-radius = 14
+label-prefix = ""
+native-action = "bluetooth"
+format-font-weight = 3
+
+[widgets.script.volume]
+native-source = "volume"
+format = "<label-prefix> <label>"
+label = "%percentage%%"
+format-padding = "3px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "speaker.wave.2.fill"
+format-height = 26
+format-font-weight = 3
+capsule-group = "audio"
+capsule-background = "pywal:13"
+capsule-height = 26
+capsule-radius = 13
+capsule-padding = 3
+capsule-spacing = 0
+
+[widgets.script.brightness]
+native-source = "brightness"
+format = "<label-prefix> <label>"
+label = "%percentage%%"
+format-padding = "6px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "sun.max"
+format-background = "pywal:14"
+format-height = 26
+format-radius = 14
+format-font-weight = 3
+
+[widgets.script.network]
+native-source = "network"
+format = "<label-prefix> <label>"
+label = "%essid%"
+format-padding = "6px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "wifi"
+format-background = "pywal:12"
+format-height = 26
+format-radius = 14
+format-connected = "<label-prefix> <label-connected>"
+label-connected = "%essid%"
+format-disconnected = "<label-prefix> <label-disconnected>"
+label-disconnected = "Offline"
+format-font-weight = 3
+
+[widgets.script.clock]
+native-source = "date"
+format = "<label-prefix> <label>"
+label = "%time%"
+format-padding = "6px"
+format-foreground = "pywal:0"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "clock"
+format-background = "pywal:11"
+format-height = 26
+format-radius = 14
+time-pattern = "hh:mm a"
+date-pattern = "dd-MM-yy"
+format-font-weight = 3
+
+[widgets.script.power]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-padding = "6px"
+format-foreground = "pywal:9"
+font-0 = "IosevkaNerdFontComplete-:size=14"
+label-prefix = ""
+native-symbol-label-prefix = "power"
+format-height = 26
+native-action = "power"
+format-font-weight = 3
+
+[widgets.script.privacy]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-foreground = "pywal:0"
+format-padding = "6px"
+format-height = 26
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-font-weight = 3
+native-symbol-label-prefix = "eye.slash"
+label-prefix = ""
+format-background = "pywal:6"
+format-radius = 14
+native-action = "privacy"
+action-url = "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"
+
+[widgets.script.microphone]
+native-source = "microphone"
+format = "<label-prefix> <label>"
+label = "%percentage%%"
+format-foreground = "pywal:0"
+format-padding = "3px"
+format-height = 26
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-font-weight = 3
+native-symbol-label-prefix = "mic.fill"
+label-prefix = ""
+capsule-group = "audio"
+
+[widgets.script.signal]
+native-source = "network"
+format = "<label-prefix>"
+label = ""
+format-foreground = "pywal:15"
+format-padding = "3px"
+format-height = 26
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-font-weight = 3
+native-symbol-label-prefix = "wifi"
+label-prefix = ""
+format-connected = "<label-prefix>"
+format-disconnected = "<label-prefix>"
+
+[widgets.script.messages]
+native-source = "text"
+format = "<label-prefix>"
+label = ""
+format-foreground = "pywal:13"
+format-padding = "3px"
+format-height = 26
+font-0 = "IosevkaNerdFontComplete-:size=14"
+format-font-weight = 3
+native-symbol-label-prefix = "paperplane.fill"
+label-prefix = ""
+native-action = "open-app"
+action-app = "/System/Applications/Messages.app"
