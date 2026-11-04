@@ -5,6 +5,7 @@ import argparse, json, pathlib, subprocess, tempfile, tomllib
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--source', type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[1])
 parser.add_argument('--themes', type=pathlib.Path)
+parser.add_argument('--font-dir', type=pathlib.Path, help='Same bundled font directory for both comparison builds')
 parser.add_argument('--output', type=pathlib.Path, required=True)
 parser.add_argument('--iterations', type=int, default=2000)
 parser.add_argument('--runs', type=int, default=7)
@@ -28,7 +29,10 @@ while depth:
 clock = clock[:start] + '    init() {}' + clock[end:]
 optimized = (root/'Glance/Widgets/Time+Calendar/DateFormattingCache.swift').exists()
 cache = (root/'Glance/Widgets/Time+Calendar/DateFormattingCache.swift').read_text() if optimized else ''
+scheduler_path = root/'Glance/Utils/WidgetUpdateScheduler.swift'
+scheduler_source = scheduler_path.read_text() if scheduler_path.exists() else ''
 renderer = (root/'Glance/Widgets/Script/PolybarScriptCompatibility.swift').read_text()
+inline_icons = (root/'Glance/Widgets/GlanceInlineIcons.swift').read_text()
 themes = args.themes or root/'PolybarThemeDrafts'
 fixtures = []
 for path in sorted(themes.glob('*.toml')):
@@ -113,6 +117,12 @@ func render(_ i: Int) -> [PolybarScriptPiece] {
 }
 @main struct PerformanceBenchmark {
     static func main() throws {
+        if CommandLine.arguments.count > 4 {
+            let directory = URL(fileURLWithPath:CommandLine.arguments[4])
+            for file in (try? FileManager.default.contentsOfDirectory(at:directory, includingPropertiesForKeys:nil)) ?? [] where ["ttf","otf"].contains(file.pathExtension) {
+                CTFontManagerRegisterFontsForURL(file as CFURL, .process, nil)
+            }
+        }
         let iterations = Int(CommandLine.arguments[2])!
         let runs = Int(CommandLine.arguments[3])!
         let fixtures = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))) as! [[String: Any]]
@@ -171,6 +181,45 @@ func render(_ i: Int) -> [PolybarScriptPiece] {
             "clock_same_format":measure(iterations: iterations, runs: runs) { time.format(pattern:"HH:mm", date:baseDate.addingTimeInterval(Double($0)), timeZone:"UTC").count },
             "clock_alternating_formats":measure(iterations: iterations, runs: runs) { time.format(pattern:patterns[$0 % patterns.count], date:baseDate.addingTimeInterval(Double($0)), timeZone:zones[$0 % zones.count]).count }
         ]
+
+        // Isolate rendering cost by module configuration, independent of live polling.
+        var perWidget: [[String: Any]] = []
+        let palette: [Color] = (0..<16).map { Color(red:Double($0)/16,green:0.45,blue:0.65) }
+        let workloads: [(String, String)] = [
+            ("clock", "18:35 Thu 15 Oct"), ("volume", "57%"),
+            ("network", "Wi-Fi Baba But Better ↓ 124 KB/s ↑ 8 KB/s"),
+            ("music", "Nightwish — Beauty and the Beast 03:29 / 06:24"),
+            ("system", "CPU 24% RAM 4.2 GiB 48°C"),
+            ("unicode", "通信 café e\u{301} 👩🏽‍💻 \u{f028} \u{f1eb}")
+        ]
+        for (name, output) in workloads {
+            for setup in ["plain", "font-fallback", "pywal", "icons-truncated"] {
+                var config: ConfigData = ["format":.string("<label>"), "label":.string("%output%")]
+                if setup == "font-fallback" {
+                    config["font-0"] = .string("Menlo:size=14")
+                    config["font-1"] = .string("Apple Symbols:size=14")
+                    config["font-2"] = .string("Iosevka Nerd Font:size=14")
+                }
+                if setup == "pywal" {
+                    config["format-foreground"] = .string("pywal:7")
+                    config["format-background"] = .string("pywal:0")
+                    for i in 0..<16 { config["token-color\(i)"] = .string("pywal:\(i)") }
+                }
+                if setup == "icons-truncated" {
+                    config["label"] = .string("{{glance-icon:music.note}} %output%")
+                    config["label-maxlen"] = .int(24)
+                }
+                let resolved = GlanceInlineIcons.resolve(config, palette: palette)
+                let fingerprint = digest(signature(PolybarScriptRenderer.render(output:output,config:resolved,actions:[:],counter:0,pid:123,failed:false)))
+                let timing = measure(iterations:iterations, runs:runs) { i in
+                    let values = GlanceInlineIcons.resolve(config, palette:palette)
+                    return PolybarScriptRenderer.render(output:output,config:values,actions:[:],counter:i,pid:123,failed:false).count
+                }
+                perWidget.append(["widget":name,"setup":setup,"timing":timing,"fingerprint":fingerprint])
+            }
+        }
+        report["per_widget"] = perWidget
+        report["measurement_scope"] = "Production formatter and palette resolution only; excludes SwiftUI layout, provider polling, helper processes, memory and wakeups. Warm caches, optimized Swift, same fixtures."
         __CLOCK_CHECKS__
         let data = try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
         print(String(data:data, encoding:.utf8)!)
@@ -218,14 +267,14 @@ harness = harness.replace('__CLOCK_CHECKS__', checks if optimized else '''
 with tempfile.TemporaryDirectory(prefix='glance-perf-') as tmp:
     tmp = pathlib.Path(tmp)
     swift = tmp/'benchmark.swift'
-    swift.write_text('import AppKit\nimport Combine\nimport Foundation\nimport SwiftUI\n' + models + '\n' + renderer + '\n' + cache + '\n' + clock + '\n' + harness)
+    swift.write_text('import AppKit\nimport Combine\nimport Foundation\nimport SwiftUI\n' + models + '\n' + scheduler_source + '\n' + inline_icons + '\n' + renderer + '\n' + cache + '\n' + clock + '\n' + harness)
     fixture_path = tmp/'themes.json'
     fixture_path.write_text(json.dumps(fixtures, ensure_ascii=False))
-    subprocess.run(['xcrun','swiftc','-O','-parse-as-library',str(swift),'-o',str(tmp/'benchmark')], check=True)
-    result = subprocess.run([str(tmp/'benchmark'),str(fixture_path),str(args.iterations),str(args.runs)], check=True, capture_output=True, text=True)
+    subprocess.run(['xcrun','swiftc','-O','-module-cache-path','/tmp/glance-benchmark-module-cache','-parse-as-library',str(swift),'-o',str(tmp/'benchmark')], check=True)
+    result = subprocess.run([str(tmp/'benchmark'),str(fixture_path),str(args.iterations),str(args.runs),str(args.font_dir or root/'Glance/Resources/Fonts')], check=True, capture_output=True, text=True)
     report = json.loads(result.stdout)
     report['source'] = str(root)
     report['optimized'] = optimized
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2)+'\n')
-    print(json.dumps({k:v for k,v in report.items() if not isinstance(v,dict)}, indent=2))
+    print(json.dumps({k:v for k,v in report.items() if not isinstance(v,(dict,list))}, indent=2))
